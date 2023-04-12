@@ -9,7 +9,7 @@ import tf2_ros
 
 import pytest
 
-from bdai_ros.wrappers.tf_listener_wrapper import TFListenerWrapper
+from bdai_ros2_wrappers.tf_listener_wrapper import TFListenerWrapper
 
 ROBOT = "test_robot"
 CAMERA = "camera_1"
