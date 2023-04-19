@@ -7,8 +7,8 @@ from rclpy.node import Node
 
 class ActionClientWrapper(rclpy.action.ActionClient):
 
-    def __init__(self, action_type, action_name: str, namespace=None):
-        self._node = Node(action_name + '_client_wrapper_node', namespace=namespace)
+    def __init__(self, action_type, action_name: str, node_name: str, namespace=None):
+        self._node = Node(f'{node_name}_{action_name}_client_wrapper_node', namespace=namespace)
         super().__init__(self._node, action_type, action_name)
         self._executor = SingleThreadedExecutor()
         self._executor.add_node(self._node)
