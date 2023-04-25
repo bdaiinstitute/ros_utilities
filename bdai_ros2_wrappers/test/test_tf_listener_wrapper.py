@@ -67,11 +67,11 @@ def check_tf_lookup(tf_listener, translation, rotation, timestamp, timeout=0, wa
             timestamp,
             timeout=timeout,
             wait_for_frames=wait_for_frames,
-        )
+        ).transform
 
-        assert t.position.x == translation[0]
-        assert t.position.y == translation[1]
-        assert t.position.z == translation[2]
+        assert t.translation.x == translation[0]
+        assert t.translation.y == translation[1]
+        assert t.translation.z == translation[2]
 
         assert t.rotation.w == rotation[0]
         assert t.rotation.x == rotation[1]
@@ -177,10 +177,10 @@ def test_tf_listener_wrapper(tf_listener):
 
     rclpy.spin_once(tf_publisher, timeout_sec=0.01)
 
-    trans = tf_listener.lookup_a_tform_b(FRAME_ID, CHILD_FRAME_ID, timestamp)
-    assert trans.position.x == 1.0
-    assert trans.position.y == 2.0
-    assert trans.position.z == 3.0
+    trans = tf_listener.lookup_a_tform_b(FRAME_ID, CHILD_FRAME_ID, timestamp).transform
+    assert trans.translation.x == 1.0
+    assert trans.translation.y == 2.0
+    assert trans.translation.z == 3.0
 
     assert trans.rotation.w == 1.0
     assert trans.rotation.x == 0.0

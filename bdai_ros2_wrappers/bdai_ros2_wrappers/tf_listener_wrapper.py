@@ -11,9 +11,6 @@ from tf2_ros.buffer import Buffer
 from tf2_ros.transform_broadcaster import TransformBroadcaster
 from tf2_ros.transform_listener import TransformListener
 
-from bdai.utilities.math_helpers import SE2Pose, SE3Pose
-from bdai_ros.utilities.manual_conversions import to_se3_pose
-
 
 class TFListenerWrapper(object):
 
@@ -108,7 +105,7 @@ class TFListenerWrapper(object):
                          frame_b: str,
                          transform_time: float = None,
                          timeout: float = None,
-                         wait_for_frames: bool = False) -> SE3Pose:
+                         wait_for_frames: bool = False) -> TransformStamped:
         '''
         Parameters:
             frame_a: Base frame for transform.  The transform returned will be frame_a_t_frame_b
@@ -126,8 +123,7 @@ class TFListenerWrapper(object):
         Raises:
             All the possible TransformExceptions.
         '''
-        return to_se3_pose(
-            self._internal_lookup_a_tform_b(frame_a, frame_b, transform_time, timeout, wait_for_frames).transform)
+        return self._internal_lookup_a_tform_b(frame_a, frame_b, transform_time, timeout, wait_for_frames)
 
     def lookup_latest_timestamp(self,
                                 frame_a: str,
@@ -151,28 +147,3 @@ class TFListenerWrapper(object):
         '''
         transform = self._internal_lookup_a_tform_b(frame_a, frame_b, None, timeout, wait_for_frames)
         return Time.from_msg(transform.header.stamp)
-
-    def lookup_a_tform_b_se2(self,
-                             frame_a: str,
-                             frame_b: str,
-                             transform_time: float = None,
-                             timeout: float = None,
-                             wait_for_frames: bool = False) -> SE2Pose:
-        '''
-        Parameters:
-            frame_a: Base frame for transform.  The transform returned will be frame_a_t_frame_b
-            frame_b: Tip frame for transform.  The transform returned will be frame_a_t_frame_b
-            transform_time: The time at which to look up the transform.  If left at None, will be the most recent
-                transform available
-            timeout: The time to wait for the transform to become available if the transform_time is beyond the most
-                recent transform in the buffer.
-            wait_for_frames: If true, waits timeout amount of time for a path to exist from frame_a to frame_b in the
-                buffer.  If false, this will return immediately if a path does not exist even if timeout is not
-                None.  Note that wait_for_transform can be used to wait indefinitely for a transform to become
-                available.
-        Returns:
-            The transform frame_a_t_frame_b at the time specified in SE(2).
-        Raises:
-            All the possible TransformExceptions.
-        '''
-        return SE2Pose.flatten(self.lookup_a_tform_b(frame_a, frame_b, transform_time, timeout, wait_for_frames))
