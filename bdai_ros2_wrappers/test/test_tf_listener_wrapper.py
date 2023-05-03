@@ -1,13 +1,14 @@
+# Copyright [2023] Boston Dynamics AI Institute, Inc.
+
 import asyncio
 import time
 
-from geometry_msgs.msg import Quaternion, Transform, TransformStamped, Vector3
+import pytest
 import rclpy
+import tf2_ros
+from geometry_msgs.msg import Quaternion, Transform, TransformStamped, Vector3
 from rclpy.duration import Duration
 from rclpy.node import Node
-import tf2_ros
-
-import pytest
 
 from bdai_ros2_wrappers.tf_listener_wrapper import TFListenerWrapper
 
@@ -18,7 +19,6 @@ CHILD_FRAME_ID = f"{ROBOT}/{CAMERA}"
 
 
 class MockTFPublisher(Node):
-
     def __init__(self, frame_id, child_frame_id):
         super().__init__("mock_tf_publisher")
 
@@ -84,14 +84,9 @@ def check_tf_lookup(tf_listener, translation, rotation, timestamp, timeout=0, wa
 
 # I do not know if this is the best way to test asynchronous routines. We may want to do this with
 # multiple nodes and service calls to synchronize the message passing.
-async def delayed_lookup(tf_publisher,
-                         tf_listener,
-                         translation,
-                         rotation,
-                         delay_sec=0,
-                         timeout=0,
-                         wait_for_frames=False,
-                         check_init=False):
+async def delayed_lookup(
+    tf_publisher, tf_listener, translation, rotation, delay_sec=0, timeout=0, wait_for_frames=False, check_init=False
+):
     timestamp = tf_publisher.get_clock().now()
     timestamp += Duration(seconds=delay_sec)
     loop = asyncio.get_event_loop()
@@ -101,7 +96,8 @@ async def delayed_lookup(tf_publisher,
     try:
         if not check_init:
             await loop.run_in_executor(
-                None, lambda: check_tf_lookup(tf_listener, translation, rotation, timestamp, timeout, wait_for_frames))
+                None, lambda: check_tf_lookup(tf_listener, translation, rotation, timestamp, timeout, wait_for_frames)
+            )
         else:
             await loop.run_in_executor(None, lambda: tf_listener.wait_for_init(FRAME_ID, CHILD_FRAME_ID))
     finally:
@@ -141,7 +137,7 @@ def test_tf_listener_wrapper(tf_listener):
     except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as err:
         lookup_err = err
     assert isinstance(lookup_err, tf2_ros.LookupException)
-    print(f"LookupException Thrown")
+    print("LookupException Thrown")
 
     ## A non-existent transform with a timeout but without wait_for_frames returns a LookupException immediately
     # (Time-based tests can be flaky but in this case we're trying to tell the difference between 20s and immediately
@@ -157,18 +153,23 @@ def test_tf_listener_wrapper(tf_listener):
         lookup_err = err
     end = time.time()
     assert isinstance(lookup_err, tf2_ros.LookupException)
-    print(f"LookupException Thrown")
-    assert (end - start < 10.0)
+    print("LookupException Thrown")
+    assert end - start < 10.0
 
     ## A non-existent transform with a timeout but with wait_for_frames properly waits
     print()
     print("Waiting for a non-existent transform that eventually comes in")
     asyncio.run(
-        delayed_lookup(tf_publisher,
-                       tf_listener, [4.0, 5.0, 6.0], [0.0, 1.0, 0.0, 0.0],
-                       delay_sec=2,
-                       timeout=5.0,
-                       wait_for_frames=True))
+        delayed_lookup(
+            tf_publisher,
+            tf_listener,
+            [4.0, 5.0, 6.0],
+            [0.0, 1.0, 0.0, 0.0],
+            delay_sec=2,
+            timeout=5.0,
+            wait_for_frames=True,
+        )
+    )
 
     ## Existing transform returns correctly
     print()
@@ -186,7 +187,7 @@ def test_tf_listener_wrapper(tf_listener):
     assert trans.rotation.x == 0.0
     assert trans.rotation.y == 0.0
     assert trans.rotation.z == 0.0
-    print(f"Correct Transform Found")
+    print("Correct Transform Found")
 
     ## A future transform request with no timeout returns ExtrapolationException
     print()
@@ -196,11 +197,12 @@ def test_tf_listener_wrapper(tf_listener):
     lookup_err = None
     try:
         asyncio.run(
-            delayed_lookup(tf_publisher, tf_listener, [4.0, 5.0, 6.0], [0.0, 1.0, 0.0, 0.0], delay_sec=2, timeout=0))
+            delayed_lookup(tf_publisher, tf_listener, [4.0, 5.0, 6.0], [0.0, 1.0, 0.0, 0.0], delay_sec=2, timeout=0)
+        )
     except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as err:
         lookup_err = err
     assert isinstance(lookup_err, tf2_ros.ExtrapolationException)
-    print(f"ExtrapolationException Thrown")
+    print("ExtrapolationException Thrown")
 
     ## A future transform request with an insufficent timeout returns ExtrapolationException
     print()
@@ -210,11 +212,12 @@ def test_tf_listener_wrapper(tf_listener):
     lookup_err = None
     try:
         asyncio.run(
-            delayed_lookup(tf_publisher, tf_listener, [7.0, 8.0, 9.0], [0.0, 0.0, 1.0, 0.0], delay_sec=2, timeout=1))
+            delayed_lookup(tf_publisher, tf_listener, [7.0, 8.0, 9.0], [0.0, 0.0, 1.0, 0.0], delay_sec=2, timeout=1)
+        )
     except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as err:
         lookup_err = err
     assert isinstance(lookup_err, tf2_ros.ExtrapolationException)
-    print(f"ExtrapolationException Thrown")
+    print("ExtrapolationException Thrown")
 
     ## A future transform request with sufficient timeout returns correctly
     print()
@@ -222,8 +225,9 @@ def test_tf_listener_wrapper(tf_listener):
     rclpy.spin_once(tf_publisher, timeout_sec=0.01)
 
     asyncio.run(
-        delayed_lookup(tf_publisher, tf_listener, [10.0, 11.0, 12.0], [0.0, 0.0, 0.0, 1.0], delay_sec=2, timeout=4))
-    print(f"Correct Transform Found")
+        delayed_lookup(tf_publisher, tf_listener, [10.0, 11.0, 12.0], [0.0, 0.0, 0.0, 1.0], delay_sec=2, timeout=4)
+    )
+    print("Correct Transform Found")
 
     print("TFListenerWrapper Tests Complete")
 
@@ -234,7 +238,8 @@ def test_tf_listener_wrapper_wait(tf_listener):
     rclpy.spin_once(tf_publisher, timeout_sec=0.01)
 
     asyncio.run(
-        delayed_lookup(tf_publisher, tf_listener, [4.0, 5.0, 6.0], [0.0, 1.0, 0.0, 0.0], delay_sec=2, check_init=True))
+        delayed_lookup(tf_publisher, tf_listener, [4.0, 5.0, 6.0], [0.0, 1.0, 0.0, 0.0], delay_sec=2, check_init=True)
+    )
 
     print("Successfully initialized TF")
 
