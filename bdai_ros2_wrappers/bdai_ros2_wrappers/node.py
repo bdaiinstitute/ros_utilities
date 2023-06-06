@@ -10,7 +10,7 @@ class NodeWrapper:
     """A wrapper around a node and its executor. The node is spun by the executor when calling
     spin_until_future_complete, which allows a future to be spun inside a callback."""
 
-    def __init__(self, node_name: str, namespace: str = None, context: Context = None):
+    def __init__(self, node_name: str, namespace: Optional[str] = None, context: Context = None):
         self.node = Node(node_name, namespace=namespace, context=context)
         self.__executor = SingleThreadedExecutor(context=context)
         self.__executor.add_node(self.node)
