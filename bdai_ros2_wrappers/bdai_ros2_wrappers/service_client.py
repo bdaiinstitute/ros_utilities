@@ -1,9 +1,9 @@
 # Copyright [2023] Boston Dynamics AI Institute, Inc.
 from typing import Optional
 
-from bdai_ros2_wrappers.node import NodeWrapper
-
 from rclpy import Context
+
+from bdai_ros2_wrappers.node import NodeWrapper
 
 
 class ServiceClientWrapper:

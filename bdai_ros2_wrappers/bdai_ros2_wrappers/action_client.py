@@ -2,10 +2,9 @@
 from typing import Optional
 
 import rclpy.action
+from rclpy import Context
 
 from bdai_ros2_wrappers.node import NodeWrapper
-
-from rclpy import Context
 
 
 class ActionClientWrapper(rclpy.action.ActionClient):
