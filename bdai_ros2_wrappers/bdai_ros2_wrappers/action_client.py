@@ -1,13 +1,24 @@
 # Copyright [2023] Boston Dynamics AI Institute, Inc.
+from typing import Optional
 
 import rclpy.action
+from rclpy import Context
 
 from bdai_ros2_wrappers.node import NodeWrapper
 
 
 class ActionClientWrapper(rclpy.action.ActionClient):
-    def __init__(self, action_type, action_name: str, node_name: str, namespace=None):
-        self._node_wrapper = NodeWrapper(f"{node_name}_{action_name}_client_wrapper_node", namespace=namespace)
+    def __init__(
+        self,
+        action_type,
+        action_name: str,
+        node_name: str,
+        namespace: Optional[str] = None,
+        context: Optional[Context] = None,
+    ):
+        self._node_wrapper = NodeWrapper(
+            f"{node_name}_{action_name}_client_wrapper_node", namespace=namespace, context=context
+        )
         super().__init__(self._node_wrapper.node, action_type, action_name)
         self._node_wrapper.node.get_logger().info(
             "Waiting for action server for " + self._node.get_namespace() + "/" + action_name
