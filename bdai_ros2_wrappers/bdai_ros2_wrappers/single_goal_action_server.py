@@ -5,9 +5,11 @@ from typing import Any, Callable, Optional
 
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
 from rclpy.action.server import ServerGoalHandle
-from rclpy.callback_groups import ReentrantCallbackGroup
+from rclpy.callback_groups import CallbackGroup
 from rclpy.impl.rcutils_logger import RcutilsLogger
 from rclpy.node import Node
+
+from bdai_ros2_wrappers.type_hints import Action, ActionType
 
 # Note: for this to work correctly you must use a multi-threaded executor when spinning the node!  E.g.:
 #   from rclpy.executors import MultiThreadedExecutor
@@ -16,7 +18,14 @@ from rclpy.node import Node
 
 
 class SingleGoalActionServer(object):
-    def __init__(self, node: Node, action_type: Any, action_topic: str, execute_callback: Callable) -> None:
+    def __init__(
+        self,
+        node: Node,
+        action_type: ActionType,
+        action_topic: str,
+        execute_callback: Callable,
+        callback_group: Optional[CallbackGroup] = None,
+    ) -> None:
         self._node = node
         self._goal_handle: Optional[ServerGoalHandle] = None
         self._goal_lock = threading.Lock()
@@ -28,7 +37,7 @@ class SingleGoalActionServer(object):
             goal_callback=self.goal_callback,
             handle_accepted_callback=self.handle_accepted_callback,
             cancel_callback=self.cancel_callback,
-            callback_group=ReentrantCallbackGroup(),
+            callback_group=callback_group,
         )
 
     def get_logger(self) -> RcutilsLogger:
@@ -37,7 +46,7 @@ class SingleGoalActionServer(object):
     def destroy(self) -> None:
         self._action_server.destroy()
 
-    def goal_callback(self, goal_request: Any) -> GoalResponse:
+    def goal_callback(self, goal: Action.Goal) -> GoalResponse:
         """Accept or reject a client request to begin an action."""
         self.get_logger().info("Received goal request")
         return GoalResponse.ACCEPT
