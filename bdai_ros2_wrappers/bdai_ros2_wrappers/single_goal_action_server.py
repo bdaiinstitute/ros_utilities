@@ -53,7 +53,7 @@ class SingleGoalActionServer(object):
 
         goal_handle.execute()
 
-    def cancel_callback(self, goal: Any) -> CancelResponse:
+    def cancel_callback(self, cancel_request: Any) -> CancelResponse:
         """Accept or reject a client request to cancel an action."""
         self.get_logger().info("Received cancel request")
         return CancelResponse.ACCEPT
