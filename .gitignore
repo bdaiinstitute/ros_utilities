@@ -127,3 +127,39 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# colcon
+build/
+install/
+log/
+
+# catkin_make
+devel/
+logs/
+build/
+bin/
+lib/
+
+# Editors
+.idea/
+.vscode/
+*~
+*\#*
+.#*
+
+# ROS
+bag_files/
+
+# Misc
+.DS_Store
+cyclonedds.xml
+
+# ROS bags
+*.db3
+*.bag
+
+# wandb
+wandb/
+
+# Gitman-tracked external repos
+external
