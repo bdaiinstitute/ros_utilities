@@ -12,6 +12,10 @@ from bdai_ros2_wrappers.type_hints import Action, ActionType
 
 
 class SingleGoalMultipleActionServers(object):
+    """Wrapper around multiple action servers that only allows a single Action to be executing at one time. If a new
+    Action.Goal is received by any of the action servers, the existing Action (if there is one) is preemptively
+    canceled"""
+
     def __init__(
         self, node: Node, action_server_parameters: List[Tuple[ActionType, str, Callable, Optional[CallbackGroup]]]
     ) -> None:
@@ -57,6 +61,6 @@ class SingleGoalMultipleActionServers(object):
         goal_handle.execute()
 
     def cancel_callback(self, cancel_request: Any) -> CancelResponse:
-        """Accept or reject a client request to cancel an action."""
+        """Accept or reject a client's request to cancel an action."""
         self.get_logger().info("Received cancel request")
         return CancelResponse.ACCEPT
