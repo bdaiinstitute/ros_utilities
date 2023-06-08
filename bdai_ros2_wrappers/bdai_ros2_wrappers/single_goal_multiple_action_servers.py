@@ -1,11 +1,12 @@
 #  Copyright (c) 2023 Boston Dynamics AI Institute, Inc. All rights reserved.
 import threading
-from typing import Tuple, Callable, TypeVar, List, Optional
+from typing import Any, Callable, List, Optional, Tuple
 
-from rclpy import Node
-from rclpy.action import ActionServer, GoalResponse, CancelResponse
+from rclpy.action import ActionServer, CancelResponse, GoalResponse
 from rclpy.action.server import ServerGoalHandle
 from rclpy.callback_groups import CallbackGroup
+from rclpy.impl.rcutils_logger import RcutilsLogger
+from rclpy.node import Node
 
 from bdai_ros2_wrappers.type_hints import Action, ActionType
 
@@ -15,7 +16,7 @@ class SingleGoalMultipleActionServers(object):
         self, node: Node, action_server_parameters: List[Tuple[ActionType, str, Callable, Optional[CallbackGroup]]]
     ) -> None:
         self._node = node
-        self._goal_handle = None
+        self._goal_handle: Optional[ServerGoalHandle] = None
         self._goal_lock = threading.Lock()
         self._action_servers = []
         for action_type, action_topic, execute_callback, callback_group in action_server_parameters:
@@ -32,7 +33,7 @@ class SingleGoalMultipleActionServers(object):
                 )
             )
 
-    def get_logger(self):
+    def get_logger(self) -> RcutilsLogger:
         return self._node.get_logger()
 
     def destroy(self) -> None:
@@ -55,7 +56,7 @@ class SingleGoalMultipleActionServers(object):
 
         goal_handle.execute()
 
-    def cancel_callback(self, cancel_request) -> CancelResponse:
+    def cancel_callback(self, cancel_request: Any) -> CancelResponse:
         """Accept or reject a client request to cancel an action."""
         self.get_logger().info("Received cancel request")
         return CancelResponse.ACCEPT

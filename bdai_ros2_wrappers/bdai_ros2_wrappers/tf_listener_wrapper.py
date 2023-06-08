@@ -1,10 +1,12 @@
 # Copyright [2023] Boston Dynamics AI Institute, Inc.
 
 import time
+from threading import Thread
 from typing import Optional, Tuple
 
 import rclpy.duration
 from geometry_msgs.msg import TransformStamped
+from rclpy.executors import ExternalShutdownException, SingleThreadedExecutor
 from rclpy.node import Node
 from rclpy.time import Duration, Time
 from tf2_ros import ExtrapolationException, TransformException
@@ -22,17 +24,31 @@ class TFListenerWrapper(object):
         else:
             cache_time_py = None
         self._tf_buffer = Buffer(cache_time=cache_time_py)
-        # By putting in spin_thread here, the transform listener spins the node
-        self._tf_listener = TransformListener(self._tf_buffer, self._node, spin_thread=True)
+        self._tf_listener = TransformListener(self._tf_buffer, self._node, spin_thread=False)
+
+        # Custom spin loop to handle ExternalShutdown
+        self._executor = SingleThreadedExecutor()
+        self._thread = Thread(target=self._spin)
+        self._thread.start()
+
         if wait_for_transform is not None and len(wait_for_transform) == 2:
             self.wait_for_init(wait_for_transform[0], wait_for_transform[1])
+
+    def _spin(self) -> None:
+        self._executor.add_node(self._node)
+        try:
+            self._executor.spin()
+        except (KeyboardInterrupt, ExternalShutdownException):
+            pass
+        self._executor.remove_node(self._node)
 
     def shutdown(self) -> None:
         """
         You must call this to have the program exit smoothly, unfortunately.  No del command seems to work.
         """
-        self._tf_listener.executor.shutdown()
-        self._tf_listener.dedicated_listener_thread.join()
+        self._executor.shutdown()
+        self._thread.join()
+        self._node.destroy_node()
 
     @property
     def buffer(self) -> Buffer:

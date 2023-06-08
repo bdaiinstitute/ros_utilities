@@ -17,6 +17,3 @@ Action.Result = Action_Result  # type: ignore
 
 # The specific Msg is created by the .msg file
 Msg = TypeVar("Msg")
-
-# The specific Srv is created by the .srv file
-Srv = TypeVar("Srv")

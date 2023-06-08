@@ -2,7 +2,7 @@
 from typing import Optional
 
 from rclpy import Context
-from rclpy.client import SrvType, SrvTypeRequest, SrvTypeResponse
+from rclpy.service import SrvType, SrvTypeRequest, SrvTypeResponse
 
 from bdai_ros2_wrappers.node import NodeWrapper
 
