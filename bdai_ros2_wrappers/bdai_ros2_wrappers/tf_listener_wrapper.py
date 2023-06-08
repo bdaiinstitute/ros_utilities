@@ -1,6 +1,7 @@
 # Copyright [2023] Boston Dynamics AI Institute, Inc.
 
 import time
+from typing import Optional, Tuple
 
 import rclpy.duration
 from geometry_msgs.msg import TransformStamped
@@ -12,7 +13,9 @@ from tf2_ros.transform_listener import TransformListener
 
 
 class TFListenerWrapper(object):
-    def __init__(self, node_name: str, wait_for_transform: tuple[str, str] = None, cache_time_s: int = None):
+    def __init__(
+        self, node_name: str, wait_for_transform: Optional[Tuple[str, str]] = None, cache_time_s: Optional[int] = None
+    ) -> None:
         self._node = Node(node_name)  # private because we want to make sure no one but us spins this node!
         if cache_time_s is not None:
             cache_time_py = rclpy.duration.Duration(seconds=cache_time_s)
@@ -24,7 +27,7 @@ class TFListenerWrapper(object):
         if wait_for_transform is not None and len(wait_for_transform) == 2:
             self.wait_for_init(wait_for_transform[0], wait_for_transform[1])
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         """
         You must call this to have the program exit smoothly, unfortunately.  No del command seems to work.
         """
@@ -35,7 +38,7 @@ class TFListenerWrapper(object):
     def buffer(self) -> Buffer:
         return self._tf_buffer
 
-    def wait_for_init(self, from_frame: str, to_frame: str):
+    def wait_for_init(self, from_frame: str, to_frame: str) -> None:
         """
         Waits for transform from from_frame to to_frame to become available and prints initializing statements.
         """
@@ -46,7 +49,7 @@ class TFListenerWrapper(object):
         self.wait_for_transform(from_frame, to_frame)
         self._node.get_logger().info("TF initialized")
 
-    def wait_for_transform(self, from_frame: str, to_frame: str):
+    def wait_for_transform(self, from_frame: str, to_frame: str) -> None:
         """
         Wait for the transform from from_frame to to_frame to become available.
         """
@@ -62,8 +65,8 @@ class TFListenerWrapper(object):
         self,
         frame_a: str,
         frame_b: str,
-        transform_time: float = None,
-        timeout: float = None,
+        transform_time: Optional[float] = None,
+        timeout: Optional[float] = None,
         wait_for_frames: bool = False,
     ) -> TransformStamped:
         """
@@ -105,8 +108,8 @@ class TFListenerWrapper(object):
         self,
         frame_a: str,
         frame_b: str,
-        transform_time: float = None,
-        timeout: float = None,
+        transform_time: Optional[float] = None,
+        timeout: Optional[float] = None,
         wait_for_frames: bool = False,
     ) -> TransformStamped:
         """
@@ -129,7 +132,7 @@ class TFListenerWrapper(object):
         return self._internal_lookup_a_tform_b(frame_a, frame_b, transform_time, timeout, wait_for_frames)
 
     def lookup_latest_timestamp(
-        self, frame_a: str, frame_b: str, timeout: float = None, wait_for_frames: bool = False
+        self, frame_a: str, frame_b: str, timeout: Optional[float] = None, wait_for_frames: bool = False
     ) -> Time:
         """
         Parameters:

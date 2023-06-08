@@ -2,6 +2,7 @@
 from typing import Optional
 
 from rclpy import Context
+from rclpy.client import SrvType, SrvTypeRequest, SrvTypeResponse
 
 from bdai_ros2_wrappers.node import NodeWrapper
 
@@ -10,12 +11,19 @@ class ServiceClientWrapper:
     """A wrapper around a service client that allows the service to be safely called from callbacks without
     deadlocking."""
 
-    def __init__(self, node_name: str, service_type, service_name: str, context: Optional[Context] = None):
+    def __init__(
+        self, node_name: str, service_type: SrvType, service_name: str, context: Optional[Context] = None
+    ) -> None:
         self._node_wrapper = NodeWrapper(node_name, context=context)
         self._service_name = service_name
         self._client = self._node_wrapper.node.create_client(service_type, service_name)
 
-    def call(self, request, timeout_sec: Optional[float] = None, max_wait_for_service_attempts: Optional[int] = None):
+    def call(
+        self,
+        request: SrvTypeRequest,
+        timeout_sec: Optional[float] = None,
+        max_wait_for_service_attempts: Optional[int] = None,
+    ) -> SrvTypeResponse:
         """Calls the service and returns the result. This is safe to call from a callback."""
         wait_for_service_attempts = 0
         while not self._client.wait_for_service(timeout_sec=timeout_sec):
