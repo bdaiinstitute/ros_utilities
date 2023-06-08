@@ -2,13 +2,16 @@
 
 import asyncio
 import time
+from typing import Optional, Union
 
+import numpy.typing as npt
 import pytest
 import rclpy
 import tf2_ros
 from geometry_msgs.msg import Quaternion, Transform, TransformStamped, Vector3
 from rclpy.duration import Duration
 from rclpy.node import Node
+from rclpy.time import Time
 
 from bdai_ros2_wrappers.tf_listener_wrapper import TFListenerWrapper
 
@@ -19,7 +22,7 @@ CHILD_FRAME_ID = f"{ROBOT}/{CAMERA}"
 
 
 class MockTFPublisher(Node):
-    def __init__(self, frame_id, child_frame_id):
+    def __init__(self, frame_id: str, child_frame_id: str) -> None:
         super().__init__("mock_tf_publisher")
 
         self.frame_id = frame_id
@@ -29,10 +32,10 @@ class MockTFPublisher(Node):
 
     def publish_transform(
         self,
-        translation,
-        rotation,
-        timestamp,
-    ):
+        translation: npt.ArrayLike,
+        rotation: npt.ArrayLike,
+        timestamp: Time,
+    ) -> None:
         t = TransformStamped()
 
         t.header.stamp = timestamp.to_msg()
@@ -48,18 +51,29 @@ class MockTFPublisher(Node):
 
     async def publish_transform_async(
         self,
-        translation=[0, 0, 0],
-        rotation=[1, 0, 0, 0],
-        timestamp=None,
-        delay=0,
-    ):
+        translation: Optional[npt.ArrayLike] = None,
+        rotation: Optional[npt.ArrayLike] = None,
+        timestamp: Optional[Time] = None,
+        delay: int = 0,
+    ) -> None:
+        if rotation is None:
+            rotation = [1, 0, 0, 0]
+        if translation is None:
+            translation = [0, 0, 0]
         if delay > 0:
             await asyncio.sleep(delay)
 
         self.publish_transform(translation, rotation, timestamp)
 
 
-def check_tf_lookup(tf_listener, translation, rotation, timestamp, timeout=0, wait_for_frames=False):
+def check_tf_lookup(
+    tf_listener: TFListenerWrapper,
+    translation: npt.ArrayLike,
+    rotation: npt.ArrayLike,
+    timestamp: Time,
+    timeout: Union[float, int] = 0,
+    wait_for_frames: bool = False,
+) -> None:
     try:
         t = tf_listener.lookup_a_tform_b(
             FRAME_ID,
@@ -79,14 +93,21 @@ def check_tf_lookup(tf_listener, translation, rotation, timestamp, timeout=0, wa
         assert t.rotation.z == rotation[3]
 
     except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as err:
-        raise (err)
+        raise err
 
 
 # I do not know if this is the best way to test asynchronous routines. We may want to do this with
 # multiple nodes and service calls to synchronize the message passing.
 async def delayed_lookup(
-    tf_publisher, tf_listener, translation, rotation, delay_sec=0, timeout=0, wait_for_frames=False, check_init=False
-):
+    tf_publisher: MockTFPublisher,
+    tf_listener: TFListenerWrapper,
+    translation: npt.ArrayLike,
+    rotation: npt.ArrayLike,
+    delay_sec: int = 0,
+    timeout: Union[float, int] = 0,
+    wait_for_frames: bool = False,
+    check_init: bool = False,
+) -> None:
     timestamp = tf_publisher.get_clock().now()
     timestamp += Duration(seconds=delay_sec)
     loop = asyncio.get_event_loop()
@@ -107,7 +128,7 @@ async def delayed_lookup(
 
 # Using the pytest feature allows us to clean up the listener so this doesn't hang at the end
 @pytest.fixture
-def tf_listener():
+def tf_listener() -> TFListenerWrapper:
     args = ["test", "--ros-args", "-p", f"robot:={ROBOT}"]
     rclpy.init(args=args)
 
@@ -118,7 +139,7 @@ def tf_listener():
     rclpy.shutdown()
 
 
-def test_tf_listener_wrapper(tf_listener):
+def test_tf_listener_wrapper(tf_listener: TFListenerWrapper) -> None:
     """
     Unit tests for the TFListenerWrapper class
     """
@@ -127,7 +148,7 @@ def test_tf_listener_wrapper(tf_listener):
 
     rclpy.spin_once(tf_publisher, timeout_sec=0.01)
 
-    ## Non-existent transform throws LookupException
+    # Non-existent transform throws LookupException
     print()
     print("Looking up nonexisting transform")
     timestamp = tf_publisher.get_clock().now()
@@ -139,7 +160,7 @@ def test_tf_listener_wrapper(tf_listener):
     assert isinstance(lookup_err, tf2_ros.LookupException)
     print("LookupException Thrown")
 
-    ## A non-existent transform with a timeout but without wait_for_frames returns a LookupException immediately
+    # A non-existent transform with a timeout but without wait_for_frames returns a LookupException immediately
     # (Time-based tests can be flaky but in this case we're trying to tell the difference between 20s and immediately
     #  so hopefully we'll be ok.)
     print()
@@ -156,7 +177,7 @@ def test_tf_listener_wrapper(tf_listener):
     print("LookupException Thrown")
     assert end - start < 10.0
 
-    ## A non-existent transform with a timeout but with wait_for_frames properly waits
+    # A non-existent transform with a timeout but with wait_for_frames properly waits
     print()
     print("Waiting for a non-existent transform that eventually comes in")
     asyncio.run(
@@ -171,7 +192,7 @@ def test_tf_listener_wrapper(tf_listener):
         )
     )
 
-    ## Existing transform returns correctly
+    # Existing transform returns correctly
     print()
     print("Looking up existing transform")
     tf_publisher.publish_transform([1.0, 2.0, 3.0], [1.0, 0.0, 0.0, 0.0], timestamp)
@@ -189,7 +210,7 @@ def test_tf_listener_wrapper(tf_listener):
     assert trans.rotation.z == 0.0
     print("Correct Transform Found")
 
-    ## A future transform request with no timeout returns ExtrapolationException
+    # A future transform request with no timeout returns ExtrapolationException
     print()
     print("Looking up future transform without wait")
     rclpy.spin_once(tf_publisher, timeout_sec=0.01)
@@ -204,7 +225,7 @@ def test_tf_listener_wrapper(tf_listener):
     assert isinstance(lookup_err, tf2_ros.ExtrapolationException)
     print("ExtrapolationException Thrown")
 
-    ## A future transform request with an insufficent timeout returns ExtrapolationException
+    # A future transform request with an insufficent timeout returns ExtrapolationException
     print()
     print("Looking up future transform with insufficient wait")
     rclpy.spin_once(tf_publisher, timeout_sec=0.01)
@@ -219,7 +240,7 @@ def test_tf_listener_wrapper(tf_listener):
     assert isinstance(lookup_err, tf2_ros.ExtrapolationException)
     print("ExtrapolationException Thrown")
 
-    ## A future transform request with sufficient timeout returns correctly
+    # A future transform request with sufficient timeout returns correctly
     print()
     print("Looking up future transform with sufficient wait")
     rclpy.spin_once(tf_publisher, timeout_sec=0.01)
@@ -232,7 +253,7 @@ def test_tf_listener_wrapper(tf_listener):
     print("TFListenerWrapper Tests Complete")
 
 
-def test_tf_listener_wrapper_wait(tf_listener):
+def test_tf_listener_wrapper_wait(tf_listener: TFListenerWrapper) -> None:
     tf_publisher = MockTFPublisher(FRAME_ID, CHILD_FRAME_ID)
 
     rclpy.spin_once(tf_publisher, timeout_sec=0.01)
@@ -244,5 +265,10 @@ def test_tf_listener_wrapper_wait(tf_listener):
     print("Successfully initialized TF")
 
 
+def main() -> None:
+    tf_listener = TFListenerWrapper()
+    test_tf_listener_wrapper(tf_listener)
+
+
 if __name__ == "__main__":
-    test_tf_listener_wrapper()
+    main()

@@ -1,5 +1,5 @@
 # Copyright [2023] Boston Dynamics AI Institute, Inc.
-from typing import Optional
+from typing import Any, Optional
 
 import rclpy.action
 from rclpy import Context
@@ -10,12 +10,12 @@ from bdai_ros2_wrappers.node import NodeWrapper
 class ActionClientWrapper(rclpy.action.ActionClient):
     def __init__(
         self,
-        action_type,
+        action_type: Any,
         action_name: str,
         node_name: str,
         namespace: Optional[str] = None,
         context: Optional[Context] = None,
-    ):
+    ) -> None:
         self._node_wrapper = NodeWrapper(
             f"{node_name}_{action_name}_client_wrapper_node", namespace=namespace, context=context
         )
@@ -26,7 +26,7 @@ class ActionClientWrapper(rclpy.action.ActionClient):
         self.wait_for_server()
         self._node_wrapper.node.get_logger().info("Found server")
 
-    def send_goal_and_wait(self, action_goal, timeout_sec=None):
+    def send_goal_and_wait(self, action_goal: Any, timeout_sec: Optional[float] = None) -> Optional[Any]:
         future = self.send_goal_async(action_goal)
         goal_handle = self._node_wrapper.spin_until_future_complete(future, timeout_sec=timeout_sec)
 

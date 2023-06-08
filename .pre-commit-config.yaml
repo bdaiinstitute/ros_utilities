@@ -23,3 +23,17 @@ repos:
   -   id: check-added-large-files
   -   id: check-toml
   -   id: end-of-file-fixer
+
+- repo: https://github.com/pre-commit/mirrors-mypy
+  rev: v1.2.0
+  hooks:
+  -   id: mypy
+      pass_filenames: false
+      additional_dependencies:
+      - types-protobuf
+      - types-requests
+      - types-simplejson
+      - types-ujson
+      - types-PyYAML
+      - types-toml
+      - types-six
