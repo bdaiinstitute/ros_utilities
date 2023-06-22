@@ -1,4 +1,4 @@
-# Copyright [2023] Boston Dynamics AI Institute, Inc.
+# Copyright (c) 2023 Boston Dynamics AI Institute, Inc.  All rights reserved.
 from typing import Any, Optional
 
 import rclpy.action
@@ -19,7 +19,7 @@ class ActionClientWrapper(rclpy.action.ActionClient):
         self._node_wrapper = NodeWrapper(
             f"{node_name}_{action_name}_client_wrapper_node", namespace=namespace, context=context
         )
-        super().__init__(self._node_wrapper.node, action_type, action_name)
+        super().__init__(self._node_wrapper, action_type, action_name)
         self._node_wrapper.node.get_logger().info(
             "Waiting for action server for " + self._node.get_namespace() + "/" + action_name
         )
