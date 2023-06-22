@@ -1,54 +1,44 @@
 # Copyright [2023] Boston Dynamics AI Institute, Inc.
 
 import time
-from threading import Thread
 from typing import Optional, Tuple
 
-import rclpy.duration
+import rclpy
 from geometry_msgs.msg import TransformStamped
-from rclpy.executors import ExternalShutdownException, SingleThreadedExecutor
-from rclpy.node import Node
+from rclpy import Context
 from rclpy.time import Duration, Time
 from tf2_ros import ExtrapolationException, TransformException
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 
+from bdai_ros2_wrappers.node import NodeWrapper
+
 
 class TFListenerWrapper(object):
     def __init__(
-        self, node_name: str, wait_for_transform: Optional[Tuple[str, str]] = None, cache_time_s: Optional[int] = None
+        self,
+        node_name: str,
+        wait_for_transform: Optional[Tuple[str, str]] = None,
+        cache_time_s: Optional[int] = None,
+        context: Optional[Context] = None,
     ) -> None:
-        self._node = Node(node_name)  # private because we want to make sure no one but us spins this node!
+        # private because we want to make sure no one but us spins this node!
+        self._node = NodeWrapper(node_name=node_name, context=context, spin_thread=True)
         if cache_time_s is not None:
-            cache_time_py = rclpy.duration.Duration(seconds=cache_time_s)
+            cache_time_py = Duration(seconds=cache_time_s)
         else:
             cache_time_py = None
         self._tf_buffer = Buffer(cache_time=cache_time_py)
         self._tf_listener = TransformListener(self._tf_buffer, self._node, spin_thread=False)
 
-        # Custom spin loop to handle ExternalShutdown
-        self._executor = SingleThreadedExecutor()
-        self._thread = Thread(target=self._spin)
-        self._thread.start()
-
         if wait_for_transform is not None and len(wait_for_transform) == 2:
             self.wait_for_init(wait_for_transform[0], wait_for_transform[1])
-
-    def _spin(self) -> None:
-        self._executor.add_node(self._node)
-        try:
-            self._executor.spin()
-        except (KeyboardInterrupt, ExternalShutdownException):
-            pass
-        self._executor.remove_node(self._node)
 
     def shutdown(self) -> None:
         """
         You must call this to have the program exit smoothly, unfortunately.  No del command seems to work.
         """
-        self._executor.shutdown()
-        self._thread.join()
-        self._node.destroy_node()
+        self._node.shutdown()
 
     @property
     def buffer(self) -> Buffer:
@@ -70,7 +60,7 @@ class TFListenerWrapper(object):
         Wait for the transform from from_frame to to_frame to become available.
         """
         # We need a while instead of the usual wait because we use a different node and a thread for our listener
-        while rclpy.ok():
+        while rclpy.ok(context=self._node.context):
             try:
                 self.lookup_a_tform_b(from_frame, to_frame)
                 break
@@ -107,9 +97,9 @@ class TFListenerWrapper(object):
         if timeout is None or not wait_for_frames:
             timeout_py = Duration()
         else:
-            timeout_py = rclpy.time.Duration(seconds=timeout)
+            timeout_py = Duration(seconds=timeout)
         start_time = time.time()
-        while rclpy.ok():
+        while rclpy.ok(context=self._node.context):
             try:
                 return self._tf_buffer.lookup_transform(frame_a, frame_b, time=transform_time, timeout=timeout_py)
             except ExtrapolationException as e:

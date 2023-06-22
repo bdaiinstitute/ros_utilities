@@ -1,4 +1,4 @@
-# Copyright [2023] Boston Dynamics AI Institute, Inc.
+# Copyright (c) 2023 Boston Dynamics AI Institute, Inc.  All rights reserved.
 
 from setuptools import setup
 
