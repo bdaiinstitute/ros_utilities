@@ -10,7 +10,14 @@ from bdai_ros2_wrappers.future import wait_until_future_complete
 
 
 class NodeWrapper(Node):
-    """A wrapper around a node and its executor."""
+    """A wrapper around a node and its executor.
+
+    @param num_executor_threads: Number of threads the executor should use.
+                        1 => Single Thread, >1 => Multithread of that number of executors,
+                        -1 => Multithread with as many threads as the system can do using `multiprocessing.cpu_count`
+
+    @param spin_thread: Flag on whether to start spinning the thread on construction
+    """
 
     def __init__(
         self,
@@ -23,10 +30,15 @@ class NodeWrapper(Node):
     ) -> None:
         super().__init__(node_name, context=context, namespace=namespace)
 
+        # Use single thread
         if num_executor_threads == 1:
             self._executor = SingleThreadedExecutor(context=context)
-        else:
+        # Use all available threads
+        elif num_executor_threads == -1:
             self._executor = MultiThreadedExecutor(context=context)
+        # Use specified number of threads
+        else:
+            self._executor = MultiThreadedExecutor(context=context, num_threads=num_executor_threads)
         self._executor.add_node(self)
 
         if spin_thread:
