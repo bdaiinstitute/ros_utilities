@@ -34,10 +34,11 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update -q && \
 # I added this
 RUN source "/opt/ros/${ROS_DISTRO}/setup.bash"
 
-# Spot packages
+# Ros Example Packages
 RUN apt-get update -q && \
     apt-get install -y --no-install-recommends \
-    ros-${ROS_DISTRO}-action-tutorials-interfaces && \
+    ros-${ROS_DISTRO}-action-tutorials-interfaces \
+    ros-${ROS_DISTRO}-example-interfaces && \
     rm -rf /var/lib/apt/lists/*
 
 # Install packages inside the new environment
