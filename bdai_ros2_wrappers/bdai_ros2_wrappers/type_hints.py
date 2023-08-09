@@ -1,4 +1,4 @@
-# Copyright (c) 2023 Boston Dynamics AI Institute, Inc.  All rights reserved.
+# Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 from typing import TypeVar
 
 # The specific Action is created by the .action file
