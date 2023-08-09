@@ -1,4 +1,4 @@
-#  Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
+# Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 from threading import Event
 from typing import Any, Optional
 

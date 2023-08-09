@@ -1,3 +1,4 @@
+# Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 import multiprocessing
 import time
 import unittest
