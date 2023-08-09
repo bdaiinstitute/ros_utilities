@@ -2,11 +2,11 @@
 from typing import Callable, Optional, Type, Union
 
 import rclpy.action
-from bdai_ros2_wrapper.type_hints import Action
 from rclpy import Context
 
 from bdai_ros2_wrappers.action_handle import ActionHandle
 from bdai_ros2_wrappers.node import NodeWrapper
+from bdai_ros2_wrappers.type_hints import Action
 
 
 class ActionClientWrapper(rclpy.action.ActionClient):
