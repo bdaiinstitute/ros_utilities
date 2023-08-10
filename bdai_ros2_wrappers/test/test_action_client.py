@@ -1,3 +1,4 @@
+# Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 import array
 import time
 import unittest
@@ -116,8 +117,8 @@ class ActionClientWrapperTest(unittest.TestCase):
         goal = Fibonacci.Goal()
         goal.order = 5
         expected_result = array.array("i", [0, 1, 1, 2, 3, 5])
-        result = self.action_client_wrapper.send_goal_and_wait(goal, 5)
-        self.assertEquals(result.result.sequence, expected_result)
+        result = self.action_client_wrapper.send_goal_and_wait("test_send_goal_and_wait", goal=goal, timeout_sec=5)
+        self.assertEqual(result.sequence, expected_result)
 
     def test_timeout_send_goal_wait(self) -> None:
         """
@@ -126,10 +127,12 @@ class ActionClientWrapperTest(unittest.TestCase):
         goal = Fibonacci.Goal()
         goal.order = 5
 
-        result = self.action_client_wrapper.send_goal_and_wait(goal, 0.5)
+        result = self.action_client_wrapper.send_goal_and_wait(
+            "test_timeout_send_goal_wait", goal=goal, timeout_sec=0.5
+        )
         # times out and since action client wrapper does not start its own thread
         # it uses rclpy spin_until_future_complete which will return none
-        self.assertEquals(result, None)
+        self.assertEqual(result, None)
 
     def test_goal_not_accepted(self) -> None:
         """
@@ -138,8 +141,10 @@ class ActionClientWrapperTest(unittest.TestCase):
         goal = Fibonacci.Goal()
         goal.order = 5
 
-        result = self.action_client_rejected_wrapper.send_goal_and_wait(goal, 5)
-        self.assertEquals(result, None)
+        result = self.action_client_rejected_wrapper.send_goal_and_wait(
+            "test_goal_not_accepted", goal=goal, timeout_sec=5
+        )
+        self.assertEqual(result, None)
 
 
 if __name__ == "__main__":

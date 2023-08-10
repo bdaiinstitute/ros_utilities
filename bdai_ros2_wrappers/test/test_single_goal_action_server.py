@@ -1,3 +1,4 @@
+# Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 import array
 import unittest
 from typing import Optional
@@ -66,8 +67,8 @@ class SingleGoalActionServerTest(unittest.TestCase):
         goal = Fibonacci.Goal()
         goal.order = 5
         expected_result = array.array("i", [0, 1, 1, 2, 3, 5])
-        result = self.client.send_goal_and_wait(goal, timeout_sec=2)
-        self.assertEquals(result.result.sequence, expected_result)
+        result = self.client.send_goal_and_wait("test_single_goal_action_server", goal=goal, timeout_sec=2)
+        self.assertEqual(result.sequence, expected_result)
 
 
 if __name__ == "__main__":

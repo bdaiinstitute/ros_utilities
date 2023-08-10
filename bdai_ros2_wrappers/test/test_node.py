@@ -1,3 +1,4 @@
+# Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 import multiprocessing
 import time
 import unittest
@@ -25,7 +26,7 @@ def thread_function(future: rclpy.Future, thread_sleep: int) -> None:
     future.set_result(Test_Result)
 
 
-def future_test_helper(node: NodeWrapper, timeout_sec: float = 2, thread_sleep: float = 1) -> str:
+def future_test_helper(node: NodeWrapper, timeout_sec: float = 2, thread_sleep: float = 1) -> Optional[str]:
     """
     Helper function to run a node wrapper and have it spin on a future result
     """
@@ -41,9 +42,10 @@ def future_test_helper(node: NodeWrapper, timeout_sec: float = 2, thread_sleep: 
     test_thread.start()
 
     # set spinning node to wait until complete
-    res = node.spin_until_future_complete(future, timeout_sec=timeout_sec)
+    if not node.spin_until_future_complete(future, timeout_sec=timeout_sec):
+        return None
 
-    return res
+    return future.result()
 
 
 class NodeWrapperTest(unittest.TestCase):
@@ -65,13 +67,13 @@ class NodeWrapperTest(unittest.TestCase):
         # Test multithreaded node
         test_multithread_node = NodeWrapper(node_name="Test_MultiThread", context=self.context, num_executor_threads=2)
         self.assertTrue(type(test_multithread_node._executor) is MultiThreadedExecutor, "MultiThread Thread Test")
-        self.assertEquals(test_multithread_node._executor._executor._max_workers, 2, "Number of threads")
+        self.assertEqual(test_multithread_node._executor._executor._max_workers, 2, "Number of threads")
         # Test full cpu multithreaded node
         test_multithread_full_node = NodeWrapper(
             node_name="Test_MultiThread_Full", context=self.context, num_executor_threads=-1
         )
         self.assertTrue(type(test_multithread_full_node._executor) is MultiThreadedExecutor, "MultiThread Thread Test")
-        self.assertEquals(
+        self.assertEqual(
             test_multithread_full_node._executor._executor._max_workers,
             multiprocessing.cpu_count(),
             "Number of threads",
@@ -99,16 +101,16 @@ class NodeWrapperTest(unittest.TestCase):
 
         # set spinning node to wait until complete
         res = future_test_helper(test_spinning_node)
-        self.assertEquals(res, Test_Result)
+        self.assertEqual(res, Test_Result)
 
         # set non-spinning node to wait and restart test_thread
         res = future_test_helper(test_non_spinning)
-        self.assertEquals(res, Test_Result)
+        self.assertEqual(res, Test_Result)
 
         # test timeouts by setting the future setting thread to a longer period than the timeout
-        self.assertRaises(TimeoutError, future_test_helper, test_spinning_node, 0.5, 2)
-        # test timout on non spinning node (rclpy does not throw exceptions on timeouts so check for none future result)
-        self.assertEquals(future_test_helper(test_non_spinning, 0.5, 2), None)
+        self.assertEqual(future_test_helper(test_spinning_node, 0.5, 2), None)
+        # test timout on non-spinning node (rclpy does not throw exceptions on timeouts so check for none future result)
+        self.assertEqual(future_test_helper(test_non_spinning, 0.5, 2), None)
 
         # shutdown
         test_non_spinning.shutdown()

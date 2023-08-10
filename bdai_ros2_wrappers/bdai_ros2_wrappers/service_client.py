@@ -1,4 +1,4 @@
-# Copyright (c) 2023 Boston Dynamics AI Institute, Inc.  All rights reserved.
+# Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 from typing import Optional
 
 from rclpy import Context
@@ -12,9 +12,29 @@ class ServiceClientWrapper:
     deadlocking."""
 
     def __init__(
-        self, node_name: str, service_type: SrvType, service_name: str, context: Optional[Context] = None
+        self,
+        node_name: str,
+        service_type: SrvType,
+        service_name: str,
+        context: Optional[Context] = None,
+        spin_thread: bool = False,
+        num_executor_threads: int = 1,
     ) -> None:
-        self._node_wrapper = NodeWrapper(node_name, context=context, spin_thread=False)
+        """Constructor
+
+        Args:
+            node_name (str): The name of internal node
+            service_type (SrvType): The type of the service
+            service_name (str): The name of the service
+            context (Optional[Context]): The context of the internal node
+            spin_thread (bool): Flag on whether to start a spinning thread on the internal node
+            num_executor_threads (int): Number of threads the executor should use.
+                1 => Single Thread, >1 => Multithread of that number of executors,
+                -1 => Multithread with as many threads as the system can do using `multiprocessing.cpu_count`
+        """
+        self._node_wrapper = NodeWrapper(
+            node_name, context=context, spin_thread=spin_thread, num_executor_threads=num_executor_threads
+        )
         self._service_name = service_name
         self._client = self._node_wrapper.create_client(service_type, service_name)
 
@@ -23,7 +43,7 @@ class ServiceClientWrapper:
         request: SrvTypeRequest,
         timeout_sec: Optional[float] = None,
         max_wait_for_service_attempts: Optional[int] = None,
-    ) -> SrvTypeResponse:
+    ) -> Optional[SrvTypeResponse]:
         """Calls the service and returns the result. This is safe to call from a callback."""
         wait_for_service_attempts = 0
         while not self._client.wait_for_service(timeout_sec=timeout_sec):
@@ -35,4 +55,9 @@ class ServiceClientWrapper:
                 return None
 
         future = self._client.call_async(request)
-        return self._node_wrapper.spin_until_future_complete(future)
+        if not self._node_wrapper.spin_until_future_complete(future):
+            return None
+        return future.result()
+
+    def shutdown(self) -> None:
+        self._node_wrapper.shutdown()
