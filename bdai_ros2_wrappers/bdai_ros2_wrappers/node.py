@@ -6,7 +6,7 @@ from rclpy import Context, Future
 from rclpy.executors import ExternalShutdownException, MultiThreadedExecutor, SingleThreadedExecutor
 from rclpy.node import Node
 
-from bdai_ros2_wrappers.future import wait_until_future_complete
+from bdai_ros2_wrappers.futures import wait_until_future_complete
 
 
 class NodeWrapper(Node):
