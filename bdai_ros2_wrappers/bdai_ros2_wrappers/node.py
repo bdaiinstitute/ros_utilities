@@ -3,10 +3,10 @@ from threading import Thread
 from typing import Optional
 
 from rclpy import Context, Future
-from rclpy.executors import ExternalShutdownException, MultiThreadedExecutor, SingleThreadedExecutor
+from rclpy.executors import ExternalShutdownException, MultiThreadedExecutor, ShutdownException, SingleThreadedExecutor
 from rclpy.node import Node
 
-from bdai_ros2_wrappers.futures import wait_until_future_complete
+from bdai_ros2_wrappers.futures import wait_for_future
 
 
 class NodeWrapper(Node):
@@ -55,7 +55,7 @@ class NodeWrapper(Node):
         """Internal function to spin the executor"""
         try:
             self._executor.spin()
-        except (KeyboardInterrupt, ExternalShutdownException):
+        except (KeyboardInterrupt, ExternalShutdownException, ShutdownException):
             pass
 
     def spin_until_future_complete(self, future: Future, timeout_sec: Optional[float] = None) -> bool:
@@ -70,7 +70,7 @@ class NodeWrapper(Node):
             bool: True if successful, False if the timeout was triggered
         """
         if self._thread is not None:
-            return wait_until_future_complete(future, timeout_sec=timeout_sec)
+            return wait_for_future(future, timeout_sec=timeout_sec)
         self._executor.spin_until_future_complete(future, timeout_sec=timeout_sec)
         return future.done()
 
@@ -84,6 +84,6 @@ class NodeWrapper(Node):
             self._thread.join()
         self.destroy_node()
 
-    def __del__(self) -> None:
-        """Destructor"""
-        self.shutdown()
+    # def __del__(self) -> None:
+    #     """Destructor"""
+    #     self.shutdown()

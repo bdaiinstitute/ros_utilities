@@ -43,7 +43,7 @@ class ServiceClientWrapper:
         request: SrvTypeRequest,
         timeout_sec: Optional[float] = None,
         max_wait_for_service_attempts: Optional[int] = None,
-    ) -> SrvTypeResponse:
+    ) -> Optional[SrvTypeResponse]:
         """Calls the service and returns the result. This is safe to call from a callback."""
         wait_for_service_attempts = 0
         while not self._client.wait_for_service(timeout_sec=timeout_sec):
@@ -55,4 +55,9 @@ class ServiceClientWrapper:
                 return None
 
         future = self._client.call_async(request)
-        return self._node_wrapper.spin_until_future_complete(future)
+        if not self._node_wrapper.spin_until_future_complete(future):
+            return None
+        return future.result()
+
+    def shutdown(self) -> None:
+        self._node_wrapper.shutdown()

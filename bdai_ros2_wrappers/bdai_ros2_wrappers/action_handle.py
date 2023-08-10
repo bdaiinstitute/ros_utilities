@@ -61,10 +61,7 @@ class ActionHandle(object):
 
         self._wait_for_result_callback = done_callback
 
-        if timeout_sec is None:
-            return event.wait()
-        else:
-            return event.wait(timeout_sec)
+        return event.wait(timeout=timeout_sec)
 
     def set_send_goal_future(self, send_goal_future: Future) -> None:
         """Sets the future received from sending the Action.Goal and sets up the callback for when a response is

@@ -82,7 +82,7 @@ class ServiceClientWrapperTest(unittest.TestCase):
         req.b = 23
         # send request
         result = self.client_wrapper.call(req)
-        self.assertEquals(result.sum, 33)
+        self.assertEqual(result.sum, 33)
 
     def test_timeout_no_service(self) -> None:
         """
@@ -93,7 +93,7 @@ class ServiceClientWrapperTest(unittest.TestCase):
         req.b = 23
         # send request with client that has no service
         result = self.no_service_client.call(req, timeout_sec=0.5, max_wait_for_service_attempts=2)
-        self.assertEquals(result, None)
+        self.assertEqual(result, None)
 
 
 if __name__ == "__main__":

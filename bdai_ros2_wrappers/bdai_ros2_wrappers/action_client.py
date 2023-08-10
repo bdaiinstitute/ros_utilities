@@ -20,7 +20,6 @@ class ActionClientWrapper(rclpy.action.ActionClient):
         *,
         namespace: Optional[str] = None,
         context: Optional[Context] = None,
-        spin_thread: bool = False,
         num_executor_threads: int = 1,
     ) -> None:
         """Constructor
@@ -32,7 +31,6 @@ class ActionClientWrapper(rclpy.action.ActionClient):
                 if this object should share the node
             namespace (Optional[str]): The namespace for the internal node
             context (Optional[Context]): The context for the internal node
-            spin_thread (bool): Flag on whether to start a spinning thread on the internal node
             num_executor_threads (int): Number of threads the executor should use.
                 1 => Single Thread, >1 => Multithread of that number of executors,
                 -1 => Multithread with as many threads as the system can do using `multiprocessing.cpu_count`
@@ -44,7 +42,7 @@ class ActionClientWrapper(rclpy.action.ActionClient):
                 f"{node}_{action_name}_client_wrapper_node",
                 namespace=namespace,
                 context=context,
-                spin_thread=spin_thread,
+                spin_thread=True,
                 num_executor_threads=num_executor_threads,
             )
         else:
@@ -82,7 +80,7 @@ class ActionClientWrapper(rclpy.action.ActionClient):
             failed = True
 
         handle = self.send_goal_async_handle(action_name=action_name, goal=goal, on_failure_callback=_on_failure)
-        if not handle.wait_until_result(timeout_sec=timeout_sec):
+        if not handle.wait_for_result(timeout_sec=timeout_sec):
             handle.cancel()
             self._node_wrapper.get_logger().error(f"Action [{action_name}] timed out")
             return None

@@ -63,7 +63,7 @@ def threaded_client_request(client: ActionClientWrapper) -> None:
     time.sleep(0.3)
     goal = Fibonacci.Goal()
     goal.order = 5
-    client.send_goal_and_wait(goal, 2)
+    client.send_goal_and_wait("threaded_client_request", goal=goal, timeout_sec=2)
 
 
 class SingleGoalMultipleActionServerTest(unittest.TestCase):
@@ -104,12 +104,12 @@ class SingleGoalMultipleActionServerTest(unittest.TestCase):
         goal.order = 5
         expected_result = array.array("i", [0, 1, 1, 2, 3, 5])
         # use first client
-        result = self.client.send_goal_and_wait(goal, timeout_sec=5)
-        self.assertEquals(result.result.sequence, expected_result)
+        result = self.client.send_goal_and_wait("test_single_goal_action_server", goal=goal, timeout_sec=5)
+        self.assertEquals(result.sequence, expected_result)
         # use second client
         expected_result = array.array("i", [0, 1, 0, 0, 0, 0])
-        result = self.client2.send_goal_and_wait(goal, timeout_sec=5)
-        self.assertEquals(result.result.sequence, expected_result)
+        result = self.client2.send_goal_and_wait("test_single_goal_action_server2", goal=goal, timeout_sec=5)
+        self.assertEquals(result.sequence, expected_result)
 
     def test_interrupted_action(self) -> None:
         """
@@ -124,10 +124,10 @@ class SingleGoalMultipleActionServerTest(unittest.TestCase):
         thread = Thread(target=threaded_client_request, args=(self.client,))
         thread.start()
         # immediately start the request for other goal
-        result = self.client2.send_goal_and_wait(goal, 5)
+        result = self.client2.send_goal_and_wait("test_interrupted_action", goal=goal, timeout_sec=5)
         # expected result when interrupted/aborted is set to be [-1] in executed callback
         expected_result = array.array("i", [-1])
-        self.assertEquals(result.result.sequence, expected_result)
+        self.assertEquals(result.sequence, expected_result)
 
         # wait for thread to finish
         thread.join()
