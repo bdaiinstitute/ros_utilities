@@ -21,6 +21,7 @@ class ActionClientWrapper(rclpy.action.ActionClient):
         namespace: Optional[str] = None,
         context: Optional[Context] = None,
         num_executor_threads: int = 1,
+        timeout_sec: float = 10.0,
     ) -> None:
         """Constructor
 
@@ -51,7 +52,7 @@ class ActionClientWrapper(rclpy.action.ActionClient):
         self._node_wrapper.get_logger().info(
             f"Waiting for action server for {self._node.get_namespace()}/{action_name}"
         )
-        self.wait_for_server()
+        self.wait_for_server(timeout_sec)
         self._node_wrapper.get_logger().info("Found server")
 
     def send_goal_and_wait(
