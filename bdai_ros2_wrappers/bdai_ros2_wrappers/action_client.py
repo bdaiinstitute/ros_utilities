@@ -52,8 +52,11 @@ class ActionClientWrapper(rclpy.action.ActionClient):
         self._node_wrapper.get_logger().info(
             f"Waiting for action server for {self._node.get_namespace()}/{action_name}"
         )
-        self.wait_for_server(timeout_sec)
-        self._node_wrapper.get_logger().info("Found server")
+        found_server = self.wait_for_server(timeout_sec)
+        if found_server:
+            self._node_wrapper.get_logger().info("Found server")
+        else:
+            self._node_wrapper.get_logger().warn(f"{self._node.get_namespace()}/{action_name} server not found")
 
     def send_goal_and_wait(
         self, action_name: str, goal: Action.Goal, timeout_sec: Optional[float] = None
