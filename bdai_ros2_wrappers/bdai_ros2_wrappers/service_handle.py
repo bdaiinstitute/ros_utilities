@@ -1,0 +1,79 @@
+# Copyright (c) 2023 Boston Dynamics AI Institute LLC. All rights reserved.
+from typing import Callable, Optional
+
+from rclpy.impl.rcutils_logger import RcutilsLogger
+from rclpy.task import Future
+
+from bdai_ros2_wrappers.type_hints import (
+    SrvTypeResponse,
+)
+
+class ServiceHandle(object):
+    """Handles getting a result after sending an ServiceRequest to Service
+    as holding the various callbacks for sending an ServiceRequest (result, failure)
+    """
+
+    def __init__(self, service_name: str, logger: Optional[RcutilsLogger] = None):
+        self._service_name = service_name
+        self._send_service_future: Optional[Future] = None
+        self._result_callback: Optional[Callable] = None
+        self._on_failure_callback: Optional[Callable] = None
+        self._result: Optional[SrvTypeResponse] = None
+        if logger is None:
+            self._logger = RcutilsLogger(name=f"{service_name} Handle")
+        else:
+            self._logger = logger
+
+    @property
+    def result(self) -> Optional[SrvTypeResponse]:
+        return self._result
+
+    def set_result_callback(self, result_callback: Callable) -> None:
+        """Sets the callback for when the future.result() completes."""
+        self._result_callback = result_callback
+
+    def set_send_service_future(self, send_service_future: Future) -> None:
+        """Sets the future received from sending the Action.Goal and sets up the callback for when a response is
+        received"""
+        self._send_service_future = send_service_future
+        self._send_service_future.add_done_callback(self._service_result_callback)
+
+    def set_on_failure_callback(self, on_failure_callback: Callable) -> None:
+        """Set the callback to execute upon failure"""
+        self._on_failure_callback = on_failure_callback
+
+    def _service_result_callback(self, future: Future) -> None:
+        """Callback that handles receiving a response from the Service"""
+        result = future.result()
+
+        if result is None:
+            self._logger.error(f"Service request failed: {future.exception():!r}")
+            self._failure()
+            return
+
+        self._result = result
+
+        if self._result_callback is not None:
+            self._result_callback(result)
+
+        # If there's a failure callback but no success case for result, warn and return
+        service_has_success = hasattr(result, "success")
+
+        if self._on_failure_callback is not None and not service_has_success:
+            self._logger.warning("Failure callback is set, but result has no success attribute")
+            return
+
+        if service_has_success:
+            if not result.success:
+                self._logger.error(f"Service failed; error is {result.message}")
+                self._failure()
+                return
+        else:
+            self._logger.warning(f"Service {self._service_name} has no success or failure flag")
+
+        self._logger.info("Service completed")
+
+    def _failure(self) -> None:
+        """Triggers the internal failure callback if it exists"""
+        if self._on_failure_callback is not None:
+            self._on_failure_callback()
