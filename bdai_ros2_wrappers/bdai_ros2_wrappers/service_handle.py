@@ -8,6 +8,7 @@ from bdai_ros2_wrappers.type_hints import (
     SrvTypeResponse,
 )
 
+
 class ServiceHandle(object):
     """Handles getting a result after sending an ServiceRequest to Service
     as holding the various callbacks for sending an ServiceRequest (result, failure)

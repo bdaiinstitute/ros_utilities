@@ -3,14 +3,14 @@ import unittest
 from threading import Thread
 from typing import Callable, Optional, Tuple
 
-from bdai_ros2_wrappers.service_handle import ServiceHandle
-from bdai_ros2_wrappers.type_hints import Srv, SrvTypeRequest, SrvTypeResponse
-
 import rclpy
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import ExternalShutdownException, MultiThreadedExecutor
 from rclpy.node import Node
 from std_srvs.srv import Empty, SetBool, Trigger
+
+from bdai_ros2_wrappers.service_handle import ServiceHandle
+from bdai_ros2_wrappers.type_hints import Srv, SrvTypeRequest, SrvTypeResponse
 
 
 def _callback_trigger_success(req: SrvTypeRequest, resp: SrvTypeResponse) -> SrvTypeResponse:
@@ -44,12 +44,7 @@ def _callback_empty_service(req: SrvTypeRequest, resp: SrvTypeResponse) -> SrvTy
 
 
 class FooBarService(Node):
-    def __init__(
-        self, 
-        service_type: Srv, 
-        service_name: str,
-        callback: Callable
-    ) -> None:
+    def __init__(self, service_type: Srv, service_name: str, callback: Callable) -> None:
         super().__init__("foobar_server")
         self._service = self.create_service(service_type, service_name, callback=callback)
         self._executor: Optional[MultiThreadedExecutor] = MultiThreadedExecutor(3)
@@ -101,7 +96,7 @@ class ServiceHandleTriggerTest(unittest.TestCase):
         self.server_node = None
         rclpy.shutdown()
 
-    def _internal(self, name: str) -> Tuple[bool, bool]:
+    def _internal(self, name: str) -> Tuple[SrvTypeResponse, bool]:
         self.assertTrue(self.client.wait_for_service(1))
         failure = False
 
@@ -159,7 +154,7 @@ class ServiceHandleSetBoolTest(unittest.TestCase):
         self.server_node = None
         rclpy.shutdown()
 
-    def _internal(self, name: str, data: bool) -> Tuple[bool, bool]:
+    def _internal(self, name: str, data: bool) -> Tuple[SrvTypeResponse, bool]:
         self.assertTrue(self.client.wait_for_service(1))
         failure = False
 
@@ -220,7 +215,7 @@ class ServiceHandleEmptyTest(unittest.TestCase):
         self.server_node = None
         rclpy.shutdown()
 
-    def _internal(self, name: str) -> Tuple[bool, bool]:
+    def _internal(self, name: str) -> Tuple[SrvTypeResponse, bool]:
         self.assertTrue(self.client.wait_for_service(1))
         failure = False
 
