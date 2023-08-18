@@ -17,3 +17,8 @@ Action.Result = Action_Result  # type: ignore
 
 # The specific Msg is created by the .msg file
 Msg = TypeVar("Msg")
+
+# The specific Service is created by the .srv file
+Srv = TypeVar("Srv")
+SrvTypeRequest = TypeVar("SrvTypeRequest")
+SrvTypeResponse = TypeVar("SrvTypeResponse")
