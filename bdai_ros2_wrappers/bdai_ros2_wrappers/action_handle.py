@@ -128,7 +128,7 @@ class ActionHandle(object):
             self._logger.info("Finished successfully")
             self._result = result.result
             if self._wait_for_result_callback is not None:
-                self._wait_for_result_callback()
+                self._wait_for_result_callback(True)
             if self._result_callback is not None:
                 self._result_callback(self._result)
             return
@@ -139,7 +139,7 @@ class ActionHandle(object):
         elif result.status == GoalStatus.STATUS_CANCELED:
             self._logger.info("Canceled")
             if self._wait_for_result_callback is not None:
-                self._wait_for_result_callback(p_success=False)
+                self._wait_for_result_callback(False)
             if self._on_cancel_success_callback is not None:
                 self._on_cancel_success_callback()
             return
