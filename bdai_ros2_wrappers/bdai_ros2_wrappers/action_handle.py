@@ -27,7 +27,7 @@ class ActionHandle(object):
         self._goal_handle: Optional[ClientGoalHandle] = None
         self._get_result_future: Optional[Future] = None
         self._feedback_callback: Optional[Callable[[Action.Feedback], None]] = None
-        self._wait_for_result_callback: Optional[Callable[[], None]] = None
+        self._wait_for_result_callback: Optional[Callable[[bool], None]] = None
         self._result_callback: Optional[Callable[[Action.Result], None]] = None
         self._on_failure_callback: Optional[Callable] = None
         self._cancel_future: Optional[Future] = None
@@ -54,14 +54,17 @@ class ActionHandle(object):
             True if successful, False if the timeout was triggered
         """
         event = Event()
+        success = True
 
-        def done_callback() -> None:
+        def done_callback(p_success: bool = True) -> None:
             nonlocal event
+            nonlocal success
+            success = p_success
             event.set()
 
         self._wait_for_result_callback = done_callback
 
-        return event.wait(timeout=timeout_sec)
+        return event.wait(timeout=timeout_sec) and success
 
     def set_send_goal_future(self, send_goal_future: Future) -> None:
         """Sets the future received from sending the Action.Goal and sets up the callback for when a response is
@@ -125,7 +128,7 @@ class ActionHandle(object):
             self._logger.info("Finished successfully")
             self._result = result.result
             if self._wait_for_result_callback is not None:
-                self._wait_for_result_callback()
+                self._wait_for_result_callback(True)
             if self._result_callback is not None:
                 self._result_callback(self._result)
             return
@@ -135,6 +138,8 @@ class ActionHandle(object):
             return
         elif result.status == GoalStatus.STATUS_CANCELED:
             self._logger.info("Canceled")
+            if self._wait_for_result_callback is not None:
+                self._wait_for_result_callback(False)
             if self._on_cancel_success_callback is not None:
                 self._on_cancel_success_callback()
             return
