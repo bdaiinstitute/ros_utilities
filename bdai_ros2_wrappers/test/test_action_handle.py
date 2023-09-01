@@ -465,6 +465,87 @@ class ActionHandleTest(unittest.TestCase):
         self.assertFalse(cancel_success)
         self.assertFalse(cancel_failure)
 
+    def test_wait_for_result_cancelled(self) -> None:
+        """Test if the ActionServer cancels the request"""
+        self.server_node = FibonacciActionServerNode(
+            self.context, execute_callback=_execute_callback_until_canceled, cancel_callback=_cancel_callback_accepted
+        )
+
+        result = False
+
+        def _result_callback(_: Fibonacci.Result) -> None:
+            nonlocal result
+            result = True
+
+        failure = False
+
+        def _failure_callback() -> None:
+            nonlocal failure
+            failure = True
+
+        feedback = 0
+
+        def _feedback_callback(_: Fibonacci.Feedback) -> None:
+            nonlocal feedback
+            feedback += 1
+
+        cancel_success = False
+
+        def _cancel_success_callback() -> None:
+            nonlocal cancel_success
+            cancel_success = True
+
+        cancel_failure = False
+
+        def _cancel_failure_callback() -> None:
+            nonlocal cancel_failure
+            cancel_failure = True
+
+        handle = ActionHandle("test_wait_for_result")
+        handle.set_result_callback(_result_callback)
+        handle.set_on_failure_callback(_failure_callback)
+        handle.set_feedback_callback(_feedback_callback)
+        handle.set_on_cancel_success_callback(_cancel_success_callback)
+        handle.set_on_cancel_failure_callback(_cancel_failure_callback)
+
+        goal = Fibonacci.Goal()
+        goal.order = GOAL_ORDER
+
+        send_goal_future = self.client.send_goal_async(goal, feedback_callback=handle.get_feedback_callback)
+        handle.set_send_goal_future(send_goal_future)
+
+        executor = SingleThreadedExecutor(context=self.context)
+        executor.add_node(self.client_node)
+
+        keep_spinning = True
+
+        def _spin_executor() -> None:
+            nonlocal executor
+            nonlocal keep_spinning
+            try:
+                while self.context.ok() and keep_spinning:
+                    executor.spin_once(timeout_sec=0.1)
+            except (ExternalShutdownException, KeyboardInterrupt):
+                pass
+
+        t = threading.Thread(target=_spin_executor, daemon=True)
+        t.start()
+        # Cancel the ActionGoalHandle during the test
+        handle.cancel()
+        # Check the return value and make sure the result is both executed to completion and returns negatively
+        self.assertFalse(handle.wait_for_result())
+        keep_spinning = False
+
+        executor.shutdown()
+        executor.remove_node(self.client_node)
+
+        t.join()
+        self.assertFalse(result)
+        self.assertFalse(failure)
+        self.assertEqual(feedback, 0)
+        self.assertTrue(cancel_success)
+        self.assertFalse(cancel_failure)
+
 
 if __name__ == "__main__":
     unittest.main()
