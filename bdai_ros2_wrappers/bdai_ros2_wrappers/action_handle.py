@@ -47,11 +47,13 @@ class ActionHandle(object):
     def wait_for_result(self, timeout_sec: Optional[float] = None) -> bool:
         """Waits until a result is received or times out
 
+        A result is received through succeed, abort, or cancel being called on the server.
+
         Args:
             timeout_sec (Optional[float]): A timeout in seconds. No timeout is used if None
 
         Returns:
-            True if successful, False if the timeout was triggered
+            True if successful; False if the timeout was triggered or the action was rejected, cancelled, or abort
         """
         event = Event()
         success = True
@@ -99,11 +101,15 @@ class ActionHandle(object):
         """
         if future.result() is None:
             self._logger.error(f"Action request failed: {future.exception():!r}")
+            if self._wait_for_result_callback is not None:
+                self._wait_for_result_callback(False)
             self._failure()
             return
         self._goal_handle = future.result()
         if not self._goal_handle.accepted:
             self._logger.error("Action rejected")
+            if self._wait_for_result_callback is not None:
+                self._wait_for_result_callback(False)
             self._failure()
             return
 
@@ -123,14 +129,10 @@ class ActionHandle(object):
     def _get_result_callback(self, future: Future) -> None:
         """Callback for pulling the resulting feedback out of the future and passing it to a user provided callback"""
         result = future.result()
-        if result is not None:
-            final_result = result.result
-        else:
-            final_result = None
+        self._result = result.result
 
         if result.status == GoalStatus.STATUS_SUCCEEDED:
             self._logger.info("Finished successfully")
-            self._result = final_result
             if self._wait_for_result_callback is not None:
                 self._wait_for_result_callback(True)
             if self._result_callback is not None:
@@ -138,7 +140,6 @@ class ActionHandle(object):
             return
         elif result.status == GoalStatus.STATUS_ABORTED:
             self._logger.info("Aborted")
-            self._result = final_result
             if self._wait_for_result_callback is not None:
                 self._wait_for_result_callback(False)
             self._failure()
@@ -158,9 +159,9 @@ class ActionHandle(object):
 
         if self._goal_handle is not None:
             self._cancel_future = self._goal_handle.cancel_goal_async()
-            self._cancel_future.add_done_callback(self.cancel_response_callback)
+            self._cancel_future.add_done_callback(self._cancel_response_callback)
 
-    def cancel_response_callback(self, future: Future) -> None:
+    def _cancel_response_callback(self, future: Future) -> None:
         """Callback for handling the response to attempting to cancel a command"""
         cancel_response = future.result()
         if len(cancel_response.goals_canceling) == 0:
