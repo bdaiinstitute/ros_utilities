@@ -73,6 +73,12 @@ class ActionClientWrapper(rclpy.action.ActionClient):
             return None
         self._node_wrapper.get_logger().info(f"Sending Action [{action_name}]")
 
+        canceled = False
+
+        def _on_cancel_succeeded() -> None:
+            nonlocal canceled
+            canceled = True
+
         failed = False
 
         def _on_failure() -> None:
@@ -80,13 +86,12 @@ class ActionClientWrapper(rclpy.action.ActionClient):
             failed = True
 
         handle = self.send_goal_async_handle(action_name=action_name, goal=goal, on_failure_callback=_on_failure)
+        handle.set_on_cancel_success_callback(_on_cancel_succeeded)
         if not handle.wait_for_result(timeout_sec=timeout_sec):
-            handle.cancel()
-            self._node_wrapper.get_logger().error(f"Action [{action_name}] timed out")
-            return None
-
-        if failed:
-            # logging message created by the ActionHandle
+            # If the action didn't fail and wasn't canceled then it timed out and should be canceled
+            if not failed and not canceled:
+                handle.cancel()
+                self._node_wrapper.get_logger().error(f"Action [{action_name}] timed out")
             return None
 
         return handle.result

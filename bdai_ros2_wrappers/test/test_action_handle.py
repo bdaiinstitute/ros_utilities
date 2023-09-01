@@ -181,38 +181,38 @@ class ActionHandleTest(unittest.TestCase):
 
     def _internal(
         self, name: str, cancel: CancelOption = CancelOption.IGNORE, wait: bool = False
-    ) -> Tuple[bool, bool, int, bool, bool]:
+    ) -> Tuple[Fibonacci.Result, bool, bool, int, bool, bool]:
         self.assertTrue(self.client.wait_for_server(1))
 
-        result = False
+        result_callback_run = False
 
         def _result_callback(_: Fibonacci.Result) -> None:
-            nonlocal result
-            result = True
+            nonlocal result_callback_run
+            result_callback_run = True
 
-        failure = False
+        failure_callback_run = False
 
         def _failure_callback() -> None:
-            nonlocal failure
-            failure = True
+            nonlocal failure_callback_run
+            failure_callback_run = True
 
-        feedback = 0
+        num_feedback_callback_run = 0
 
         def _feedback_callback(_: Fibonacci.Feedback) -> None:
-            nonlocal feedback
-            feedback += 1
+            nonlocal num_feedback_callback_run
+            num_feedback_callback_run += 1
 
-        cancel_success = False
+        cancel_success_callback_run = False
 
         def _cancel_success_callback() -> None:
-            nonlocal cancel_success
-            cancel_success = True
+            nonlocal cancel_success_callback_run
+            cancel_success_callback_run = True
 
-        cancel_failure = False
+        cancel_failure_callback_run = False
 
         def _cancel_failure_callback() -> None:
-            nonlocal cancel_failure
-            cancel_failure = True
+            nonlocal cancel_failure_callback_run
+            cancel_failure_callback_run = True
 
         handle = ActionHandle(name)
         handle.set_result_callback(_result_callback)
@@ -238,91 +238,142 @@ class ActionHandleTest(unittest.TestCase):
         while True:
             executor.spin_once()
             if cancel == CancelOption.IGNORE:
-                if result or failure:
+                if result_callback_run or failure_callback_run:
                     break
             elif cancel == CancelOption.WAIT_FOR_SUCCESS:
-                if cancel_success:
+                if cancel_success_callback_run:
                     break
             elif cancel == CancelOption.WAIT_FOR_RESULT:
-                if (cancel_success or cancel_failure) and result:
+                if (cancel_success_callback_run or cancel_failure_callback_run) and result_callback_run:
                     break
         executor.remove_node(self.client_node)
         executor.shutdown()
 
-        return result, failure, feedback, cancel_success, cancel_failure
+        return (
+            handle.result,
+            result_callback_run,
+            failure_callback_run,
+            num_feedback_callback_run,
+            cancel_success_callback_run,
+            cancel_failure_callback_run,
+        )
 
     def test_result(self) -> None:
         """Tests that the result callback is correctly called when the ActionGoal completes successfully"""
         self.server_node = FibonacciActionServerNode(self.context)
-        result, failure, feedback, cancel_success, cancel_failure = self._internal("test_result")
-        self.assertTrue(result)
-        self.assertFalse(failure)
-        self.assertEqual(feedback, 0)
-        self.assertFalse(cancel_success)
-        self.assertFalse(cancel_failure)
+        (
+            result,
+            result_callback_run,
+            failure_callback_run,
+            num_feedback_callback_run,
+            cancel_success_callback_run,
+            cancel_failure_callback_run,
+        ) = self._internal("test_result")
+        self.assertTrue(result is not None)
+        self.assertTrue(result_callback_run)
+        self.assertFalse(failure_callback_run)
+        self.assertEqual(num_feedback_callback_run, 0)
+        self.assertFalse(cancel_success_callback_run)
+        self.assertFalse(cancel_failure_callback_run)
 
     def test_reject(self) -> None:
         """Tests the case where the action server rejects the goal"""
         self.server_node = FibonacciActionServerNode(self.context, goal_callback=_goal_callback_reject)
-        result, failure, feedback, cancel_success, cancel_failure = self._internal("test_reject")
-        self.assertFalse(result)
-        self.assertTrue(failure)
-        self.assertEqual(feedback, 0)
-        self.assertFalse(cancel_success)
-        self.assertFalse(cancel_failure)
+        (
+            result,
+            result_callback_run,
+            failure_callback_run,
+            num_feedback_callback_run,
+            cancel_success_callback_run,
+            cancel_failure_callback_run,
+        ) = self._internal("test_reject")
+        self.assertTrue(result is None)
+        self.assertFalse(result_callback_run)
+        self.assertTrue(failure_callback_run)
+        self.assertEqual(num_feedback_callback_run, 0)
+        self.assertFalse(cancel_success_callback_run)
+        self.assertFalse(cancel_failure_callback_run)
 
     def test_abort(self) -> None:
         """Tests the case where the action server aborts the goal"""
         self.server_node = FibonacciActionServerNode(self.context, execute_callback=_execute_callback_abort)
-        result, failure, feedback, cancel_success, cancel_failure = self._internal("test_abort")
-        self.assertFalse(result)
-        self.assertTrue(failure)
-        self.assertEqual(feedback, 0)
-        self.assertFalse(cancel_success)
-        self.assertFalse(cancel_failure)
+        (
+            result,
+            result_callback_run,
+            failure_callback_run,
+            num_feedback_callback_run,
+            cancel_success_callback_run,
+            cancel_failure_callback_run,
+        ) = self._internal("test_abort")
+        self.assertTrue(result is not None)
+        self.assertFalse(result_callback_run)
+        self.assertTrue(failure_callback_run)
+        self.assertEqual(num_feedback_callback_run, 0)
+        self.assertFalse(cancel_success_callback_run)
+        self.assertFalse(cancel_failure_callback_run)
 
     def test_feedback(self) -> None:
         self.server_node = FibonacciActionServerNode(self.context, execute_callback=_execute_callback_feedback)
-        result, failure, feedback, cancel_success, cancel_failure = self._internal("test_feedback")
-        self.assertTrue(result)
-        self.assertFalse(failure)
-        self.assertEqual(feedback, GOAL_ORDER)
-        self.assertFalse(cancel_success)
-        self.assertFalse(cancel_failure)
+        (
+            result,
+            result_callback_run,
+            failure_callback_run,
+            num_feedback_callback_run,
+            cancel_success_callback_run,
+            cancel_failure_callback_run,
+        ) = self._internal("test_feedback")
+        self.assertTrue(result is not None)
+        self.assertTrue(result_callback_run)
+        self.assertFalse(failure_callback_run)
+        self.assertEqual(num_feedback_callback_run, GOAL_ORDER)
+        self.assertFalse(cancel_success_callback_run)
+        self.assertFalse(cancel_failure_callback_run)
 
     def test_cancel_success(self) -> None:
         self.server_node = FibonacciActionServerNode(
             self.context, execute_callback=_execute_callback_until_canceled, cancel_callback=_cancel_callback_accepted
         )
-        result, failure, feedback, cancel_success, cancel_failure = self._internal(
-            "test_cancel_success", cancel=CancelOption.WAIT_FOR_SUCCESS
-        )
-        self.assertFalse(result)
-        self.assertFalse(failure)
-        self.assertEqual(feedback, 0)
-        self.assertTrue(cancel_success)
-        self.assertFalse(cancel_failure)
+        (
+            result,
+            result_callback_run,
+            failure_callback_run,
+            num_feedback_callback_run,
+            cancel_success_callback_run,
+            cancel_failure_callback_run,
+        ) = self._internal("test_cancel_success", cancel=CancelOption.WAIT_FOR_SUCCESS)
+        self.assertTrue(result is not None)
+        self.assertFalse(result_callback_run)
+        self.assertFalse(failure_callback_run)
+        self.assertEqual(num_feedback_callback_run, 0)
+        self.assertTrue(cancel_success_callback_run)
+        self.assertFalse(cancel_failure_callback_run)
 
     def test_cancel_failure(self) -> None:
         self.server_node = FibonacciActionServerNode(self.context, execute_callback=_default_execute_callback)
-        result, failure, feedback, cancel_success, cancel_failure = self._internal(
-            "test_cancel_failure", cancel=CancelOption.WAIT_FOR_RESULT
-        )
-        self.assertTrue(result)
-        self.assertFalse(failure)
-        self.assertEqual(feedback, 0)
-        self.assertFalse(cancel_success)
-        self.assertTrue(cancel_failure)
+        (
+            result,
+            result_callback_run,
+            failure_callback_run,
+            num_feedback_callback_run,
+            cancel_success_callback_run,
+            cancel_failure_callback_run,
+        ) = self._internal("test_cancel_failure", cancel=CancelOption.WAIT_FOR_RESULT)
+        self.assertTrue(result is not None)
+        self.assertTrue(result_callback_run)
+        self.assertFalse(failure_callback_run)
+        self.assertEqual(num_feedback_callback_run, 0)
+        self.assertFalse(cancel_success_callback_run)
+        self.assertTrue(cancel_failure_callback_run)
 
     def test_wait_for_result(self) -> None:
         """Tests the wait_for_result function"""
         self.server_node = FibonacciActionServerNode(self.context)
 
-        result = False
+        result_callback_run = False
 
         def _result_callback(_: Fibonacci.Result) -> None:
-            nonlocal result
-            result = True
+            nonlocal result_callback_run
+            result_callback_run = True
 
         failure = False
 
@@ -330,23 +381,23 @@ class ActionHandleTest(unittest.TestCase):
             nonlocal failure
             failure = True
 
-        feedback = 0
+        num_feedback_callback_run = 0
 
         def _feedback_callback(_: Fibonacci.Feedback) -> None:
-            nonlocal feedback
-            feedback += 1
+            nonlocal num_feedback_callback_run
+            num_feedback_callback_run += 1
 
-        cancel_success = False
+        cancel_success_callback_run = False
 
         def _cancel_success_callback() -> None:
-            nonlocal cancel_success
-            cancel_success = True
+            nonlocal cancel_success_callback_run
+            cancel_success_callback_run = True
 
-        cancel_failure = False
+        cancel_failure_callback_run = False
 
         def _cancel_failure_callback() -> None:
-            nonlocal cancel_failure
-            cancel_failure = True
+            nonlocal cancel_failure_callback_run
+            cancel_failure_callback_run = True
 
         handle = ActionHandle("test_wait_for_result")
         handle.set_result_callback(_result_callback)
@@ -384,46 +435,47 @@ class ActionHandleTest(unittest.TestCase):
         executor.remove_node(self.client_node)
 
         t.join()
-        self.assertTrue(result)
+        self.assertTrue(handle.result is not None)
+        self.assertTrue(result_callback_run)
         self.assertFalse(failure)
-        self.assertEqual(feedback, 0)
-        self.assertFalse(cancel_success)
-        self.assertFalse(cancel_failure)
+        self.assertEqual(num_feedback_callback_run, 0)
+        self.assertFalse(cancel_success_callback_run)
+        self.assertFalse(cancel_failure_callback_run)
 
     def test_wait_for_result_timeout(self) -> None:
         """Tests the wait_for_result function for when it times out"""
         self.server_node = FibonacciActionServerNode(self.context, execute_callback=_execute_callback_for_timeout)
 
-        result = False
+        result_callback_run = False
 
         def _result_callback(_: Fibonacci.Result) -> None:
-            nonlocal result
-            result = True
+            nonlocal result_callback_run
+            result_callback_run = True
 
-        failure = False
+        failure_callback_run = False
 
         def _failure_callback() -> None:
-            nonlocal failure
-            failure = True
+            nonlocal failure_callback_run
+            failure_callback_run = True
 
-        feedback = 0
+        num_feedback_callback_run = 0
 
         def _feedback_callback(_: Fibonacci.Feedback) -> None:
-            nonlocal feedback
-            feedback += 1
+            nonlocal num_feedback_callback_run
+            num_feedback_callback_run += 1
 
-        cancel_success = False
+        cancel_success_callback_run = False
 
         def _cancel_success_callback() -> None:
             print("Cancel success")
-            nonlocal cancel_success
-            cancel_success = True
+            nonlocal cancel_success_callback_run
+            cancel_success_callback_run = True
 
-        cancel_failure = False
+        cancel_failure_callback_run = False
 
         def _cancel_failure_callback() -> None:
-            nonlocal cancel_failure
-            cancel_failure = True
+            nonlocal cancel_failure_callback_run
+            cancel_failure_callback_run = True
 
         handle = ActionHandle("test_wait_for_result")
         handle.set_result_callback(_result_callback)
@@ -459,11 +511,13 @@ class ActionHandleTest(unittest.TestCase):
         executor.shutdown()
         executor.remove_node(self.client_node)
         t.join()
-        self.assertFalse(result)
-        self.assertFalse(failure)
-        self.assertEqual(feedback, 0)
-        self.assertFalse(cancel_success)
-        self.assertFalse(cancel_failure)
+
+        self.assertTrue(handle.result is None)
+        self.assertFalse(result_callback_run)
+        self.assertFalse(failure_callback_run)
+        self.assertEqual(num_feedback_callback_run, 0)
+        self.assertFalse(cancel_success_callback_run)
+        self.assertFalse(cancel_failure_callback_run)
 
     def test_wait_for_result_cancelled(self) -> None:
         """Test if the ActionServer cancels the request"""
@@ -471,37 +525,37 @@ class ActionHandleTest(unittest.TestCase):
             self.context, execute_callback=_execute_callback_until_canceled, cancel_callback=_cancel_callback_accepted
         )
 
-        result = False
+        result_callback_run = False
 
         def _result_callback(_: Fibonacci.Result) -> None:
-            nonlocal result
-            result = True
+            nonlocal result_callback_run
+            result_callback_run = True
 
-        failure = False
+        failure_callback_run = False
 
         def _failure_callback() -> None:
-            nonlocal failure
-            failure = True
+            nonlocal failure_callback_run
+            failure_callback_run = True
 
-        feedback = 0
+        num_feedback_callback_run = 0
 
         def _feedback_callback(_: Fibonacci.Feedback) -> None:
-            nonlocal feedback
-            feedback += 1
+            nonlocal num_feedback_callback_run
+            num_feedback_callback_run += 1
 
-        cancel_success = False
+        cancel_success_callback_run = False
 
         def _cancel_success_callback() -> None:
-            nonlocal cancel_success
-            cancel_success = True
+            nonlocal cancel_success_callback_run
+            cancel_success_callback_run = True
 
-        cancel_failure = False
+        cancel_failure_callback_run = False
 
         def _cancel_failure_callback() -> None:
-            nonlocal cancel_failure
-            cancel_failure = True
+            nonlocal cancel_failure_callback_run
+            cancel_failure_callback_run = True
 
-        handle = ActionHandle("test_wait_for_result")
+        handle = ActionHandle("test_wait_for_result_cancelled")
         handle.set_result_callback(_result_callback)
         handle.set_on_failure_callback(_failure_callback)
         handle.set_feedback_callback(_feedback_callback)
@@ -540,11 +594,90 @@ class ActionHandleTest(unittest.TestCase):
         executor.remove_node(self.client_node)
 
         t.join()
-        self.assertFalse(result)
-        self.assertFalse(failure)
-        self.assertEqual(feedback, 0)
-        self.assertTrue(cancel_success)
-        self.assertFalse(cancel_failure)
+        self.assertTrue(handle.result is not None)
+        self.assertFalse(result_callback_run)
+        self.assertFalse(failure_callback_run)
+        self.assertEqual(num_feedback_callback_run, 0)
+        self.assertTrue(cancel_success_callback_run)
+        self.assertFalse(cancel_failure_callback_run)
+
+    def test_wait_for_result_aborted(self) -> None:
+        """Test if the ActionServer cancels the request"""
+        self.server_node = FibonacciActionServerNode(self.context, execute_callback=_execute_callback_abort)
+
+        result_callback_run = False
+
+        def _result_callback(_: Fibonacci.Result) -> None:
+            nonlocal result_callback_run
+            result_callback_run = True
+
+        failure_callback_run = False
+
+        def _failure_callback() -> None:
+            nonlocal failure_callback_run
+            failure_callback_run = True
+
+        num_feedback_callback_run = 0
+
+        def _feedback_callback(_: Fibonacci.Feedback) -> None:
+            nonlocal num_feedback_callback_run
+            num_feedback_callback_run += 1
+
+        cancel_success_callback_run = False
+
+        def _cancel_success_callback() -> None:
+            nonlocal cancel_success_callback_run
+            cancel_success_callback_run = True
+
+        cancel_failure_callback_run = False
+
+        def _cancel_failure_callback() -> None:
+            nonlocal cancel_failure_callback_run
+            cancel_failure_callback_run = True
+
+        handle = ActionHandle("test_wait_for_result_aborted")
+        handle.set_result_callback(_result_callback)
+        handle.set_on_failure_callback(_failure_callback)
+        handle.set_feedback_callback(_feedback_callback)
+        handle.set_on_cancel_success_callback(_cancel_success_callback)
+        handle.set_on_cancel_failure_callback(_cancel_failure_callback)
+
+        goal = Fibonacci.Goal()
+        goal.order = GOAL_ORDER
+
+        send_goal_future = self.client.send_goal_async(goal, feedback_callback=handle.get_feedback_callback)
+        handle.set_send_goal_future(send_goal_future)
+
+        executor = SingleThreadedExecutor(context=self.context)
+        executor.add_node(self.client_node)
+
+        keep_spinning = True
+
+        def _spin_executor() -> None:
+            nonlocal executor
+            nonlocal keep_spinning
+            try:
+                while self.context.ok() and keep_spinning:
+                    executor.spin_once(timeout_sec=0.1)
+            except (ExternalShutdownException, KeyboardInterrupt):
+                pass
+
+        t = threading.Thread(target=_spin_executor, daemon=True)
+        t.start()
+        # Check the return value and make sure the result is both executed to completion and returns negatively
+        self.assertFalse(handle.wait_for_result())
+        keep_spinning = False
+
+        executor.shutdown()
+        executor.remove_node(self.client_node)
+
+        t.join()
+        self.assertTrue(handle.result is not None)
+        self.assertFalse(result_callback_run)
+        self.assertTrue(failure_callback_run)
+        self.assertEqual(num_feedback_callback_run, 0)
+        self.assertFalse(cancel_success_callback_run)
+        self.assertFalse(cancel_failure_callback_run)
 
 
 if __name__ == "__main__":
