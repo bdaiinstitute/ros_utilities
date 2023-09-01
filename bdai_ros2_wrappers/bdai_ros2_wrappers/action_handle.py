@@ -146,6 +146,7 @@ class ActionHandle(object):
             return
         elif result.status == GoalStatus.STATUS_CANCELED:
             self._logger.info("Canceled")
+            self._result = final_result
             if self._wait_for_result_callback is not None:
                 self._wait_for_result_callback(False)
             if self._on_cancel_success_callback is not None:
