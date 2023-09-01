@@ -120,10 +120,14 @@ class ActionHandle(object):
     def _get_result_callback(self, future: Future) -> None:
         """Callback for pulling the resulting feedback out of the future and passing it to a user provided callback"""
         result = future.result()
+        if result is not None:
+            final_result = result.result
+        else:
+            final_result = None
 
         if result.status == GoalStatus.STATUS_SUCCEEDED:
             self._logger.info("Finished successfully")
-            self._result = result.result
+            self._result = final_result
             if self._wait_for_result_callback is not None:
                 self._wait_for_result_callback()
             if self._result_callback is not None:
@@ -131,10 +135,16 @@ class ActionHandle(object):
             return
         elif result.status == GoalStatus.STATUS_ABORTED:
             self._logger.info("Aborted")
+            self._result = final_result
+            if self._wait_for_result_callback is not None:
+                self._wait_for_result_callback()
             self._failure()
             return
         elif result.status == GoalStatus.STATUS_CANCELED:
             self._logger.info("Canceled")
+            self._result = final_result
+            if self._wait_for_result_callback is not None:
+                self._wait_for_result_callback()
             if self._on_cancel_success_callback is not None:
                 self._on_cancel_success_callback()
             return
