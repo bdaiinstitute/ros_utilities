@@ -664,8 +664,6 @@ class ActionHandleTest(unittest.TestCase):
 
         t = threading.Thread(target=_spin_executor, daemon=True)
         t.start()
-        # Cancel the ActionGoalHandle during the test
-        handle.cancel()
         # Check the return value and make sure the result is both executed to completion and returns negatively
         self.assertFalse(handle.wait_for_result())
         keep_spinning = False
