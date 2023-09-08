@@ -49,35 +49,49 @@ class AutoScalingThreadPool(concurrent.futures.Executor):
         if min_workers is None:
             min_workers = 0
         if min_workers < 0:
-            raise ValueError('Mini')
+            raise ValueError(
+                'Minimum number of workers '
+                'must be a nonnegative number')
         self._min_workers = min_workers
 
         if max_workers is None:
             max_workers = 32 * (os.cpu_count() or 1)
         if max_workers < min_workers:
-            raise ValueError('Maximum number of workers must be larger than or equal to the minimum number')
+            raise ValueError(
+                'Maximum number of workers must be larger than'
+                ' or equal to the minimum number of workers')
         self._max_workers = max_workers
 
         if max_idle_time is None:
             max_idle_time = 60.0
         if max_idle_time <= 0:
-            raise ValueError('Maximum idle time for workers must be a positive number')
+            raise ValueError(
+                'Maximum idle time for workers'
+                ' must be a positive number')
         self._max_idle_time = max_idle_time
 
         if submission_quota is None:
             submission_quota = max_workers
         if submission_quota <= 0:
-            raise ValueError('Quotas for submission must be a positive number')
+            raise ValueError(
+                'Quotas for submission '
+                'must be a positive number')
         self._submission_quota = submission_quota
 
         self._submit_lock = threading.Lock()
         self._shutdown_lock = threading.Lock()
 
-        self._workers: typing.List[threading.Thread] = list()
         runqueue: queue.SimpleQueue = queue.SimpleQueue()
         self._runqueue = runqueue
         self._weakref = weakref.ref(
             self, lambda ref: runqueue.put(None))
+        self._workers: typing.List[threading.Thread] = [
+            threading.Thread(
+                target=self._do_work,
+                args=(self._weakref, False),
+                daemon=True
+            ) for _ in range(self._min_workers)
+        ]
         self._waitqueues: typing.Dict[
             typing.Callable[..., typing.Any],
             collections.deque
@@ -104,11 +118,17 @@ class AutoScalingThreadPool(concurrent.futures.Executor):
                 del self._waitqueues[work.fn]
 
     @classmethod
-    def _do_work(cls, executor_weakref: weakref.ref) -> None:
+    def _do_work(
+        cls,
+        executor_weakref: weakref.ref,
+        stop_on_timeout: bool = True
+    ) -> None:
         logger = logging.getLogger(__name__)
         try:
             while True:
-                executor = executor_weakref()
+                executor: typing.Optional[
+                    AutoScalingThreadPool
+                ] = executor_weakref()
                 if executor is None:
                     break
 
@@ -129,6 +149,8 @@ class AutoScalingThreadPool(concurrent.futures.Executor):
                         block=True,
                         timeout=timeout)
                 except queue.Empty:
+                    if stop_on_timeout:
+                        break
                     continue
 
                 if work is not None:
