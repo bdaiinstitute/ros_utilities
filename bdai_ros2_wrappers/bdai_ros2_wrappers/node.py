@@ -4,6 +4,7 @@ from typing import Optional
 
 from rclpy import Context, Future
 from rclpy.executors import ExternalShutdownException, MultiThreadedExecutor, ShutdownException, SingleThreadedExecutor
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.node import Node
 
 from bdai_ros2_wrappers.futures import wait_for_future
@@ -87,3 +88,50 @@ class NodeWrapper(Node):
     # def __del__(self) -> None:
     #     """Destructor"""
     #     self.shutdown()
+
+
+class FriendlyNode(Node):
+
+    def __init__(self, *args, enable_callback_isolation=True, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._enable_callback_isolation = enable_callback_isolation
+
+    @property
+    def enable_callback_isolation(self) -> bool:
+        return self._enable_callback_isolation
+
+    def create_subscription(self, *args, callback_group = None, **kwargs):
+        if callback_group is None and self._enable_callback_isolation:
+            callback_group = MutuallyExclusiveCallbackGroup()
+        return super().create_subscription(
+            *args, callback_group=callback_group, **kwargs)
+
+    def create_publisher(self, *args, callback_group = None, **kwargs):
+        if callback_group is None and self._enable_callback_isolation:
+            callback_group = MutuallyExclusiveCallbackGroup()
+        return super().create_publisher(
+            *args, callback_group=callback_group, **kwargs)
+
+    def create_client(self, *args, callback_group = None, **kwargs):
+        if callback_group is None and self._enable_callback_isolation:
+            callback_group = MutuallyExclusiveCallbackGroup()
+        return super().create_client(
+            *args, callback_group=callback_group, **kwargs)
+
+    def create_service(self, *args, callback_group = None, **kwargs):
+        if callback_group is None and self._enable_callback_isolation:
+            callback_group = MutuallyExclusiveCallbackGroup()
+        return super().create_service(
+            *args, callback_group=callback_group, **kwargs)
+
+    def create_timer(self, *args, callback_group = None, **kwargs):
+        if callback_group is None and self._enable_callback_isolation:
+            callback_group = MutuallyExclusiveCallbackGroup()
+        return super().create_timer(
+            *args, callback_group=callback_group, **kwargs)
+
+    def create_guard_condition(self, *args, callback_group = None, **kwargs):
+        if callback_group is None and self._enable_callback_isolation:
+            callback_group = MutuallyExclusiveCallbackGroup()
+        return super().create_guard_condition(
+            *args, callback_group=callback_group, **kwargs)

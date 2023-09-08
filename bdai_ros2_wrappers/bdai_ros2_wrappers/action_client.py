@@ -3,6 +3,10 @@ from typing import Callable, Optional, Type, Union
 
 import rclpy.action
 from rclpy import Context
+from rclpy.node import Node
+from rclpy.action import ActionServer
+from rclpy.callback_groups import CallbackGroup
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 
 from bdai_ros2_wrappers.action_handle import ActionHandle
 from bdai_ros2_wrappers.node import NodeWrapper
@@ -136,3 +140,15 @@ class ActionClientWrapper(rclpy.action.ActionClient):
         handle.set_send_goal_future(send_goal_future)
 
         return handle
+
+
+class FriendlyActionClient(rclpy.action.ActionClient):
+
+    def __init__(
+        self,
+        node: Node, *args,
+        callback_group: Optional[CallbackGroup] = None, **kwargs
+    ) -> None:
+        if getattr(node, 'enable_callback_isolation', False) and callback_group is None:
+            callback_group = MutuallyExclusiveCallbackGroup()
+        super().__init__(node, *args, callback_group=callback_group, **kwargs)
