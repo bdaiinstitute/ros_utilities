@@ -3,8 +3,8 @@ from threading import Thread
 from typing import Optional
 
 from rclpy import Context, Future
-from rclpy.executors import ExternalShutdownException, MultiThreadedExecutor, ShutdownException, SingleThreadedExecutor
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
+from rclpy.executors import ExternalShutdownException, MultiThreadedExecutor, ShutdownException, SingleThreadedExecutor
 from rclpy.node import Node
 
 from bdai_ros2_wrappers.futures import wait_for_future

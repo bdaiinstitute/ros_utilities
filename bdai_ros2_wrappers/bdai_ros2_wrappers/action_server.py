@@ -1,10 +1,9 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 from typing import Optional
 
-from rclpy.node import Node
 from rclpy.action import ActionServer
-from rclpy.callback_groups import CallbackGroup
-from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
+from rclpy.callback_groups import CallbackGroup, MutuallyExclusiveCallbackGroup
+from rclpy.node import Node
 
 
 class FriendlyActionServer(ActionServer):

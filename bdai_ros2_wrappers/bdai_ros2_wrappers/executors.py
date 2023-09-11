@@ -32,8 +32,8 @@ class AutoScalingThreadPool(concurrent.futures.Executor):
         # upon interpreter shutdown.
         with cls._lock:
             cls._interpreter_shutdown = True
-            for queue in cls._all_runqueues:
-                queue.put(None)
+            for q in cls._all_runqueues:
+                q.put(None)
             cls._all_runqueues.clear()
             for worker in cls._all_workers:
                 if worker.is_alive():

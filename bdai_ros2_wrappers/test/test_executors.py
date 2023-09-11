@@ -1,13 +1,12 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
-import pytest
 import threading
 
+import pytest
 import rclpy.task
 import std_srvs.srv
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 
-from bdai_ros2_wrappers.executors import AutoScalingThreadPool
-from bdai_ros2_wrappers.executors import AutoScalingMultiThreadedExecutor
+from bdai_ros2_wrappers.executors import AutoScalingMultiThreadedExecutor, AutoScalingThreadPool
 
 
 @pytest.fixture
@@ -63,7 +62,7 @@ def test_autoscaling_executor(pytest_context, pytest_node):
         response.success = True
         return response
 
-    service = pytest_node.create_service(
+    pytest_node.create_service(
         std_srvs.srv.Trigger, '/dummy/trigger', dummy_server_callback,
         callback_group=MutuallyExclusiveCallbackGroup())
 
