@@ -1,11 +1,17 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 from threading import Thread
-from typing import Optional
+from typing import Any, Optional
 
 from rclpy import Context, Future
-from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
+from rclpy.callback_groups import CallbackGroup, MutuallyExclusiveCallbackGroup
+from rclpy.client import Client
 from rclpy.executors import ExternalShutdownException, MultiThreadedExecutor, ShutdownException, SingleThreadedExecutor
+from rclpy.guard_condition import GuardCondition
 from rclpy.node import Node
+from rclpy.publisher import Publisher
+from rclpy.service import Service
+from rclpy.subscription import Subscription
+from rclpy.timer import Timer
 
 from bdai_ros2_wrappers.futures import wait_for_future
 
@@ -91,8 +97,7 @@ class NodeWrapper(Node):
 
 
 class FriendlyNode(Node):
-
-    def __init__(self, *args, enable_callback_isolation=True, **kwargs):
+    def __init__(self, *args: Any, enable_callback_isolation: bool = True, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self._enable_callback_isolation = enable_callback_isolation
 
@@ -100,38 +105,36 @@ class FriendlyNode(Node):
     def enable_callback_isolation(self) -> bool:
         return self._enable_callback_isolation
 
-    def create_subscription(self, *args, callback_group = None, **kwargs):
+    def create_subscription(
+        self, *args: Any, callback_group: Optional[CallbackGroup] = None, **kwargs: Any
+    ) -> Subscription:
         if callback_group is None and self._enable_callback_isolation:
             callback_group = MutuallyExclusiveCallbackGroup()
-        return super().create_subscription(
-            *args, callback_group=callback_group, **kwargs)
+        return super().create_subscription(*args, callback_group=callback_group, **kwargs)
 
-    def create_publisher(self, *args, callback_group = None, **kwargs):
+    def create_publisher(self, *args: Any, callback_group: Optional[CallbackGroup] = None, **kwargs: Any) -> Publisher:
         if callback_group is None and self._enable_callback_isolation:
             callback_group = MutuallyExclusiveCallbackGroup()
-        return super().create_publisher(
-            *args, callback_group=callback_group, **kwargs)
+        return super().create_publisher(*args, callback_group=callback_group, **kwargs)
 
-    def create_client(self, *args, callback_group = None, **kwargs):
+    def create_client(self, *args: Any, callback_group: Optional[CallbackGroup] = None, **kwargs: Any) -> Client:
         if callback_group is None and self._enable_callback_isolation:
             callback_group = MutuallyExclusiveCallbackGroup()
-        return super().create_client(
-            *args, callback_group=callback_group, **kwargs)
+        return super().create_client(*args, callback_group=callback_group, **kwargs)
 
-    def create_service(self, *args, callback_group = None, **kwargs):
+    def create_service(self, *args: Any, callback_group: Optional[CallbackGroup] = None, **kwargs: Any) -> Service:
         if callback_group is None and self._enable_callback_isolation:
             callback_group = MutuallyExclusiveCallbackGroup()
-        return super().create_service(
-            *args, callback_group=callback_group, **kwargs)
+        return super().create_service(*args, callback_group=callback_group, **kwargs)
 
-    def create_timer(self, *args, callback_group = None, **kwargs):
+    def create_timer(self, *args: Any, callback_group: Optional[CallbackGroup] = None, **kwargs: Any) -> Timer:
         if callback_group is None and self._enable_callback_isolation:
             callback_group = MutuallyExclusiveCallbackGroup()
-        return super().create_timer(
-            *args, callback_group=callback_group, **kwargs)
+        return super().create_timer(*args, callback_group=callback_group, **kwargs)
 
-    def create_guard_condition(self, *args, callback_group = None, **kwargs):
+    def create_guard_condition(
+        self, *args: Any, callback_group: Optional[CallbackGroup] = None, **kwargs: Any
+    ) -> GuardCondition:
         if callback_group is None and self._enable_callback_isolation:
             callback_group = MutuallyExclusiveCallbackGroup()
-        return super().create_guard_condition(
-            *args, callback_group=callback_group, **kwargs)
+        return super().create_guard_condition(*args, callback_group=callback_group, **kwargs)

@@ -49,8 +49,7 @@ class AutoScalingThreadPool(concurrent.futures.Executor):
 
         def execute(self) -> None:
             try:
-                self.future.set_result(
-                    self.fn(*self.args, **self.kwargs))
+                self.future.set_result(self.fn(*self.args, **self.kwargs))
             except Exception as e:
                 self.future.set_exception(e)
 
@@ -60,19 +59,17 @@ class AutoScalingThreadPool(concurrent.futures.Executor):
         def cancelled(self) -> bool:
             return self.future.cancelled()
 
-        def when_done(
-            self,
-            callback: typing.Callable[['AutoScalingThreadPool.Work'], None]
-        ) -> None:
+        def when_done(self, callback: typing.Callable[["AutoScalingThreadPool.Work"], None]) -> None:
             self.future.add_done_callback(lambda f: callback(self))
 
     def __init__(
-        self, *,
+        self,
+        *,
         min_workers: typing.Optional[int] = None,
         max_workers: typing.Optional[int] = None,
         submission_quota: typing.Optional[int] = None,
         submission_patience: typing.Optional[float] = None,
-        max_idle_time: typing.Optional[float] = None
+        max_idle_time: typing.Optional[float] = None,
     ):
         """
         Initializes the thread pool.
@@ -92,41 +89,31 @@ class AutoScalingThreadPool(concurrent.futures.Executor):
         if min_workers is None:
             min_workers = 0
         if min_workers < 0:
-            raise ValueError(
-                'Minimum number of workers '
-                'must be a nonnegative number')
+            raise ValueError("Minimum number of workers must be a nonnegative number")
         self._min_workers = min_workers
 
         if max_workers is None:
             max_workers = 32 * (os.cpu_count() or 1)
         if max_workers < min_workers:
-            raise ValueError(
-                'Maximum number of workers must be larger than'
-                ' or equal to the minimum number of workers')
+            raise ValueError("Maximum number of workers must be larger than or equal to the minimum number of workers")
         self._max_workers = max_workers
 
         if max_idle_time is None:
             max_idle_time = 60.0
         if max_idle_time <= 0:
-            raise ValueError(
-                'Maximum idle time for workers'
-                ' must be a positive number')
+            raise ValueError("Maximum idle time for workers must be a positive number")
         self._max_idle_time = max_idle_time
 
         if submission_quota is None:
             submission_quota = max_workers
         if submission_quota <= 0:
-            raise ValueError(
-                'Quota for submission '
-                'must be a positive number')
+            raise ValueError("Quota for submission must be a positive number")
         self._submission_quota = submission_quota
 
         if submission_patience is None:
             submission_patience = 0.1
         if submission_patience < 0:
-            raise ValueError(
-                'Patience for submission '
-                'must be a nonnegative number')
+            raise ValueError("Patience for submission must be a nonnegative number")
         self._submission_patience = submission_patience
 
         self._shutdown = False
@@ -135,44 +122,35 @@ class AutoScalingThreadPool(concurrent.futures.Executor):
 
         with AutoScalingThreadPool._lock:
             if AutoScalingThreadPool._interpreter_shutdown:
-                raise RuntimeError(
-                    'cannot create thread pool while'
-                    ' interpreter is shutting down')
+                raise RuntimeError("cannot create thread pool while interpreter is shutting down")
             # register runqueue for external wake up  on interpreter shutdown
             runqueue: queue.SimpleQueue = queue.SimpleQueue()
             AutoScalingThreadPool._all_runqueues.add(runqueue)
             self._runqueue = runqueue
-            weak_self = weakref.ref(
-                self, lambda ref: runqueue.put(None))
+            weak_self = weakref.ref(self, lambda ref: runqueue.put(None))
             self._workers: weakref.WeakSet = weakref.WeakSet()
             for _ in range(self._min_workers):  # fire up stable worker pool
                 # careful with back references to self!
-                worker = threading.Thread(
-                    target=AutoScalingThreadPool._do_work,
-                    args=(weak_self, False), daemon=True)
+                worker = threading.Thread(target=AutoScalingThreadPool._do_work, args=(weak_self, False), daemon=True)
                 worker.start()
                 self._workers.add(worker)
             # register workers for external joining on interpreter shutdown
             AutoScalingThreadPool._all_workers.update(self._workers)
 
-        self._waitqueues: typing.Dict[
-            typing.Callable[..., typing.Any],
+        self._waitqueues: typing.Dict[typing.Callable[..., typing.Any], collections.deque] = collections.defaultdict(
             collections.deque
-        ] = collections.defaultdict(collections.deque)
-        self._runlists: typing.Dict[
-            typing.Callable[..., typing.Any], list
-        ] = collections.defaultdict(list)
+        )
+        self._runlists: typing.Dict[typing.Callable[..., typing.Any], list] = collections.defaultdict(list)
         self._runslots = threading.Semaphore(0)
 
     @property
     def workers(self) -> typing.List[threading.Thread]:
         with self._submit_lock:
             # avoid races and proactively drop shutdown workers
-            self._workers = weakref.WeakSet([
-                w for w in self._workers if w.is_alive()])
+            self._workers = weakref.WeakSet([w for w in self._workers if w.is_alive()])
         return list(self._workers)
 
-    def _do_cleanup_after(self, work: 'AutoScalingThreadPool.Work') -> None:
+    def _do_cleanup_after(self, work: "AutoScalingThreadPool.Work") -> None:
         with self._submit_lock:
             self._runlists[work.fn].remove(work)
             if self._waitqueues[work.fn]:  # continue with pending work
@@ -189,24 +167,15 @@ class AutoScalingThreadPool(concurrent.futures.Executor):
                 del self._waitqueues[work.fn]
 
     @classmethod
-    def _do_work(
-        cls,
-        executor_weakref: weakref.ref,
-        stop_on_timeout: bool = True
-    ) -> None:
+    def _do_work(cls, executor_weakref: weakref.ref, stop_on_timeout: bool = True) -> None:
         logger = logging.getLogger(__name__)
         try:
             while not cls._interpreter_shutdown:
-                executor: typing.Optional[
-                    AutoScalingThreadPool
-                ] = executor_weakref()
+                executor: typing.Optional[AutoScalingThreadPool] = executor_weakref()
                 if executor is None:
                     break
 
-                runqueue, runslots, timeout = (
-                    executor._runqueue,
-                    executor._runslots,
-                    executor._max_idle_time)
+                runqueue, runslots, timeout = (executor._runqueue, executor._runslots, executor._max_idle_time)
 
                 if executor._shutdown:
                     runqueue.put(None)
@@ -216,9 +185,7 @@ class AutoScalingThreadPool(concurrent.futures.Executor):
 
                 runslots.release()
                 try:
-                    work = runqueue.get(
-                        block=True,
-                        timeout=timeout)
+                    work = runqueue.get(block=True, timeout=timeout)
                 except queue.Empty:
                     if stop_on_timeout:  # non-stable worker
                         if runslots.acquire(blocking=False):
@@ -229,30 +196,29 @@ class AutoScalingThreadPool(concurrent.futures.Executor):
                     work.execute()
                 del work  # drop reference
         except BaseException as e:
-            logger.error(f'Worker threw an exception: {e}')
+            logger.error(f"Worker threw an exception: {e}")
 
-    def _do_submit(self, work: 'AutoScalingThreadPool.Work') -> None:
+    def _do_submit(self, work: "AutoScalingThreadPool.Work") -> None:
         self._workers = weakref.WeakSet([w for w in self._workers if w.is_alive()])
         while not self._runslots.acquire(timeout=self._submission_patience):
             if len(self._workers) >= self._max_workers:
                 break
             runqueue = self._runqueue
-            weak_self = weakref.ref(
-                self, lambda ref: runqueue.put(None))
+            weak_self = weakref.ref(self, lambda ref: runqueue.put(None))
             # careful with back references to self!
-            worker = threading.Thread(
-                target=AutoScalingThreadPool._do_work,
-                args=(weak_self,), daemon=True)
+            worker = threading.Thread(target=AutoScalingThreadPool._do_work, args=(weak_self,), daemon=True)
             worker.start()
             with AutoScalingThreadPool._lock:
                 AutoScalingThreadPool._all_workers.add(worker)
             self._workers.add(worker)
         self._runqueue.put(work)
 
-    def submit(self, fn, /, *args, **kwargs) -> concurrent.futures.Future:
+    # NOTE(hidmic): cannot recreate type signature for method override
+    # See https://github.com/python/typeshed/blob/main/stdlib/concurrent/futures/_base.pyi.
+    def submit(self, fn, /, *args, **kwargs):  # type: ignore
         with self._submit_lock, self._shutdown_lock:
             if self._shutdown:
-                raise RuntimeError('cannot submit to a shutdown pool')
+                raise RuntimeError("cannot submit to a shutdown pool")
             future: concurrent.futures.Future = concurrent.futures.Future()
             WorkT = AutoScalingThreadPool.Work
             work = WorkT(future, fn, args, kwargs)
@@ -272,11 +238,7 @@ class AutoScalingThreadPool(concurrent.futures.Executor):
                 self._waitqueues[work.fn].append(work)
             return future
 
-    def shutdown(
-        self,
-        wait: bool = True, *,
-        cancel_futures: bool = False
-    ) -> None:
+    def shutdown(self, wait: bool = True, *, cancel_futures: bool = False) -> None:
         with self._shutdown_lock:
             self._shutdown = True
 
@@ -312,11 +274,7 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
     class TaskInCallbackGroup:
         """A bundle of executable task and associated callback group."""
 
-        def __init__(
-            self,
-            task: rclpy.task.Task,
-            callback_group: rclpy.callback_groups.CallbackGroup
-        ):
+        def __init__(self, task: rclpy.task.Task, callback_group: rclpy.callback_groups.CallbackGroup):
             self.task = task
             self.callback_group = callback_group
 
@@ -336,8 +294,9 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
         self,
         max_threads: typing.Optional[int] = None,
         max_thread_idle_time: typing.Optional[float] = None,
-        max_threads_per_callback_group: typing.Optional[int] = None, *,
-        context: typing.Optional[rclpy.context.Context] = None
+        max_threads_per_callback_group: typing.Optional[int] = None,
+        *,
+        context: typing.Optional[rclpy.context.Context] = None,
     ) -> None:
         """
         Initializes the executor.
@@ -353,23 +312,18 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
         """
         super().__init__(context=context)
         self._thread_pool = AutoScalingThreadPool(
-            max_workers=max_threads,
-            max_idle_time=max_thread_idle_time,
-            submission_quota=max_threads_per_callback_group)
-        self._futures: typing.List[
-            AutoScalingMultiThreadedExecutor.TaskInCallbackGroup
-        ] = []
+            max_workers=max_threads, max_idle_time=max_thread_idle_time, submission_quota=max_threads_per_callback_group
+        )
+        self._futures: typing.List[AutoScalingMultiThreadedExecutor.TaskInCallbackGroup] = []
 
     @property
     def thread_pool(self) -> AutoScalingThreadPool:
         return self._thread_pool
 
-    def _do_spin_once(self, *args, **kwargs) -> None:
-        TaskInCallbackGroupT = \
-            AutoScalingMultiThreadedExecutor.TaskInCallbackGroup
+    def _do_spin_once(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+        TaskInCallbackGroupT = AutoScalingMultiThreadedExecutor.TaskInCallbackGroup
         try:
-            task, entity, node = \
-                self.wait_for_ready_callbacks(*args, **kwargs)
+            task, entity, node = self.wait_for_ready_callbacks(*args, **kwargs)
         except rclpy.executors.ExternalShutdownException:
             pass
         except rclpy.executors.ShutdownException:
@@ -395,9 +349,7 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
         self._do_spin_once(timeout_sec)
 
     def spin_once_until_future_complete(
-        self,
-        future: rclpy.task.Future,
-        timeout_sec: typing.Optional[float] = None
+        self, future: rclpy.task.Future, timeout_sec: typing.Optional[float] = None
     ) -> None:
         future.add_done_callback(lambda f: self.wake())
         self._do_spin_once(timeout_sec, condition=future.done)

@@ -1,8 +1,12 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 import threading
+from typing import Generator, Optional
 
 import pytest
+import rclpy.context
+import rclpy.node
 import rclpy.task
+import rclpy.timer
 import std_srvs.srv
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 
@@ -10,7 +14,7 @@ from bdai_ros2_wrappers.executors import AutoScalingMultiThreadedExecutor, AutoS
 
 
 @pytest.fixture
-def pytest_context():
+def pytest_context() -> Generator[rclpy.context.Context, None, None]:
     context = rclpy.context.Context()
     rclpy.init(context=context)
     try:
@@ -20,16 +24,15 @@ def pytest_context():
 
 
 @pytest.fixture
-def pytest_node(pytest_context):
-    node = rclpy.create_node(
-        'pytest_node', context=pytest_context)
+def pytest_node(pytest_context: rclpy.context.Context) -> Generator[rclpy.node.Node, None, None]:
+    node = rclpy.create_node("pytest_node", context=pytest_context)
     try:
         yield node
     finally:
         node.destroy_node()
 
 
-def test_autoscaling_thread_pool():
+def test_autoscaling_thread_pool() -> None:
     """
     Asserts that the autoscaling thread pool scales and de-scales on demand.
     """
@@ -52,35 +55,37 @@ def test_autoscaling_thread_pool():
     assert len(pool.workers) == 0
 
 
-def test_autoscaling_executor(pytest_context, pytest_node):
+def test_autoscaling_executor(pytest_context: rclpy.context.Context, pytest_node: rclpy.node.Node) -> None:
     """
     Asserts that the autoscaling multithreaded executor scales to
     attend a synchronous service call from a "one-shot" timer callback,
     serviced by the same executor.
     """
-    def dummy_server_callback(_, response):
+
+    def dummy_server_callback(
+        _: std_srvs.srv.Trigger.Request, response: std_srvs.srv.Trigger.Response
+    ) -> std_srvs.srv.Trigger.Response:
         response.success = True
         return response
 
     pytest_node.create_service(
-        std_srvs.srv.Trigger, '/dummy/trigger', dummy_server_callback,
-        callback_group=MutuallyExclusiveCallbackGroup())
+        std_srvs.srv.Trigger, "/dummy/trigger", dummy_server_callback, callback_group=MutuallyExclusiveCallbackGroup()
+    )
 
     client = pytest_node.create_client(
-        std_srvs.srv.Trigger, '/dummy/trigger',
-        callback_group=MutuallyExclusiveCallbackGroup())
+        std_srvs.srv.Trigger, "/dummy/trigger", callback_group=MutuallyExclusiveCallbackGroup()
+    )
 
     future = rclpy.task.Future()
 
-    def deferred_dummy_trigger():
-        nonlocal timer
-        timer.cancel()
-        future.set_result(client.call(
-            std_srvs.srv.Trigger.Request()))
+    timer: Optional[rclpy.timer.Timer] = None
 
-    timer = pytest_node.create_timer(
-        0.5, deferred_dummy_trigger,
-        callback_group=MutuallyExclusiveCallbackGroup())
+    def deferred_dummy_trigger() -> None:
+        assert timer is not None
+        timer.cancel()
+        future.set_result(client.call(std_srvs.srv.Trigger.Request()))
+
+    timer = pytest_node.create_timer(0.5, deferred_dummy_trigger, callback_group=MutuallyExclusiveCallbackGroup())
 
     executor = AutoScalingMultiThreadedExecutor(context=pytest_context)
     assert len(executor.thread_pool.workers) == 0
