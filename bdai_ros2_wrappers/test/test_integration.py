@@ -118,6 +118,10 @@ def ros_graph(ros_context: Context, ros_executor: Executor, ros_node: Node) -> G
 
 
 def test_blocking_sequence(ros_executor: Executor, ros_node: Node) -> None:
+    """
+    Asserts that a blocking call sequence (single-nested if you follow the execution path
+    across callbacks) is possible when using a multi-threaded executor and callback isolation.
+    """
     tf_buffer = tf2_ros.Buffer()
     tf2_ros.TransformListener(tf_buffer, node=ros_node, spin_thread=False)
 
