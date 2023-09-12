@@ -98,8 +98,8 @@ class NodeWrapper(Node):
 
 class FriendlyNode(Node):
     def __init__(self, *args: Any, enable_callback_isolation: bool = True, **kwargs: Any):
-        super().__init__(*args, **kwargs)
         self._enable_callback_isolation = enable_callback_isolation
+        super().__init__(*args, **kwargs)
 
     @property
     def enable_callback_isolation(self) -> bool:
