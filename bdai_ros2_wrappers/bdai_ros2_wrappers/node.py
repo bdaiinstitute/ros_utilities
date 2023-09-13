@@ -3,16 +3,11 @@ from threading import Thread
 from typing import Any, Optional
 
 from rclpy import Context, Future
-from rclpy.callback_groups import CallbackGroup, MutuallyExclusiveCallbackGroup
-from rclpy.client import Client
+from rclpy.callback_groups import CallbackGroup
 from rclpy.executors import ExternalShutdownException, MultiThreadedExecutor, ShutdownException, SingleThreadedExecutor
-from rclpy.guard_condition import GuardCondition
 from rclpy.node import Node
-from rclpy.publisher import Publisher
-from rclpy.service import Service
-from rclpy.subscription import Subscription
-from rclpy.timer import Timer
 
+from bdai_ros2_wrappers.callback_groups import NonReentrantCallbackGroup
 from bdai_ros2_wrappers.futures import wait_for_future
 
 
@@ -97,44 +92,18 @@ class NodeWrapper(Node):
 
 
 class FriendlyNode(Node):
-    def __init__(self, *args: Any, enable_callback_isolation: bool = True, **kwargs: Any):
-        self._enable_callback_isolation = enable_callback_isolation
+    """An rclpy.node.Node subclass that changes the default callback group to be non-reentrant."""
+
+    def __init__(self, *args: Any, default_callback_group: Optional[CallbackGroup] = None, **kwargs: Any):
+        if default_callback_group is None:
+            default_callback_group = NonReentrantCallbackGroup()
+        self._default_callback_group_override = default_callback_group
         super().__init__(*args, **kwargs)
 
     @property
-    def enable_callback_isolation(self) -> bool:
-        return self._enable_callback_isolation
-
-    def create_subscription(
-        self, *args: Any, callback_group: Optional[CallbackGroup] = None, **kwargs: Any
-    ) -> Subscription:
-        if callback_group is None and self._enable_callback_isolation:
-            callback_group = MutuallyExclusiveCallbackGroup()
-        return super().create_subscription(*args, callback_group=callback_group, **kwargs)
-
-    def create_publisher(self, *args: Any, callback_group: Optional[CallbackGroup] = None, **kwargs: Any) -> Publisher:
-        if callback_group is None and self._enable_callback_isolation:
-            callback_group = MutuallyExclusiveCallbackGroup()
-        return super().create_publisher(*args, callback_group=callback_group, **kwargs)
-
-    def create_client(self, *args: Any, callback_group: Optional[CallbackGroup] = None, **kwargs: Any) -> Client:
-        if callback_group is None and self._enable_callback_isolation:
-            callback_group = MutuallyExclusiveCallbackGroup()
-        return super().create_client(*args, callback_group=callback_group, **kwargs)
-
-    def create_service(self, *args: Any, callback_group: Optional[CallbackGroup] = None, **kwargs: Any) -> Service:
-        if callback_group is None and self._enable_callback_isolation:
-            callback_group = MutuallyExclusiveCallbackGroup()
-        return super().create_service(*args, callback_group=callback_group, **kwargs)
-
-    def create_timer(self, *args: Any, callback_group: Optional[CallbackGroup] = None, **kwargs: Any) -> Timer:
-        if callback_group is None and self._enable_callback_isolation:
-            callback_group = MutuallyExclusiveCallbackGroup()
-        return super().create_timer(*args, callback_group=callback_group, **kwargs)
-
-    def create_guard_condition(
-        self, *args: Any, callback_group: Optional[CallbackGroup] = None, **kwargs: Any
-    ) -> GuardCondition:
-        if callback_group is None and self._enable_callback_isolation:
-            callback_group = MutuallyExclusiveCallbackGroup()
-        return super().create_guard_condition(*args, callback_group=callback_group, **kwargs)
+    def default_callback_group(self) -> CallbackGroup:
+        """
+        Get the default callback group.
+        """
+        # NOTE(hidmic): this overrides the hardcoded default group in rclpy.node.Node implementation
+        return self._default_callback_group_override

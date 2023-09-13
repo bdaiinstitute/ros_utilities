@@ -9,15 +9,14 @@ import tf2_ros
 from example_interfaces.action import Fibonacci
 from example_interfaces.srv import AddTwoInts
 from geometry_msgs.msg import TransformStamped
-from rclpy.action.server import ServerGoalHandle
+from rclpy.action.client import ActionClient
+from rclpy.action.server import ActionServer, ServerGoalHandle
 from rclpy.context import Context
 from rclpy.duration import Duration
 from rclpy.executors import Executor
 from rclpy.node import Node
 from rclpy.time import Time
 
-from bdai_ros2_wrappers.action_client import FriendlyActionClient
-from bdai_ros2_wrappers.action_server import FriendlyActionServer
 from bdai_ros2_wrappers.executors import AutoScalingMultiThreadedExecutor
 from bdai_ros2_wrappers.node import FriendlyNode
 
@@ -59,7 +58,7 @@ class MinimalServer(FriendlyNode):
 class MinimalActionServer(FriendlyNode):
     def __init__(self, node_name: str = "minimal_action_server", **kwargs: Any) -> None:
         super().__init__(node_name, **kwargs)
-        self._action_server = FriendlyActionServer(self, Fibonacci, "compute_fibonacci_sequence", self.execute_callback)
+        self._action_server = ActionServer(self, Fibonacci, "compute_fibonacci_sequence", self.execute_callback)
 
     def execute_callback(self, goal_handle: ServerGoalHandle) -> Fibonacci.Result:
         sequence = [0, 1]
@@ -126,7 +125,7 @@ def test_blocking_sequence(ros_executor: Executor, ros_node: Node) -> None:
     tf2_ros.TransformListener(tf_buffer, node=ros_node, spin_thread=False)
 
     client = ros_node.create_client(AddTwoInts, "add_two_ints")
-    action_client = FriendlyActionClient(ros_node, Fibonacci, "compute_fibonacci_sequence")
+    action_client = ActionClient(ros_node, Fibonacci, "compute_fibonacci_sequence")
 
     def blocking_sequence() -> TransformStamped:
         generator = random.Random(0)
@@ -167,7 +166,7 @@ def test_chain_sequence(ros_executor: Executor, ros_node: Node) -> None:
     Asserts that a chained call sequence (double-nested if you follow the execution path
     across callbacks) is possible when using a multi-threaded executor and callback isolation.
     """
-    action_client = FriendlyActionClient(ros_node, Fibonacci, "compute_fibonacci_sequence")
+    action_client = ActionClient(ros_node, Fibonacci, "compute_fibonacci_sequence")
 
     def add_fibonacci_sequences_server_callback(
         request: AddTwoInts.Request, response: AddTwoInts.Response
