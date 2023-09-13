@@ -13,6 +13,11 @@ import weakref
 import rclpy.executors
 
 
+def classname(obj: typing.Any) -> str:
+    cls = obj.__class__
+    return f"{cls.__module__}.{cls.__qualname__}"
+
+
 class AutoScalingThreadPool(concurrent.futures.Executor):
     """
     A concurrent.futures.Executor subclass based on a thread pool.
@@ -73,6 +78,7 @@ class AutoScalingThreadPool(concurrent.futures.Executor):
         submission_quota: typing.Optional[int] = None,
         submission_patience: typing.Optional[float] = None,
         max_idle_time: typing.Optional[float] = None,
+        logger: typing.Optional[logging.Logger] = None,
     ):
         """
         Initializes the thread pool.
@@ -119,6 +125,10 @@ class AutoScalingThreadPool(concurrent.futures.Executor):
             raise ValueError("Patience for submission must be a nonnegative number")
         self._submission_patience = submission_patience
 
+        if logger is None:
+            logger = logging.getLogger(classname(self))
+        self._logger = logger
+
         self._shutdown = False
         self._submit_lock = threading.Lock()
         self._shutdown_lock = threading.Lock()
@@ -134,7 +144,9 @@ class AutoScalingThreadPool(concurrent.futures.Executor):
             self._workers: weakref.WeakSet = weakref.WeakSet()
             for _ in range(self._min_workers):  # fire up stable worker pool
                 # careful with back references to self!
-                worker = threading.Thread(target=AutoScalingThreadPool._do_work, args=(weak_self, False), daemon=True)
+                worker = threading.Thread(
+                    target=AutoScalingThreadPool._do_work, args=(weak_self, self._logger, False), daemon=True
+                )
                 worker.start()
                 self._workers.add(worker)
             # register workers for external joining on interpreter shutdown
@@ -194,8 +206,7 @@ class AutoScalingThreadPool(concurrent.futures.Executor):
         return complete
 
     @classmethod
-    def _do_work(cls, executor_weakref: weakref.ref, stop_on_timeout: bool = True) -> None:
-        logger = logging.getLogger(__name__)
+    def _do_work(cls, executor_weakref: weakref.ref, logger: logging.Logger, stop_on_timeout: bool = True) -> None:
         try:
             work: typing.Optional[AutoScalingThreadPool.Work] = None
             while not cls._interpreter_shutdown:
@@ -243,7 +254,9 @@ class AutoScalingThreadPool(concurrent.futures.Executor):
             runqueue = self._runqueue
             weak_self = weakref.ref(self, lambda ref: runqueue.put(None))
             # careful with back references to self!
-            worker = threading.Thread(target=AutoScalingThreadPool._do_work, args=(weak_self,), daemon=True)
+            worker = threading.Thread(
+                target=AutoScalingThreadPool._do_work, args=(weak_self, self._logger), daemon=True
+            )
             worker.start()
             with AutoScalingThreadPool._lock:
                 AutoScalingThreadPool._all_workers.add(worker)
@@ -335,6 +348,7 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
         max_threads_per_callback_group: typing.Optional[int] = None,
         *,
         context: typing.Optional[rclpy.context.Context] = None,
+        logger: typing.Optional[logging.Logger] = None,
     ) -> None:
         """
         Initializes the executor.
@@ -349,8 +363,13 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
           callback groups from starving the pool.
         """
         super().__init__(context=context)
+        if logger is None:
+            logger = rclpy.logging.get_logger(classname(self))
         self._thread_pool = AutoScalingThreadPool(
-            max_workers=max_threads, max_idle_time=max_thread_idle_time, submission_quota=max_threads_per_callback_group
+            max_workers=max_threads,
+            max_idle_time=max_thread_idle_time,
+            submission_quota=max_threads_per_callback_group,
+            logger=logger,
         )
         self._futures: typing.List[AutoScalingMultiThreadedExecutor.Task] = []
 
