@@ -6,7 +6,7 @@ from typing import Any, Generator
 import pytest
 import rclpy
 import tf2_ros
-from action_tutorials_interfaces.action import Fibonacci
+from example_interfaces.action import Fibonacci
 from example_interfaces.srv import AddTwoInts
 from geometry_msgs.msg import TransformStamped
 from rclpy.action.server import ServerGoalHandle
@@ -67,7 +67,7 @@ class MinimalActionServer(FriendlyNode):
         for i in range(1, goal_handle.request.order):
             sequence.append(sequence[i] + sequence[i - 1])
             feedback = Fibonacci.Feedback()
-            feedback.partial_sequence = sequence
+            feedback.sequence = sequence
             goal_handle.publish_feedback(feedback)
         goal_handle.succeed()
 
@@ -141,7 +141,7 @@ def test_blocking_sequence(ros_executor: Executor, ros_node: Node) -> None:
             Fibonacci.Goal(order=response.sum), feedback_callback=lambda f: feedback.append(f.feedback)
         ).result
         assert len(feedback) > 0
-        partial_sequence = feedback[-1].partial_sequence
+        partial_sequence = feedback[-1].sequence
         assert result.sequence[: len(partial_sequence)] == partial_sequence
 
         timeout = Duration(seconds=5)
@@ -160,3 +160,35 @@ def test_blocking_sequence(ros_executor: Executor, ros_node: Node) -> None:
     transform = future.result()
     assert transform is not None
     assert transform.header.frame_id == MinimalTransformPublisher.frame_id
+
+
+def test_chain_sequence(ros_executor: Executor, ros_node: Node) -> None:
+    """
+    Asserts that a chained call sequence (double-nested if you follow the execution path
+    across callbacks) is possible when using a multi-threaded executor and callback isolation.
+    """
+    action_client = FriendlyActionClient(ros_node, Fibonacci, "compute_fibonacci_sequence")
+
+    def add_fibonacci_sequences_server_callback(
+        request: AddTwoInts.Request, response: AddTwoInts.Response
+    ) -> AddTwoInts.Response:
+        if not action_client.wait_for_server(timeout_sec=5):
+            response.sum = -1
+            return response
+        result_a = action_client.send_goal(Fibonacci.Goal(order=request.a)).result
+        result_b = action_client.send_goal(Fibonacci.Goal(order=request.b)).result
+        response.sum = sum(result_a.sequence) + sum(result_b.sequence)
+        return response
+
+    ros_node.create_service(AddTwoInts, "add_two_fibonacci_sequences", add_fibonacci_sequences_server_callback)
+
+    client = ros_node.create_client(AddTwoInts, "add_two_fibonacci_sequences")
+
+    def chain_sequence() -> TransformStamped:
+        assert client.wait_for_service(timeout_sec=5)
+        response = client.call(AddTwoInts.Request(a=6, b=12))
+        return response.sum == 396
+
+    future = ros_executor.create_task(chain_sequence)
+    ros_executor.spin_until_future_complete(future, timeout_sec=10)
+    assert future.result()
