@@ -9,9 +9,17 @@ import rclpy.executors
 
 class NonReentrantCallbackGroup(rclpy.callback_groups.CallbackGroup):
     """
-    A callback group to prevent concurrent execution of the same callback.
+    A callback group to prevent concurrent execution of the same callback
+    while allowing it for different callbacks.
 
-    Concurrent execution of different callbacks is allowed.
+    Note this behavior sits in between that offered by
+    rclpy.callback_groups.MutuallyExclusiveCallbackGroup and
+    rclpy.callback_groups.ReentrantCallbackGroup, as the former forbids
+    concurrent execution and the latter allows it including multiple
+    invocations of the same callback (e.g. a subscription handling multiple
+    messages concurrently).
+
+    See rclpy.callback_groups.CallbackGroup documentation for further reference.
     """
 
     def __init__(self) -> None:
