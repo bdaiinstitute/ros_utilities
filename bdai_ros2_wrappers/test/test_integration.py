@@ -14,14 +14,15 @@ from rclpy.action.server import ActionServer, ServerGoalHandle
 from rclpy.context import Context
 from rclpy.duration import Duration
 from rclpy.executors import Executor
-from rclpy.node import Node
 from rclpy.time import Time
 
 from bdai_ros2_wrappers.executors import AutoScalingMultiThreadedExecutor
-from bdai_ros2_wrappers.node import FriendlyNode
+from bdai_ros2_wrappers.node import Node
 
 
-class MinimalTransformPublisher(FriendlyNode):
+class MinimalTransformPublisher(Node):
+    """A minimal ROS 2 node broadcasting a fixed transform over /tf."""
+
     frame_id = "world"
     child_frame_id = "robot"
 
@@ -45,7 +46,9 @@ class MinimalTransformPublisher(FriendlyNode):
         self._broadcaster.sendTransform(self._transform)
 
 
-class MinimalServer(FriendlyNode):
+class MinimalServer(Node):
+    """A minimal ROS 2 node serving an example_interfaces.srv.AddTwoInts service."""
+
     def __init__(self, node_name: str = "minimal_server", **kwargs: Any) -> None:
         super().__init__(node_name, **kwargs)
         self._service_server = self.create_service(AddTwoInts, "add_two_ints", self.service_callback)
@@ -55,7 +58,9 @@ class MinimalServer(FriendlyNode):
         return response
 
 
-class MinimalActionServer(FriendlyNode):
+class MinimalActionServer(Node):
+    """A minimal ROS 2 node serving an example_interfaces.action.Fibonacci action."""
+
     def __init__(self, node_name: str = "minimal_action_server", **kwargs: Any) -> None:
         super().__init__(node_name, **kwargs)
         self._action_server = ActionServer(self, Fibonacci, "compute_fibonacci_sequence", self.execute_callback)
@@ -77,6 +82,7 @@ class MinimalActionServer(FriendlyNode):
 
 @pytest.fixture
 def ros_context() -> Generator[Context, None, None]:
+    """A fixture yielding a managed rclpy.context.Context instance."""
     context = Context()
     rclpy.init(context=context)
     try:
@@ -87,6 +93,7 @@ def ros_context() -> Generator[Context, None, None]:
 
 @pytest.fixture
 def ros_executor(ros_context: Context) -> Generator[Executor, None, None]:
+    """A fixture yielding a managed AutoScalingMultiThreadedExecutor instance."""
     executor = AutoScalingMultiThreadedExecutor(context=ros_context)
     try:
         yield executor
@@ -96,7 +103,8 @@ def ros_executor(ros_context: Context) -> Generator[Executor, None, None]:
 
 @pytest.fixture
 def ros_node(ros_context: Context, ros_executor: Executor) -> Generator[Node, None, None]:
-    node = FriendlyNode("test_node", context=ros_context)
+    """A fixture yielding a managed Node instance."""
+    node = Node("test_node", context=ros_context)
     try:
         yield node
     finally:
@@ -105,6 +113,7 @@ def ros_node(ros_context: Context, ros_executor: Executor) -> Generator[Node, No
 
 @pytest.fixture(autouse=True)
 def ros_graph(ros_context: Context, ros_executor: Executor, ros_node: Node) -> Generator[None, None, None]:
+    """An automatic fixture managing execution of multiple nodes for testing purposes."""
     ros_executor.add_node(MinimalTransformPublisher(context=ros_context))
     ros_executor.add_node(MinimalServer(context=ros_context))
     ros_executor.add_node(MinimalActionServer(context=ros_context))

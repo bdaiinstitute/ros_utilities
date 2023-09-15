@@ -5,13 +5,13 @@ from typing import Any, Optional
 from rclpy import Context, Future
 from rclpy.callback_groups import CallbackGroup
 from rclpy.executors import ExternalShutdownException, MultiThreadedExecutor, ShutdownException, SingleThreadedExecutor
-from rclpy.node import Node
+from rclpy.node import Node as BaseNode
 
 from bdai_ros2_wrappers.callback_groups import NonReentrantCallbackGroup
 from bdai_ros2_wrappers.futures import wait_for_future
 
 
-class NodeWrapper(Node):
+class NodeWrapper(BaseNode):
     """A wrapper around a node and its executor."""
 
     def __init__(
@@ -91,10 +91,20 @@ class NodeWrapper(Node):
     #     self.shutdown()
 
 
-class FriendlyNode(Node):
+class Node(BaseNode):
     """An rclpy.node.Node subclass that changes the default callback group to be non-reentrant."""
 
     def __init__(self, *args: Any, default_callback_group: Optional[CallbackGroup] = None, **kwargs: Any):
+        """
+        Initializes the node.
+
+        Args:
+            default_callback_group: optional callback group to use as default
+                for all subsequently created entities, such as subscriptions
+                and clients.
+
+        See rclpy.node.Node documentation for further reference on available arguments.
+        """
         if default_callback_group is None:
             default_callback_group = NonReentrantCallbackGroup()
         self._default_callback_group_override = default_callback_group
