@@ -14,6 +14,7 @@ from bdai_ros2_wrappers.executors import AutoScalingMultiThreadedExecutor, AutoS
 
 @pytest.fixture
 def ros_context() -> Generator[Context, None, None]:
+    """A fixture yielding a managed rclpy.context.Context instance."""
     context = Context()
     rclpy.init(context=context)
     try:
@@ -24,6 +25,7 @@ def ros_context() -> Generator[Context, None, None]:
 
 @pytest.fixture
 def ros_node(ros_context: Context) -> Generator[Node, None, None]:
+    """A fixture yielding a managed rclpy.node.Node instance."""
     node = rclpy.create_node("pytest_node", context=ros_context)
     try:
         yield node
@@ -44,18 +46,80 @@ def test_autoscaling_thread_pool() -> None:
     results = pool.map(lambda i, e: e.wait() and i, range(10), events)
     assert len(pool.workers) == len(events)
     assert pool.working
-    assert not pool.capped, pool._waitqueues
+    assert not pool.capped
 
     for e in events:
         e.set()
     assert list(results) == list(range(10))
 
-    for worker in pool.workers:
-        worker.join(timeout=10)
-        assert not worker.is_alive()
+    def predicate() -> bool:
+        return len(pool.workers) == 0
 
-    assert len(pool.workers) == 0
+    with pool.scaling_event:
+        assert pool.scaling_event.wait_for(predicate, timeout=10)
     assert not pool.working
+
+    pool.shutdown()
+
+
+def test_autoscaling_thread_pool_checks_arguments() -> None:
+    """
+    Asserts that the autoscaling thread pool checks for valid arguments on construction.
+    """
+    with pytest.raises(ValueError):
+        AutoScalingThreadPool(min_workers=-1)
+
+    with pytest.raises(ValueError):
+        AutoScalingThreadPool(max_workers=0)
+
+    with pytest.raises(ValueError):
+        AutoScalingThreadPool(max_idle_time=-1)
+
+    with pytest.raises(ValueError):
+        AutoScalingThreadPool(submission_quota=0)
+
+    with pytest.raises(ValueError):
+        AutoScalingThreadPool(submission_patience=-1)
+
+
+def test_autoscaling_thread_pool_when_shutdown() -> None:
+    """
+    Asserts that the autoscaling thread no longer accepts work when shutdown.
+    """
+    pool = AutoScalingThreadPool()
+
+    pool.shutdown()
+
+    with pytest.raises(RuntimeError):
+        pool.submit(lambda: None)
+
+
+def test_autoscaling_thread_pool_with_limits() -> None:
+    """
+    Asserts that the autoscaling thread pool enforces the user-defined range on the number of workers.
+    """
+
+    pool = AutoScalingThreadPool(min_workers=2, max_workers=5, max_idle_time=0.1)
+    assert len(pool.workers) == 2
+    assert not pool.working
+
+    events = [threading.Event() for _ in range(10)]
+    results = pool.map(lambda i, e: e.wait() and i, range(10), events)
+    assert len(pool.workers) == 5
+    assert pool.working
+
+    for e in events:
+        e.set()
+    assert list(results) == list(range(10))
+
+    def predicate() -> bool:
+        return len(pool.workers) == 2
+
+    with pool.scaling_event:
+        assert pool.scaling_event.wait_for(predicate, timeout=10)
+    assert not pool.working
+
+    pool.shutdown()
 
 
 def test_autoscaling_thread_pool_with_quota() -> None:
@@ -84,17 +148,21 @@ def test_autoscaling_thread_pool_with_quota() -> None:
     assert list(results) == list(range(10))
     assert len(pool.workers) == 5
 
-    for worker in pool.workers:
-        worker.join(timeout=10)
-        assert not worker.is_alive()
-    assert len(pool.workers) == 0
+    def predicate() -> bool:
+        return len(pool.workers) == 0
+
+    with pool.scaling_event:
+        assert pool.scaling_event.wait_for(predicate, timeout=10)
     assert not pool.working
+
+    pool.shutdown()
 
 
 def test_autoscaling_executor(ros_context: Context, ros_node: Node) -> None:
     """
-    Asserts that the autoscaling multithreaded executor scales to attend a synchronous service call from a
-    "one-shot" timer callback, serviced by the same executor.
+    Asserts that the autoscaling multithreaded executor scales to attend a
+    synchronous service call from a "one-shot" timer callback, serviced by
+    the same executor.
     """
 
     def dummy_server_callback(_: Trigger.Request, response: Trigger.Response) -> Trigger.Response:
