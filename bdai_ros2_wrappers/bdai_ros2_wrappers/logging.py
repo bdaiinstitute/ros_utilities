@@ -61,7 +61,18 @@ def logs_to_ros(node: Node) -> typing.Iterator[None]:
     """
     Forwards root `logging.Logger` logs to the ROS 2 logging system.
 
-    :param node: a ROS 2 node, necessary for rosout logging (if enabled).
+    Note that logs are subject to severity level thresholds and propagation
+    semantics at both the `logging` module and the ROS 2 logging system. For
+    instance, for an informational log made from a non-root `logging` logger
+    to find its way to a ROS 2 logging system sink like the `/rosout` topic:
+
+    - the entire `logging` hierarchy all the way up to the root logger, and the
+      ROS 2 node logger must be configured with a severity level at or below
+      INFO;
+    - and the `logging` hierarchy must be configured to propagate logs (true by default).
+
+    Args:
+        node: a ROS 2 node, necessary for rosout logging (if enabled).
     """
     root = logging.getLogger()
     handler = RcutilsLogHandler(node)
