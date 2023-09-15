@@ -13,10 +13,15 @@ import weakref
 import rclpy.executors
 
 
-def classname(obj: typing.Any) -> str:
-    """Computes the fully qualified class name for a given object."""
-    cls = obj.__class__
-    return f"{cls.__module__}.{cls.__qualname__}"
+def fqn(obj: typing.Any) -> typing.Optional[str]:
+    """Computes the fully qualified name of a given object, if any."""
+    if not hasattr(obj, "__qualname__"):
+        return None
+    name = obj.__qualname__
+    if not hasattr(obj, "__module__"):
+        return name
+    module = obj.__module__
+    return f"{module}.{name}"
 
 
 class AutoScalingThreadPool(concurrent.futures.Executor):
@@ -25,8 +30,27 @@ class AutoScalingThreadPool(concurrent.futures.Executor):
 
     Akin to the concurrent.futures.ThreadPoolExecutor class but with
     autoscaling capabilities. Within a given range, the number of
-    workers increases with demand (ie. submissions) and decreases
-    with time (ie. when idle for long enough).
+    workers increases with demand and decreases with time. This is
+    achieved by tracking the number of available runslots ie. the
+    number of idle workers waiting for work, and using timeouts to
+    wait for work. Workers add runslots prior to blocking on the
+    runqueue. On submission, a runslot will be taken. If there is no
+    runslot to take, the pool will be scaled up. If a work has been
+    waiting long enough and no work has come along, it will be self
+    terminate, effectively downscaling the pool.
+
+    Additionally, individual submissions are tracked and monitored against
+    a configurable quota to avoid any given piece of work from starving the pool.
+    To do this, the implementations takes after CPython's implementation
+    of the concurrent.futures.ThreadPoolExecutor class, adding runlists
+    and waitqueues per submission "type" (ie. callable hashes) to the main
+    runqueue. Runlists track work either pending execution in the runqueue
+    or executing. Waitqueues track work that is to pushed into the runqueue
+    once the configured quota allows it.
+
+    If not shutdown explictly or via context management, the pool will
+    self terminate when either the executor is garbage collected or the
+    interpreter shuts down.
 
     See concurrent.futures.Executor documentation for further reference.
     """
@@ -85,8 +109,21 @@ class AutoScalingThreadPool(concurrent.futures.Executor):
             assert self.future.cancelled()
             self.future.set_running_or_notify_cancel()
 
+        def __str__(self) -> str:
+            return f"{fqn(self.fn) or fqn(type(self.fn))} ({hash(self.fn)})"
+
     class Worker(threading.Thread):
+        """A worker in its own daemonized OS thread."""
+
         def __init__(self, executor_weakref: weakref.ref, stop_on_timeout: bool = True) -> None:
+            """
+            Initializes the worker.
+
+            Args:
+                executor_weakref: a weak reference to the parent autoscaling thread pool.
+                stop_on_timeout: whether the worker should auto-terminate if it times out
+                waiting for work.
+            """
             super().__init__(daemon=True)
             self._executor_weakref = executor_weakref
             executor = executor_weakref()
@@ -97,51 +134,77 @@ class AutoScalingThreadPool(concurrent.futures.Executor):
             else:
                 self._timeout = None
             self._logger = executor._logger
+            self._logger.debug("Starting worker...")
             self.start()
 
         def run(self) -> None:
+            """Runs work loop."""
             try:
+                self._logger.debug("Worker started")
                 work: typing.Optional[AutoScalingThreadPool.Work] = None
                 while True:
                     if AutoScalingThreadPool._interpreter_shutdown:
+                        self._logger.debug("Interpreter is shutting down! Terminating worker...")
                         self._runqueue.put(None)
                         break
 
                     executor: typing.Optional[AutoScalingThreadPool] = self._executor_weakref()
-                    if executor is None or executor._shutdown:
+                    if executor is None:
+                        self._logger.debug("Executor is gone! Terminating worker...")
+                        self._runqueue.put(None)
+                        break
+
+                    if executor._shutdown:
+                        self._logger.debug("Executor is shutting down! Terminating worker...")
                         self._runqueue.put(None)
                         break
 
                     runslots = executor._runslots
                     if work is not None:
                         if executor._cleanup_after(work):
+                            self._logger.debug("Making worker available for work...")
                             runslots.release()
+                            self._logger.debug("Worker made available for work")
                         work = None
                     else:
+                        self._logger.debug("Making worker available for work...")
                         runslots.release()
+                        self._logger.debug("Worker made available for work")
                     del executor  # drop reference
 
+                    self._logger.debug("Worker waiting for work...")
                     try:
                         work = self._runqueue.get(block=True, timeout=self._timeout)
                     except queue.Empty:
+                        self._logger.debug("Worker timed out waiting!")
                         if runslots.acquire(blocking=False):
+                            self._logger.debug("Terminating worker...")
                             break
+                        self._logger.debug("Work incoming, worker back to waiting")
                         continue
 
                     if work is not None:
+                        self._logger.debug(f"Worker executing work '{work}'...")
                         work.execute()
+                        self._logger.debug(f"Worker done executing work '{work}'")
             except BaseException:
                 import textwrap
                 import traceback
 
                 trace = textwrap.indent(traceback.format_exc(), "  ")
-                self._logger.error("Worker threw an exception: \n%s", trace)
+                self._logger.error(f"Worker threw an exception: \n{trace}")
             finally:
+                self._logger.debug("Worker terminated")
                 executor = self._executor_weakref()
                 if executor is not None:
+                    self._logger.debug("Downscaling pool...")
                     with executor._scaling_event:
+                        # NOTE(hidmic): worker removes itself from the pool
+                        # to avoid race conditions between the scaling event
+                        # and the thread actually getting clobbered.
                         executor._workers.remove(self)
                         executor._scaling_event.notify_all()
+                    self._logger.debug("Done downscaling")
 
     def __init__(
         self,
@@ -182,6 +245,8 @@ class AutoScalingThreadPool(concurrent.futures.Executor):
 
         if max_workers is None:
             max_workers = 32 * (os.cpu_count() or 1)
+        if max_workers <= 0:
+            raise ValueError("Maximum number of workers must be a positive number")
         if max_workers < min_workers:
             raise ValueError("Maximum number of workers must be larger than or equal to the minimum number of workers")
         self._max_workers = max_workers
@@ -205,9 +270,10 @@ class AutoScalingThreadPool(concurrent.futures.Executor):
         self._submission_patience = submission_patience
 
         if logger is None:
-            logger = logging.getLogger(classname(self))
+            logger = logging.getLogger(fqn(self.__class__))
         self._logger = logger
 
+        self._logger.debug("Initializing thread pool...")
         self._shutdown = False
         self._submit_lock = threading.Lock()
         self._shutdown_lock = threading.Lock()
@@ -227,18 +293,27 @@ class AutoScalingThreadPool(concurrent.futures.Executor):
         with AutoScalingThreadPool._lock:
             if AutoScalingThreadPool._interpreter_shutdown:
                 raise RuntimeError("cannot create thread pool while interpreter is shutting down")
-            # register runqueue for external wake up  on interpreter shutdown
             self._runqueue = runqueue
+            self._logger.debug("Registering runqueue for external wake up on interpreter shutdown...")
             AutoScalingThreadPool._all_runqueues.add(runqueue)
+            self._logger.debug("Done registering runqueue")
 
             self._workers: weakref.WeakSet[AutoScalingThreadPool.Worker] = weakref.WeakSet()
-            with self._scaling_event:
-                for _ in range(self._min_workers):  # fire up stable worker pool
-                    worker = AutoScalingThreadPool.Worker(self._weak_self, stop_on_timeout=False)
-                    # register worker for external joining on interpreter shutdown
-                    AutoScalingThreadPool._all_workers.add(worker)
-                    self._workers.add(worker)
+            if self._min_workers > 0:
+                with self._scaling_event:
+                    self._logger.debug(f"Pre-populating pool with {self._min_workers} workers")
+                    for _ in range(self._min_workers):  # fire up stable worker pool
+                        worker = AutoScalingThreadPool.Worker(self._weak_self, stop_on_timeout=False)
+                        # register worker for external joining on interpreter shutdown
+                        self._logger.debug("Registering worker for external joining on interpreter shutdown...")
+                        AutoScalingThreadPool._all_workers.add(worker)
+                        self._logger.debug("Done registering worker")
+                        self._logger.debug("Adding worker to the pool...")
+                        self._workers.add(worker)
+                        self._logger.debug("Worker added")
                     self._scaling_event.notify_all()
+                    self._logger.debug("Done pre-populating")
+            self._logger.debug("Done initializing thread pool")
 
     @property
     def workers(self) -> typing.List[threading.Thread]:
@@ -287,35 +362,50 @@ class AutoScalingThreadPool(concurrent.futures.Executor):
     def _cleanup_after(self, work: "AutoScalingThreadPool.Work") -> bool:
         complete = True
         with self._submit_lock:
+            self._logger.debug(f"Cleaning up after work '{work}'")
             self._runlists[work.fn].remove(work)
             if work.fn in self._waitqueues and self._waitqueues[work.fn]:  # continue with pending work
+                self._logger.debug("Have similar work pending!")
+                self._logger.debug("Fetching pending work...")
                 work = self._waitqueues[work.fn].popleft()
                 while work.cancelled() and self._waitqueues[work.fn]:
+                    self._logger.debug(f"Work '{work}' was cancelled, notify it")
                     work.notify_cancelation()
                     work = self._waitqueues[work.fn].popleft()
+                self._logger.debug(f"Got work '{work}'")
                 if not self._waitqueues[work.fn]:
                     del self._waitqueues[work.fn]
                 if not work.cancelled():
+                    self._logger.debug(f"Proceed with work '{work}'")
                     self._runlists[work.fn].append(work)
                     self._runqueue.put(work)  # actually submit work
                     complete = False
                 else:
+                    self._logger.debug(f"Work '{work}' was cancelled, notify it")
                     work.notify_cancelation()
             if not self._runlists[work.fn]:
                 del self._runlists[work.fn]
         return complete
 
     def _do_submit(self, work: "AutoScalingThreadPool.Work") -> None:
+        self._logger.debug("Looking for workers...")
         while not self._runslots.acquire(timeout=self._submission_patience):
+            self._logger.debug(f"Not enough workers to execute work '{work}'")
             if len(self._workers) >= self._max_workers:
+                self._logger.debug("Pool already hit its maximum size, nothing to do")
                 break
+            self._logger.debug("Upscaling pool...")
             with self._scaling_event:
                 worker = AutoScalingThreadPool.Worker(self._weak_self)
                 with AutoScalingThreadPool._lock:
                     AutoScalingThreadPool._all_workers.add(worker)
                 self._workers.add(worker)
                 self._scaling_event.notify_all()
+            self._logger.debug("Done upscaling")
+        self._logger.debug("Got worker!")
+        self._logger.debug(f"Queuing work '{work}' for execution...")
         self._runqueue.put(work)
+        self._logger.debug(f"Work '{work}' queued")
 
     # NOTE(hidmic): cannot recreate type signature for method override
     # See https://github.com/python/typeshed/blob/main/stdlib/concurrent/futures/_base.pyi.
@@ -341,24 +431,36 @@ class AutoScalingThreadPool(concurrent.futures.Executor):
             if self._shutdown:
                 raise RuntimeError("cannot submit to a shutdown pool")
             future: concurrent.futures.Future = concurrent.futures.Future()
-            WorkT = AutoScalingThreadPool.Work
-            work = WorkT(future, fn, args, kwargs)
+            work = AutoScalingThreadPool.Work(future, fn, args, kwargs)
+            self._logger.debug(
+                f"Submitting work '{work}'...",
+            )
             if self._submission_quota > len(self._runlists[work.fn]):
                 if work.fn in self._waitqueues and self._waitqueues[work.fn]:  # prioritize pending work
+                    self._logger.debug("Have similar work pending")
+                    self._logger.debug(f"Work '{work}' put to wait", work)
                     self._waitqueues[work.fn].append(work)
+                    self._logger.debug("Fetching pending work...")
                     work = self._waitqueues[work.fn].popleft()
                     while work.cancelled() and self._waitqueues[work.fn]:
+                        self._logger.debug(f"Work '{work}' was cancelled, notify it")
                         work.notify_cancelation()
                         work = self._waitqueues[work.fn].popleft()
                     if not self._waitqueues[work.fn]:
                         del self._waitqueues[work.fn]
+                    self._logger.debug(f"Got work '{work}'")
                 if not work.cancelled():
+                    self._logger.debug(f"Proceed with work '{work}'")
                     self._runlists[work.fn].append(work)
                     self._do_submit(work)  # actually submit work
                 else:
+                    self._logger.debug(f"Work '{work}' was cancelled, notify it")
                     work.notify_cancelation()
             else:
+                self._logger.debug(f"Hit quota for work '{work}'")
                 self._waitqueues[work.fn].append(work)
+                self._logger.debug(f"Work '{work}' put to wait")
+            self._logger.debug(f"Done submitting work '{work}'")
             return future
 
     def shutdown(self, wait: bool = True, *, cancel_futures: bool = False) -> None:
@@ -369,26 +471,35 @@ class AutoScalingThreadPool(concurrent.futures.Executor):
             wait: whether to wait for all worker threads to shutdown.
             cancel_futures: whether to cancel all ongoing work (and associated futures).
         """
+        self._logger.debug("Shutting down pool...")
         with self._shutdown_lock:
             self._shutdown = True
+        self._logger.debug("Pool shutdown")
 
         if cancel_futures:
             with self._submit_lock:
+                self._logger.debug("Canceling all work in progress...")
                 for runlist in self._runlists.values():
                     for work in runlist:
                         work.cancel()
+                self._logger.debug("Work in progress cancelled")
+                self._logger.debug("Canceling all pending work...")
                 for waitqueue in self._waitqueues.values():
                     for work in waitqueue:
                         work.cancel()
+                self._logger.debug("Pending work cancelled")
 
+        self._logger.debug("Wake up all workers for cleanup")
         self._runqueue.put(None)
         if wait:
+            self._logger.debug("Waiting for workers to terminate...")
             with self.scaling_event:
 
                 def predicate() -> bool:
                     return len(self._workers) == 0
 
                 self.scaling_event.wait_for(predicate)
+            self._logger.debug("Workers terminated, pool is empty")
 
 
 atexit.register(AutoScalingThreadPool._on_interpreter_shutdown)
@@ -448,7 +559,7 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
         """
         super().__init__(context=context)
         if logger is None:
-            logger = rclpy.logging.get_logger(classname(self))
+            logger = rclpy.logging.get_logger(fqn(self.__class__))
         self._thread_pool = AutoScalingThreadPool(
             max_workers=max_threads,
             max_idle_time=max_thread_idle_time,

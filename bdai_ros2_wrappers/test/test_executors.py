@@ -38,28 +38,26 @@ def test_autoscaling_thread_pool() -> None:
     Asserts that the autoscaling thread pool scales and de-scales on demand.
     """
 
-    pool = AutoScalingThreadPool(max_idle_time=2.0)
-    assert len(pool.workers) == 0
-    assert not pool.working
+    with AutoScalingThreadPool(max_idle_time=2.0) as pool:
+        assert len(pool.workers) == 0
+        assert not pool.working
 
-    events = [threading.Event() for _ in range(10)]
-    results = pool.map(lambda i, e: e.wait() and i, range(10), events)
-    assert len(pool.workers) == len(events)
-    assert pool.working
-    assert not pool.capped
+        events = [threading.Event() for _ in range(10)]
+        results = pool.map(lambda i, e: e.wait() and i, range(10), events)
+        assert len(pool.workers) == len(events)
+        assert pool.working
+        assert not pool.capped
 
-    for e in events:
-        e.set()
-    assert list(results) == list(range(10))
+        for e in events:
+            e.set()
+        assert list(results) == list(range(10))
 
-    def predicate() -> bool:
-        return len(pool.workers) == 0
+        def predicate() -> bool:
+            return len(pool.workers) == 0
 
-    with pool.scaling_event:
-        assert pool.scaling_event.wait_for(predicate, timeout=10)
-    assert not pool.working
-
-    pool.shutdown()
+        with pool.scaling_event:
+            assert pool.scaling_event.wait_for(predicate, timeout=10)
+        assert not pool.working
 
 
 def test_autoscaling_thread_pool_checks_arguments() -> None:
@@ -99,27 +97,25 @@ def test_autoscaling_thread_pool_with_limits() -> None:
     Asserts that the autoscaling thread pool enforces the user-defined range on the number of workers.
     """
 
-    pool = AutoScalingThreadPool(min_workers=2, max_workers=5, max_idle_time=0.1)
-    assert len(pool.workers) == 2
-    assert not pool.working
+    with AutoScalingThreadPool(min_workers=2, max_workers=5, max_idle_time=0.1) as pool:
+        assert len(pool.workers) == 2
+        assert not pool.working
 
-    events = [threading.Event() for _ in range(10)]
-    results = pool.map(lambda i, e: e.wait() and i, range(10), events)
-    assert len(pool.workers) == 5
-    assert pool.working
+        events = [threading.Event() for _ in range(10)]
+        results = pool.map(lambda i, e: e.wait() and i, range(10), events)
+        assert len(pool.workers) == 5
+        assert pool.working
 
-    for e in events:
-        e.set()
-    assert list(results) == list(range(10))
+        for e in events:
+            e.set()
+        assert list(results) == list(range(10))
 
-    def predicate() -> bool:
-        return len(pool.workers) == 2
+        def predicate() -> bool:
+            return len(pool.workers) == 2
 
-    with pool.scaling_event:
-        assert pool.scaling_event.wait_for(predicate, timeout=10)
-    assert not pool.working
-
-    pool.shutdown()
+        with pool.scaling_event:
+            assert pool.scaling_event.wait_for(predicate, timeout=10)
+        assert not pool.working
 
 
 def test_autoscaling_thread_pool_with_quota() -> None:
@@ -127,35 +123,33 @@ def test_autoscaling_thread_pool_with_quota() -> None:
     Asserts that the autoscaling thread pool respects submission quotas.
     """
 
-    pool = AutoScalingThreadPool(submission_quota=5, submission_patience=1.0, max_idle_time=2.0)
-    assert len(pool.workers) == 0
-    assert not pool.working
+    with AutoScalingThreadPool(submission_quota=5, submission_patience=1.0, max_idle_time=2.0) as pool:
+        assert len(pool.workers) == 0
+        assert not pool.working
 
-    events = [threading.Event() for _ in range(10)]
-    results = pool.map(lambda i, e: e.wait() and i, range(10), events)
-    assert len(pool.workers) == 5
-    assert pool.working
-    assert pool.capped
+        events = [threading.Event() for _ in range(10)]
+        results = pool.map(lambda i, e: e.wait() and i, range(10), events)
+        assert len(pool.workers) == 5
+        assert pool.working
+        assert pool.capped
 
-    for e in events[:5]:
-        e.set()
-    assert len(pool.workers) == 5
+        for e in events[:5]:
+            e.set()
+            assert len(pool.workers) == 5
 
-    for e in events[5:]:
-        e.set()
-    assert len(pool.workers) == 5
+        for e in events[5:]:
+            e.set()
+            assert len(pool.workers) == 5
 
-    assert list(results) == list(range(10))
-    assert len(pool.workers) == 5
+        assert list(results) == list(range(10))
+        assert len(pool.workers) == 5
 
-    def predicate() -> bool:
-        return len(pool.workers) == 0
+        def predicate() -> bool:
+            return len(pool.workers) == 0
 
-    with pool.scaling_event:
-        assert pool.scaling_event.wait_for(predicate, timeout=10)
-    assert not pool.working
-
-    pool.shutdown()
+        with pool.scaling_event:
+            assert pool.scaling_event.wait_for(predicate, timeout=10)
+        assert not pool.working
 
 
 def test_autoscaling_executor(ros_context: Context, ros_node: Node) -> None:
