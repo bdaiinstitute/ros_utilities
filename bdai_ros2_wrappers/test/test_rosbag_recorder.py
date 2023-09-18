@@ -4,12 +4,11 @@ import unittest
 from typing import Optional
 
 import rclpy
-from rclpy.node import Node
 from rclpy import Context
+from rclpy.node import Node
+from std_msgs.msg import String
 
 from bdai_ros2_wrappers.rosbag_recorder import ROSBagRecorder
-from rclpy.executors import MultiThreadedExecutor
-from std_msgs.msg import String
 
 BAG_FILE_DIR = os.path.join(os.getenv("BDAI", "/workspaces/bdai"), "recording")
 BAG_FILE_NAME = "unit_test_ros2_bag"
@@ -17,15 +16,15 @@ BAG_FILE_NAME = "unit_test_ros2_bag"
 
 class MinimalPublisher(Node):
     def __init__(self) -> None:
-        super().__init__('minimal_publisher')
-        self.publisher_ = self.create_publisher(String, 'topic', 10)
+        super().__init__("minimal_publisher")
+        self.publisher_ = self.create_publisher(String, "topic", 10)
         timer_period = 0.5  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
         self.i = 0
 
     def timer_callback(self) -> None:
         msg = String()
-        msg.data = 'Hello World: %d' % self.i
+        msg.data = "Hello World: %d" % self.i
         self.publisher_.publish(msg)
         self.get_logger().info('Publishing: "%s"' % msg.data)
         self.i += 1
@@ -54,6 +53,7 @@ class ROSBagRecorderTest(unittest.TestCase):
         expected_bag_file_path = os.path.join(BAG_FILE_DIR, BAG_FILE_NAME)
         self.assertEqual(expected_bag_file_path, self.rosbag_recorder.bag_path)
         self.assertTrue(os.path.exists(self.rosbag_recorder.bag_path))
+
 
 if __name__ == "__main__":
     unittest.main()
