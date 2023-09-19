@@ -34,7 +34,7 @@ class ROSBagRecorderTest(unittest.TestCase):
     def setUp(self) -> None:
         self.context: Optional[Context] = Context()
         rclpy.init(context=self.context)
-        self.rosbag_recorder = ROSBagRecorder(bag_file_name=BAG_FILE_NAME, bag_file_dir=BAG_FILE_DIR)
+        self.rosbag_recorder = ROSBagRecorder(os.path.join(BAG_FILE_NAME, BAG_FILE_DIR))
         self.minimal_pub = MinimalPublisher()
 
         self.rosbag_recorder.start()
