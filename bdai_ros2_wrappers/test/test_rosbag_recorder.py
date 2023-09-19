@@ -31,9 +31,10 @@ class MinimalPublisher(Node):
 
 
 class ROSBagRecorderTest(unittest.TestCase):
+
     def setUp(self) -> None:
-        self.context: Optional[Context] = Context()
-        rclpy.init(context=self.context)
+        rclpy.init()
+
         self.rosbag_recorder = ROSBagRecorder(os.path.join(BAG_FILE_NAME, BAG_FILE_DIR))
         self.minimal_pub = MinimalPublisher()
 
