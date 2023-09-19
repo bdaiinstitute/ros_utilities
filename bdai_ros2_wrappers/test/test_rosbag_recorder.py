@@ -1,10 +1,8 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 import os
 import unittest
-from typing import Optional
 
 import rclpy
-from rclpy import Context
 from rclpy.node import Node
 from std_msgs.msg import String
 
@@ -31,7 +29,6 @@ class MinimalPublisher(Node):
 
 
 class ROSBagRecorderTest(unittest.TestCase):
-
     def setUp(self) -> None:
         rclpy.init()
 
@@ -44,8 +41,7 @@ class ROSBagRecorderTest(unittest.TestCase):
     def tearDown(self) -> None:
         self.rosbag_recorder.stop()
         self.minimal_pub.destroy_node()
-        rclpy.shutdown(context=self.context)
-        self.context = None
+        rclpy.shutdown()
 
     def test_bag_creation(self) -> None:
         """
