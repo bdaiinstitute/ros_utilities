@@ -1,5 +1,4 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
-import os
 import threading
 from datetime import datetime
 
