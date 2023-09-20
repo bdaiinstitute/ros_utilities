@@ -10,6 +10,7 @@ from bdai_ros2_wrappers.rosbag_recorder import ROSBagRecorder
 
 BAG_FILE_DIR = os.path.join(os.getenv("BDAI", "/workspaces/bdai"), "recording")
 BAG_FILE_NAME = "unit_test_ros2_bag"
+PUBLISH_COUNT = 20
 
 
 class MinimalPublisher(Node):
@@ -26,17 +27,23 @@ class MinimalPublisher(Node):
         self.publisher_.publish(msg)
         self.get_logger().info('Publishing: "%s"' % msg.data)
         self.i += 1
+        if self.i <= PUBLISH_COUNT:
+            self.get_logger().info("Publish Count reached. Exiting test.")
+            raise SystemExit
 
 
 class ROSBagRecorderTest(unittest.TestCase):
     def setUp(self) -> None:
         rclpy.init()
 
-        self.rosbag_recorder = ROSBagRecorder(os.path.join(BAG_FILE_NAME, BAG_FILE_DIR))
+        self.rosbag_recorder = ROSBagRecorder(os.path.join(BAG_FILE_DIR, BAG_FILE_NAME))
         self.minimal_pub = MinimalPublisher()
 
-        self.rosbag_recorder.start()
-        rclpy.spin(self.minimal_pub)
+        try:
+            self.rosbag_recorder.start()
+            rclpy.spin(self.minimal_pub)
+        except SystemExit:
+            pass
 
     def tearDown(self) -> None:
         self.rosbag_recorder.stop()

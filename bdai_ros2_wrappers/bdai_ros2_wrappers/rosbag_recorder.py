@@ -1,11 +1,8 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 import threading
-from datetime import datetime
 
 import rclpy
 from rosbag2_py import Recorder, RecordOptions, StorageOptions
-
-ROS_BAG_NAME_TIMESTAMP_FORMAT: str = "rosbag2_%Y_%m_%d-%H_%M_%S_%f"
 
 
 class ROSBagRecorder(object):
@@ -19,7 +16,7 @@ class ROSBagRecorder(object):
         self._record_options = RecordOptions()
         self._record_options.all = True
 
-        self._bag_path = "{}_{}".format(bag_file_path, datetime.now().strftime(ROS_BAG_NAME_TIMESTAMP_FORMAT))
+        self._bag_path = bag_file_path
 
         self._storage_options = StorageOptions(uri=self._bag_path, storage_id=storage_id)
 
