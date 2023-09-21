@@ -1,6 +1,6 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
-import os
 import unittest
+from pathlib import Path
 
 import rclpy
 from rclpy.node import Node
@@ -8,7 +8,7 @@ from std_msgs.msg import String
 
 from bdai_ros2_wrappers.rosbag_recorder import ROSBagRecorder
 
-BAG_FILE_DIR = os.path.join(os.getenv("BDAI", "/workspaces/bdai"), "recording")
+BAG_FILE_DIR = Path.home() / "recordings"
 BAG_FILE_NAME = "unit_test_ros2_bag"
 PUBLISH_COUNT = 20
 
@@ -36,7 +36,7 @@ class ROSBagRecorderTest(unittest.TestCase):
     def setUp(self) -> None:
         rclpy.init()
 
-        self.rosbag_recorder = ROSBagRecorder(os.path.join(BAG_FILE_DIR, BAG_FILE_NAME))
+        self.rosbag_recorder = ROSBagRecorder(Path(BAG_FILE_DIR, BAG_FILE_NAME))
         self.minimal_pub = MinimalPublisher()
 
         try:
@@ -54,9 +54,9 @@ class ROSBagRecorderTest(unittest.TestCase):
         """
         Tests normal operation of recording a minimal publisher, ensure rosbag is generated
         """
-        expected_bag_file_path = os.path.join(BAG_FILE_DIR, BAG_FILE_NAME)
+        expected_bag_file_path = Path(BAG_FILE_DIR, BAG_FILE_NAME)
         self.assertEqual(expected_bag_file_path, self.rosbag_recorder.bag_path)
-        self.assertTrue(os.path.exists(self.rosbag_recorder.bag_path))
+        self.assertTrue(self.rosbag_recorder.bag_path.exists())
 
 
 if __name__ == "__main__":
