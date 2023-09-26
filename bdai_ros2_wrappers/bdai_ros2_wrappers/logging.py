@@ -22,6 +22,21 @@ SEVERITY_MAP = {
 }
 
 
+if not typing.TYPE_CHECKING:
+    import os.path
+    import warnings
+    import xml.etree.ElementTree as ET
+
+    import ament_index_python
+    import packaging.version
+
+    share_directory = ament_index_python.get_package_share_directory("rclpy")
+    tree = ET.parse(os.path.join(share_directory, "package.xml"))
+    version = tree.getroot().find("version")
+    if packaging.version.parse(version.text) >= packaging.version.parse("3.9.0"):
+        warnings.warn("TODO: use subloggers in RcutilsLogHandler implementation")
+
+
 class RcutilsLogHandler(logging.Handler):
     """A `logging.Handler` subclass to forward log records to the ROS 2 logging system."""
 
@@ -43,12 +58,8 @@ class RcutilsLogHandler(logging.Handler):
         try:
             message = self.format(record)
             severity = SEVERITY_MAP[record.levelno]
-            # NOTE(hidmic): this bypasses the rclpy logger API
-            # to avoid the extra meaningless computations (e.g.
-            # call stack inspection).
-            #
-            # TODO(hidmic): use subloggers when migrating to Iron
-            # (or the feature is backported to Humble).
+            # NOTE(hidmic): this bypasses the rclpy logger API to avoid the extra meaningless
+            # computations (e.g. call stack inspection).
             impl.rclpy_logging_rcutils_log(
                 severity, self.logger.name, message, record.funcName, record.pathname, record.lineno
             )
