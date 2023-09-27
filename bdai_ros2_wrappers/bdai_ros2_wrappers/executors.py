@@ -3,6 +3,7 @@ import atexit
 import collections
 import concurrent.futures
 import dataclasses
+import inspect
 import logging
 import os
 import queue
@@ -520,7 +521,7 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
     class Task:
         """A bundle of an executable task and its associated entity."""
 
-        def __init__(self, task: rclpy.task.Task, entity: rclpy.executors.WaitableEntityType) -> None:
+        def __init__(self, task: rclpy.task.Task, entity: typing.Optional[rclpy.executors.WaitableEntityType]) -> None:
             self.task = task
             self.entity = entity
             self.callback_group = entity.callback_group if entity is not None else None
@@ -531,8 +532,21 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
         def __getattr__(self, name: str) -> typing.Any:
             return getattr(self.task, name)
 
+        def cancel(self) -> None:
+            # This is a re-implementation to cope with rclpy.task.Task
+            # leaving coroutines unawaited upon cancellation.
+            schedule_callbacks = False
+            with self.task._task_lock, self.task._lock:
+                if not self.task._done:
+                    if inspect.iscoroutine(self.task._handler):
+                        self.task._handler.close()
+                    self.task._done = self.task._cancelled = True
+                    schedule_callbacks = True
+            if schedule_callbacks:
+                self.task._schedule_or_invoke_done_callbacks()
+
         def __hash__(self) -> int:
-            # ignore the task itself, as it changes from execution to execution
+            # Ignore the task itself, as it changes from execution to execution
             return hash((self.entity, self.callback_group))
 
     def __init__(
@@ -560,13 +574,16 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
         super().__init__(context=context)
         if logger is None:
             logger = rclpy.logging.get_logger(fqn(self.__class__))
+        self._is_shutdown = False
+        self._spin_lock = threading.Lock()
+        self._shutdown_lock = threading.RLock()
         self._thread_pool = AutoScalingThreadPool(
             max_workers=max_threads,
             max_idle_time=max_thread_idle_time,
             submission_quota=max_threads_per_callback_group,
             logger=logger,
         )
-        self._futures: typing.List[AutoScalingMultiThreadedExecutor.Task] = []
+        self._wip: typing.Dict[AutoScalingMultiThreadedExecutor.Task, concurrent.futures.Future] = {}
 
     @property
     def thread_pool(self) -> AutoScalingThreadPool:
@@ -574,25 +591,40 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
         return self._thread_pool
 
     def _do_spin_once(self, *args: typing.Any, **kwargs: typing.Any) -> None:
-        try:
-            task, entity, node = self.wait_for_ready_callbacks(*args, **kwargs)
-        except rclpy.executors.ExternalShutdownException:
-            pass
-        except rclpy.executors.ShutdownException:
-            pass
-        except rclpy.executors.TimeoutException:
-            pass
-        except rclpy.executors.ConditionReachedException:
-            pass
-        else:
-            task = AutoScalingMultiThreadedExecutor.Task(task, entity)
-            self._thread_pool.submit(task)
-            self._futures.append(task)
-
-            for task in self._futures[:]:
-                if task.done():
-                    self._futures.remove(task)
-                    task.result()
+        with self._spin_lock:
+            try:
+                task, entity, node = self.wait_for_ready_callbacks(*args, **kwargs)
+                task = AutoScalingMultiThreadedExecutor.Task(task, entity)
+                with self._shutdown_lock:
+                    if self._is_shutdown:
+                        # Ignore task, let shutdown clean it up.
+                        return
+                    # The following guards against a TOCTOU race between rclpy.executors.Executor
+                    # base implementation checking for executing tasks and tasks actually executing
+                    # in the thread pool. That is, a task may be executing at the time of check but
+                    # be done by the time it is about to be submitted to the pool. The only source
+                    # of truth in that scenario is the future of the last submission (which
+                    # guarantees the task is not executing if done).
+                    #
+                    # Another race remains, however, for asynchronous tasks (ie. using coroutines)
+                    # between the time an execution cycle is complete and the corresponding
+                    # submission future is done. That is, a task could be legitimately ready for
+                    # dispatch and be missed. Fortunately, this will only delay dispatch until the
+                    # next spin cycle.
+                    if task not in self._wip or (self._wip[task].done() and not task.done()):
+                        self._wip[task] = self._thread_pool.submit(task)
+                    for task in list(self._wip):
+                        if task.done():
+                            del self._wip[task]
+                            task.result()
+            except rclpy.executors.ConditionReachedException:
+                pass
+            except rclpy.executors.ExternalShutdownException:
+                pass
+            except rclpy.executors.ShutdownException:
+                pass
+            except rclpy.executors.TimeoutException:
+                pass
 
     def spin_once(self, timeout_sec: typing.Optional[float] = None) -> None:
         self._do_spin_once(timeout_sec)
@@ -604,7 +636,21 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
         self._do_spin_once(timeout_sec, condition=future.done)
 
     def shutdown(self, timeout_sec: typing.Optional[float] = None) -> bool:
-        done = super().shutdown(timeout_sec)
+        with self._shutdown_lock:
+            # Before actual shutdown and resource cleanup, all pending work
+            # must be waited on. Work tracking in rclpy.executors.Executor
+            # base implementation is subject to races, so block thread pool
+            # submissions and wait for all futures to finish. Then shutdown.
+            done = self._thread_pool.wait(timeout_sec)
+            if done:
+                assert super().shutdown(timeout_sec=0)
+                self._thread_pool.shutdown()
+                self._is_shutdown = True
         if done:
-            self._thread_pool.shutdown()
+            with self._spin_lock:
+                # rclpy.executors.Executor base implementation leaves tasks
+                # unawaited upon shutdown. Do the housekeepng.
+                for task, entity, _ in self._tasks:
+                    task = AutoScalingMultiThreadedExecutor.Task(task, entity)
+                    task.cancel()
         return done
