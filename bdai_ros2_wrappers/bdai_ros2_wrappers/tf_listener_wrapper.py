@@ -15,7 +15,10 @@ import bdai_ros2_wrappers.process as process
 
 class TFListenerWrapper(object):
     def __init__(
-        self, node: Node, wait_for_transform: Optional[Tuple[str, str]] = None, cache_time_s: Optional[int] = None
+        self,
+        node: Optional[Node] = None,
+        wait_for_transform: Optional[Tuple[str, str]] = None,
+        cache_time_s: Optional[int] = None,
     ) -> None:
         node = node or process.node()
         if node is None:
