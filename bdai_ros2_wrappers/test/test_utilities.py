@@ -2,7 +2,7 @@
 
 import argparse
 
-from bdai_ros2_wrappers.utilities import either_or
+from bdai_ros2_wrappers.utilities import either_or, namespace
 
 
 def test_either_or() -> None:
@@ -11,3 +11,10 @@ def test_either_or() -> None:
     assert either_or(data, "value", False)
     data = argparse.Namespace(value=True, getter=lambda obj: obj.value)
     assert either_or(data, "getter", False)
+
+
+def test_namespace() -> None:
+    assert namespace(None, "foo") == "foo"
+    assert namespace("", "foo") == "foo"
+    assert namespace("/", "foo") == "/foo"
+    assert namespace("foo", "bar") == "foo/bar"
