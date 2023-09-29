@@ -1,7 +1,8 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
+import argparse
 import functools
 import inspect
-import pathlib
+import os
 import sys
 import threading
 import typing
@@ -12,6 +13,7 @@ import rclpy.node
 
 from bdai_ros2_wrappers.executors import AutoScalingMultiThreadedExecutor
 from bdai_ros2_wrappers.node import Node
+from bdai_ros2_wrappers.utilities import either_or
 
 
 class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
@@ -111,9 +113,10 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
         return self._executor
 
 
-MainCallableWithArgs = typing.Callable[[typing.Optional[typing.Sequence[str]]], typing.Optional[int]]
-MainCallableWithNoArgs = typing.Callable[[], typing.Optional[int]]
-MainCallable = typing.Union[MainCallableWithNoArgs, MainCallableWithArgs]
+MainCallableTakingArgs = typing.Callable[[argparse.Namespace], typing.Optional[int]]
+MainCallableTakingArgv = typing.Callable[[typing.Optional[typing.Sequence[str]]], typing.Optional[int]]
+MainCallableTakingNoArgs = typing.Callable[[], typing.Optional[int]]
+MainCallable = typing.Union[MainCallableTakingNoArgs, MainCallableTakingArgv, MainCallableTakingArgs]
 
 
 class ROSAwareProcess:
@@ -130,7 +133,15 @@ class ROSAwareProcess:
 
     current: typing.Optional["ROSAwareProcess"] = None
 
-    def __init__(self, func: MainCallable, name: typing.Optional[str] = None, **kwargs: typing.Any):
+    def __init__(
+        self,
+        func: MainCallable,
+        name: typing.Optional[str] = None,
+        cli: typing.Optional[argparse.ArgumentParser] = None,
+        init_args: typing.Optional[typing.Dict[str, typing.Any]] = None,
+        node_args: typing.Optional[typing.Dict[str, typing.Any]] = None,
+        executor_args: typing.Optional[typing.Dict[str, typing.Any]] = None,
+    ):
         """
         Initializes the ROS aware process.
 
@@ -143,9 +154,16 @@ class ROSAwareProcess:
         """
         self._func = func
         if name is None:
-            name = pathlib.Path(sys.argv[0]).stem
+            if cli is None:
+                program_name = os.path.basename(sys.argv[0])
+            else:
+                program_name = cli.prog
+            name, _ = os.path.splitext(program_name)
         self._name = name
-        self._kwargs = kwargs
+        self._cli = cli
+        self._init_args = init_args or {}
+        self._node_args = node_args or {}
+        self._executor_args = executor_args or {}
         self._scope: typing.Optional[ROSAwareScope] = None
         functools.update_wrapper(self, self._func)
 
@@ -155,12 +173,12 @@ class ROSAwareProcess:
             return super().__getattribute__(name)
         return getattr(self._scope, name)
 
-    def __call__(self, args: typing.Optional[typing.Sequence[str]] = None) -> typing.Optional[int]:
+    def __call__(self, argv: typing.Optional[typing.Sequence[str]] = None) -> typing.Optional[int]:
         """
         Invokes wrapped function in a ROS aware scope.
 
         Args:
-            args: optional command line-like arguments.
+            argv: optional command line-like arguments.
 
         Returns:
             an optional return code.
@@ -170,19 +188,30 @@ class ROSAwareProcess:
         """
         if not ROSAwareProcess.lock.acquire(blocking=False):
             raise RuntimeError("Process already running!")
+
+        args = None
+        if self._cli is not None:
+            args = self._cli.parse_args(rclpy.utilities.remove_ros_args(argv)[1:])
+
         try:
-            rclpy.init(args=args)
+            rclpy.init(args=argv, **either_or(args, "init_args", self._init_args))
             try:
-                with ROSAwareScope(self._name, **self._kwargs) as scope:
+                context = rclpy.get_default_context()
+                node_args = either_or(args, "node_args", self._node_args)
+                executor_args = either_or(args, "executor_args", self._executor_args)
+                with ROSAwareScope(self._name, context, node_args, executor_args) as scope:
                     self._scope = scope
                     ROSAwareProcess.current = self
                     try:
                         sig = inspect.signature(self._func)
                         if not sig.parameters:
-                            func_no_args = typing.cast(MainCallableWithNoArgs, self._func)
-                            return func_no_args()
-                        func_with = typing.cast(MainCallableWithArgs, self._func)
-                        return func_with(rclpy.utilities.remove_ros_args(args))
+                            func_taking_no_args = typing.cast(MainCallableTakingNoArgs, self._func)
+                            return func_taking_no_args()
+                        if args is not None:
+                            func_taking_args = typing.cast(MainCallableTakingArgs, self._func)
+                            return func_taking_args(args)
+                        func_taking_argv = typing.cast(MainCallableTakingArgv, self._func)
+                        return func_taking_argv(rclpy.utilities.remove_ros_args(argv))
                     finally:
                         ROSAwareProcess.current = None
                         self._scope = None
@@ -208,10 +237,12 @@ def executor() -> typing.Optional[rclpy.executors.Executor]:
     return process.executor
 
 
-def main(*args: typing.Any, **kwargs: typing.Any) -> typing.Callable[[MainCallable], ROSAwareProcess]:
+def main(
+    cli: typing.Optional[argparse.ArgumentParser] = None, **kwargs: typing.Any
+) -> typing.Callable[[MainCallable], ROSAwareProcess]:
     """Wraps a ``main``-like function in a `ROSAwareProcess` instance."""
 
     def __decorator(func: MainCallable) -> ROSAwareProcess:
-        return ROSAwareProcess(func, *args, **kwargs)
+        return ROSAwareProcess(func, cli=cli, **kwargs)
 
     return __decorator

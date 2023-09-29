@@ -1,4 +1,5 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
+import argparse
 
 from std_srvs.srv import Trigger
 
@@ -25,3 +26,21 @@ def test_process_wrapping() -> None:
         return 0
 
     assert main() == 0
+
+
+def test_command_wrapping() -> None:
+    """Asserts that the process bound node is made available."""
+
+    def cli() -> argparse.ArgumentParser:
+        parser = argparse.ArgumentParser("test_command")
+        parser.add_argument("-n", "--namespace", default="/")
+        parser.set_defaults(node_args=lambda args: dict(namespace=args.namespace))
+        return parser
+
+    @process.main(cli())
+    def main(args: argparse.Namespace) -> int:
+        assert main.node.get_name() == "test_command"
+        assert main.node.get_namespace() == "/foo"
+        return 0
+
+    assert main(["test_command", "-n", "/foo"]) == 0
