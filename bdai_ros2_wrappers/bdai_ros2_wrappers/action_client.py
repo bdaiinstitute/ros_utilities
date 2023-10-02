@@ -22,7 +22,7 @@ class ActionClientWrapper(rclpy.action.ActionClient):
         """
         node = node or process.node()
         if node is None:
-            raise ValueError("no ROS 2 node available")
+            raise ValueError("No process-wide ROS 2 node available (did you use bdai_ros2_wrapper.process.main?)")
         self._node = node
         super().__init__(self._node, action_type, action_name)
         self._node.get_logger().info(f"Waiting for action server for {action_name}")

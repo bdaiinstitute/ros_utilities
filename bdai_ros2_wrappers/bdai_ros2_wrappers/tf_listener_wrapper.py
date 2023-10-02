@@ -22,7 +22,7 @@ class TFListenerWrapper(object):
     ) -> None:
         node = node or process.node()
         if node is None:
-            raise ValueError("no ROS 2 node available")
+            raise ValueError("No process-wide ROS 2 node available (did you use bdai_ros2_wrapper.process.main?)")
         self._node = node
 
         if cache_time_s is not None:
