@@ -13,16 +13,7 @@ import weakref
 
 import rclpy.executors
 
-
-def fqn(obj: typing.Any) -> typing.Optional[str]:
-    """Computes the fully qualified name of a given object, if any."""
-    if not hasattr(obj, "__qualname__"):
-        return None
-    name = obj.__qualname__
-    if not hasattr(obj, "__module__"):
-        return name
-    module = obj.__module__
-    return f"{module}.{name}"
+from bdai_ros2_wrappers.utilities import fqn
 
 
 class AutoScalingThreadPool(concurrent.futures.Executor):
