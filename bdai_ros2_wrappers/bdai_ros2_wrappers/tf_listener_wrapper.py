@@ -4,25 +4,27 @@ from typing import Optional, Tuple
 
 import rclpy
 from geometry_msgs.msg import TransformStamped
-from rclpy import Context
+from rclpy.node import Node
 from rclpy.time import Duration, Time
 from tf2_ros import ExtrapolationException, TransformException
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 
-from bdai_ros2_wrappers.node import NodeWrapper
+import bdai_ros2_wrappers.process as process
 
 
 class TFListenerWrapper(object):
     def __init__(
         self,
-        node_name: str,
+        node: Optional[Node] = None,
         wait_for_transform: Optional[Tuple[str, str]] = None,
         cache_time_s: Optional[int] = None,
-        context: Optional[Context] = None,
     ) -> None:
-        # private because we want to make sure no one but us spins this node!
-        self._node = NodeWrapper(node_name=node_name, context=context, spin_thread=True)
+        node = node or process.node()
+        if node is None:
+            raise ValueError("No process-wide ROS 2 node available (did you use bdai_ros2_wrapper.process.main?)")
+        self._node = node
+
         if cache_time_s is not None:
             cache_time_py = Duration(seconds=cache_time_s)
         else:
@@ -32,12 +34,6 @@ class TFListenerWrapper(object):
 
         if wait_for_transform is not None and len(wait_for_transform) == 2:
             self.wait_for_init(wait_for_transform[0], wait_for_transform[1])
-
-    def shutdown(self) -> None:
-        """
-        You must call this to have the program exit smoothly, unfortunately.  No del command seems to work.
-        """
-        self._node.shutdown()
 
     @property
     def buffer(self) -> Buffer:

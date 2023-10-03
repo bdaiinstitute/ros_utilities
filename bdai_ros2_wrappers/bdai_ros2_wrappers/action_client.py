@@ -1,58 +1,33 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
-from typing import Callable, Optional, Type, Union
+from typing import Callable, Optional, Type
 
 import rclpy.action
-from rclpy import Context
+from rclpy.node import Node
 
+import bdai_ros2_wrappers.process as process
 from bdai_ros2_wrappers.action_handle import ActionHandle
-from bdai_ros2_wrappers.node import NodeWrapper
 from bdai_ros2_wrappers.type_hints import Action
 
 
 class ActionClientWrapper(rclpy.action.ActionClient):
     """A wrapper for ros2's ActionClient for extra functionality"""
 
-    def __init__(
-        self,
-        action_type: Type[Action],
-        action_name: str,
-        node: Union[str, NodeWrapper],
-        *,
-        namespace: Optional[str] = None,
-        context: Optional[Context] = None,
-        num_executor_threads: int = 1,
-    ) -> None:
+    def __init__(self, action_type: Type[Action], action_name: str, node: Optional[Node] = None) -> None:
         """Constructor
 
         Args:
             action_type (Type[Action]): The type of the action
             action_name (str): The name of the action (for logging purposes)
-            node (Union[str, NodeWrapper]): The name of the internal node if a new one is to be created or a NodeWrapper
-                if this object should share the node
-            namespace (Optional[str]): The namespace for the internal node
-            context (Optional[Context]): The context for the internal node
-            num_executor_threads (int): Number of threads the executor should use.
-                1 => Single Thread, >1 => Multithread of that number of executors,
-                -1 => Multithread with as many threads as the system can do using `multiprocessing.cpu_count`
+            node (Optional[Node]): optional node for action client, defaults to the current process node
         """
-        if isinstance(node, NodeWrapper):
-            self._node_wrapper = node
-        elif isinstance(node, str):
-            self._node_wrapper = NodeWrapper(
-                f"{node}_{action_name}_client_wrapper_node",
-                namespace=namespace,
-                context=context,
-                spin_thread=True,
-                num_executor_threads=num_executor_threads,
-            )
-        else:
-            raise TypeError("`node` should be either a `NodeWrapper` or `str`")
-        super().__init__(self._node_wrapper, action_type, action_name)
-        self._node_wrapper.get_logger().info(
-            f"Waiting for action server for {self._node.get_namespace()}/{action_name}"
-        )
+        node = node or process.node()
+        if node is None:
+            raise ValueError("No process-wide ROS 2 node available (did you use bdai_ros2_wrapper.process.main?)")
+        self._node = node
+        super().__init__(self._node, action_type, action_name)
+        self._node.get_logger().info(f"Waiting for action server for {action_name}")
         self.wait_for_server()
-        self._node_wrapper.get_logger().info("Found server")
+        self._node.get_logger().info("Found server")
 
     def send_goal_and_wait(
         self, action_name: str, goal: Action.Goal, timeout_sec: Optional[float] = None
@@ -69,9 +44,9 @@ class ActionClientWrapper(rclpy.action.ActionClient):
             Optional[Action.Result]:
         """
         if goal is None:
-            self._node_wrapper.get_logger.warn("Cannot send NULL ActionGoal")
+            self._node.get_logger.warn("Cannot send NULL ActionGoal")
             return None
-        self._node_wrapper.get_logger().info(f"Sending Action [{action_name}]")
+        self._node.get_logger().info(f"Sending Action [{action_name}]")
 
         canceled = False
 
@@ -91,7 +66,7 @@ class ActionClientWrapper(rclpy.action.ActionClient):
             # If the action didn't fail and wasn't canceled then it timed out and should be canceled
             if not failed and not canceled:
                 handle.cancel()
-                self._node_wrapper.get_logger().error(f"Action [{action_name}] timed out")
+                self._node.get_logger().error(f"Action [{action_name}] timed out")
             return None
 
         return handle.result
@@ -121,7 +96,7 @@ class ActionClientWrapper(rclpy.action.ActionClient):
         Returns:
             ActionHandle: An object to manage the asynchronous lifecycle of the action request
         """
-        handle = ActionHandle(action_name=action_name, logger=self._node_wrapper.get_logger())
+        handle = ActionHandle(action_name=action_name, logger=self._node.get_logger())
         if result_callback is not None:
             handle.set_result_callback(result_callback)
 

@@ -1,12 +1,11 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute LLC. All rights reserved.
+import threading
 from typing import Callable, Optional
 
 from rclpy.impl.rcutils_logger import RcutilsLogger
 from rclpy.task import Future
 
-from bdai_ros2_wrappers.type_hints import (
-    SrvTypeResponse,
-)
+from bdai_ros2_wrappers.type_hints import SrvTypeResponse
 
 
 class ServiceHandle(object):
@@ -17,6 +16,7 @@ class ServiceHandle(object):
     def __init__(self, service_name: str, logger: Optional[RcutilsLogger] = None):
         self._service_name = service_name
         self._send_service_future: Optional[Future] = None
+        self._future_ready_event = threading.Event()
         self._result_callback: Optional[Callable] = None
         self._on_failure_callback: Optional[Callable] = None
         self._result: Optional[SrvTypeResponse] = None
@@ -43,6 +43,12 @@ class ServiceHandle(object):
         """Set the callback to execute upon failure"""
         self._on_failure_callback = on_failure_callback
 
+    def wait(self, timeout_sec: Optional[float] = None) -> bool:
+        """Wait for service response, if any."""
+        if self._send_service_future is None:
+            raise RuntimeError("no future to wait on")
+        return self._future_ready_event.wait(timeout_sec)
+
     def _service_result_callback(self, future: Future) -> None:
         """Callback that handles receiving a response from the Service"""
         result = future.result()
@@ -50,6 +56,7 @@ class ServiceHandle(object):
         if result is None:
             self._logger.error(f"Service request failed: {future.exception():!r}")
             self._failure()
+            self._future_ready_event.set()
             return
 
         self._result = result
@@ -62,17 +69,20 @@ class ServiceHandle(object):
 
         if self._on_failure_callback is not None and not service_has_success:
             self._logger.warning("Failure callback is set, but result has no success attribute")
+            self._future_ready_event.set()
             return
 
         if service_has_success:
             if not result.success:
                 self._logger.error(f"Service failed; error is {result.message}")
                 self._failure()
+                self._future_ready_event.set()
                 return
         else:
             self._logger.warning(f"Service {self._service_name} has no success or failure flag")
 
         self._logger.info("Service completed")
+        self._future_ready_event.set()
 
     def _failure(self) -> None:
         """Triggers the internal failure callback if it exists"""
