@@ -45,7 +45,7 @@ RUN apt-get update -q && \
 RUN python -m pip install --no-cache-dir --upgrade pip==22.3.1 \
     && pip install --root-user-action=ignore --no-cache-dir --default-timeout=900 \
     numpy==1.24.1 \
-    pip cache purge
+    && pip cache purge
 
 # ROS doesn't recognize the docker shells as terminals so force colored output
 ENV RCUTILS_COLORIZED_OUTPUT=1
