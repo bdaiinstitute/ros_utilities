@@ -20,3 +20,14 @@ def either_or(obj: typing.Any, name: str, default: typing.Any) -> typing.Any:
     if callable(value_or_getter):
         return value_or_getter(obj)
     return value_or_getter
+
+
+def fqn(obj: typing.Any) -> typing.Optional[str]:
+    """Computes the fully qualified name of a given object, if any."""
+    if not hasattr(obj, "__qualname__"):
+        return None
+    name = obj.__qualname__
+    if not hasattr(obj, "__module__"):
+        return name
+    module = obj.__module__
+    return f"{module}.{name}"
