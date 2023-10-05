@@ -12,6 +12,7 @@ import rclpy.executors
 import rclpy.node
 
 from bdai_ros2_wrappers.executors import AutoScalingMultiThreadedExecutor
+from bdai_ros2_wrappers.logging import logs_to_ros
 from bdai_ros2_wrappers.node import Node
 from bdai_ros2_wrappers.utilities import either_or
 
@@ -29,6 +30,7 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
         context: typing.Optional[rclpy.context.Context] = None,
         node_args: typing.Optional[typing.Dict[str, typing.Any]] = None,
         executor_args: typing.Optional[typing.Dict[str, typing.Any]] = None,
+        forward_logging: bool = True,
     ):
         """
         Initializes the ROS aware scope.
@@ -38,14 +40,17 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
             context: optional context for the underlying node.
             node_args: optional keyword arguments for the underlying node.
             executor_args: optional keyword arguments for the underlying executor.
+            forward_logging: whether to forward `logging` logs to ROS 2 logging system or not.
         """
         self._name = name
         self._context = context
+        self._forward_logging = forward_logging
         self._node: typing.Optional[rclpy.node.Node] = None
         self._node_args: typing.Dict[str, typing.Any] = node_args or {}
         self._executor: typing.Optional[rclpy.executors.Executor] = None
         self._executor_args: typing.Dict[str, typing.Any] = executor_args or {}
         self._background_thread: typing.Optional[threading.Thread] = None
+        self._logging_scope: typing.Optional[typing.ContextManager] = None
         self._active = False
 
     def __enter__(self) -> "ROSAwareScope":
@@ -62,9 +67,14 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
                 context=self._context, logger=self._node.get_logger(), **self._executor_args
             )
             self._background_thread = threading.Thread(target=self._executor.spin)
+
             try:
                 self._executor.add_node(self._node)
                 self._background_thread.start()
+                if self._forward_logging:
+                    self._logging_scope = logs_to_ros(self._node)
+                    assert self._logging_scope is not None
+                    self._logging_scope.__enter__()
             except:
                 self._executor.shutdown()
                 self._executor = None
@@ -88,6 +98,10 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
         assert self._executor is not None
         assert self._background_thread is not None
         assert self._node is not None
+        if self._forward_logging:
+            assert self._logging_scope is not None
+            self._logging_scope.__exit__(*exc)
+            self._logging_scope = None
         self._executor.shutdown()
         self._executor = None
         self._background_thread.join()
@@ -141,6 +155,7 @@ class ROSAwareProcess:
         init_args: typing.Optional[typing.Dict[str, typing.Any]] = None,
         node_args: typing.Optional[typing.Dict[str, typing.Any]] = None,
         executor_args: typing.Optional[typing.Dict[str, typing.Any]] = None,
+        forward_logging: bool = True,
     ):
         """
         Initializes the ROS aware process.
@@ -164,6 +179,7 @@ class ROSAwareProcess:
         self._init_args = init_args or {}
         self._node_args = node_args or {}
         self._executor_args = executor_args or {}
+        self._forward_logging = forward_logging
         self._scope: typing.Optional[ROSAwareScope] = None
         functools.update_wrapper(self, self._func)
 
@@ -199,7 +215,8 @@ class ROSAwareProcess:
                 context = rclpy.get_default_context()
                 node_args = either_or(args, "node_args", self._node_args)
                 executor_args = either_or(args, "executor_args", self._executor_args)
-                with ROSAwareScope(self._name, context, node_args, executor_args) as scope:
+                forward_logging = either_or(args, "forward_logging", self._forward_logging)
+                with ROSAwareScope(self._name, context, node_args, executor_args, forward_logging) as scope:
                     self._scope = scope
                     ROSAwareProcess.current = self
                     try:
