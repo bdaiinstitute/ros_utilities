@@ -2,7 +2,7 @@
 
 import argparse
 
-from bdai_ros2_wrappers.utilities import either_or, namespace
+from bdai_ros2_wrappers.utilities import either_or, namespace_with
 
 
 def test_either_or() -> None:
@@ -13,8 +13,8 @@ def test_either_or() -> None:
     assert either_or(data, "getter", False)
 
 
-def test_namespace() -> None:
-    assert namespace(None, "foo") == "foo"
-    assert namespace("", "foo") == "foo"
-    assert namespace("/", "foo") == "/foo"
-    assert namespace("foo", "bar") == "foo/bar"
+def test_namespace_with() -> None:
+    assert namespace_with(None, "foo") == "foo"
+    assert namespace_with("", "foo") == "foo"
+    assert namespace_with("/", "foo") == "/foo"
+    assert namespace_with("foo", "bar") == "foo/bar"

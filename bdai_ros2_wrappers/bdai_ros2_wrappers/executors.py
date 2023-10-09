@@ -2,6 +2,7 @@
 import atexit
 import collections
 import concurrent.futures
+import contextlib
 import dataclasses
 import inspect
 import logging
@@ -13,7 +14,7 @@ import weakref
 
 import rclpy.executors
 
-from bdai_ros2_wrappers.utilities import fqn
+from bdai_ros2_wrappers.utilities import bind_to_thread, fqn
 
 
 class AutoScalingThreadPool(concurrent.futures.Executor):
@@ -645,3 +646,51 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
                     task = AutoScalingMultiThreadedExecutor.Task(task, entity)
                     task.cancel()
         return done
+
+
+@contextlib.contextmanager
+def background(executor: rclpy.executors.Executor) -> typing.Iterator[rclpy.executors.Executor]:
+    """
+    Pushes an executor to a background thread.
+
+    Upon context entry, the executor starts spinning in a background thread.
+    Upon context exit, the executor is shutdown and the background thread is joined.
+
+    Args:
+        executor: executor to be managed.
+
+    Returns:
+        a context manager.
+    """
+    background_thread = threading.Thread(target=executor.spin)
+    executor.spin = bind_to_thread(executor.spin, background_thread)
+    executor.spin_once = bind_to_thread(executor.spin_once, background_thread)
+    executor.spin_until_future_complete = bind_to_thread(executor.spin_until_future_complete, background_thread)
+    executor.spin_once_until_future_complete = bind_to_thread(
+        executor.spin_once_until_future_complete, background_thread
+    )
+    background_thread.start()
+    try:
+        yield executor
+    finally:
+        executor.shutdown()
+        background_thread.join()
+
+
+@contextlib.contextmanager
+def foreground(executor: rclpy.executors.Executor) -> typing.Iterator[rclpy.executors.Executor]:
+    """
+    Manages an executor in the current thread.
+
+    Upon context exit, the executor is shutdown.
+
+    Args:
+        executor: executor to be managed.
+
+    Returns:
+        a context manager.
+    """
+    try:
+        yield executor
+    finally:
+        executor.shutdown()

@@ -1,25 +1,12 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 import array
-from typing import Iterable
 
-import pytest
-import rclpy
 from action_tutorials_interfaces.action import Fibonacci
 from rclpy.action.server import ServerGoalHandle
 
 from bdai_ros2_wrappers.action_client import ActionClientWrapper
 from bdai_ros2_wrappers.process import ROSAwareScope
 from bdai_ros2_wrappers.single_goal_action_server import SingleGoalActionServer
-
-
-@pytest.fixture
-def ros() -> Iterable[ROSAwareScope]:
-    rclpy.init()
-    try:
-        with ROSAwareScope("fixture") as scope:
-            yield scope
-    finally:
-        rclpy.try_shutdown()
 
 
 def test_single_goal_action_server(ros: ROSAwareScope) -> None:
@@ -41,6 +28,7 @@ def test_single_goal_action_server(ros: ROSAwareScope) -> None:
         result.sequence = sequence
         return result
 
+    assert ros.node is not None
     SingleGoalActionServer(ros.node, Fibonacci, "fibonacci", execute_callback)
     action_client = ActionClientWrapper(Fibonacci, "fibonacci", ros.node)
 

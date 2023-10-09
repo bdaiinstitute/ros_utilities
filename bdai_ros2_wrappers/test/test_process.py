@@ -9,7 +9,7 @@ import bdai_ros2_wrappers.process as process
 def test_process_wrapping() -> None:
     """Asserts that the process bound node is made available."""
 
-    @process.main(name="test_process")
+    @process.main()
     def main() -> int:
         def dummy_server_callback(_: Trigger.Request, response: Trigger.Response) -> Trigger.Response:
             response.success = True
@@ -33,14 +33,14 @@ def test_command_wrapping() -> None:
 
     def cli() -> argparse.ArgumentParser:
         parser = argparse.ArgumentParser("test_command")
-        parser.add_argument("-n", "--namespace", default="/")
-        parser.set_defaults(node_args=lambda args: dict(namespace=args.namespace))
+        parser.add_argument("robot")
         return parser
 
     @process.main(cli())
     def main(args: argparse.Namespace) -> int:
-        assert main.node.get_name() == "test_command"
-        assert main.node.get_namespace() == "/foo"
+        assert main.node is not None
+        assert main.node.get_fully_qualified_name() == "/test_command/node"
+        assert args.robot == "spot"
         return 0
 
-    assert main(["test_command", "-n", "/foo"]) == 0
+    assert main(["test_command", "spot"]) == 0

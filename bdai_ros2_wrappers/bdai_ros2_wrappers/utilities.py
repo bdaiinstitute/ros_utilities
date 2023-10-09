@@ -1,11 +1,23 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 
+import functools
+import threading
 import typing
 
 
-def namespace(*args: typing.Optional[str]) -> str:
+def namespace_with(*args: typing.Optional[str]) -> str:
     """Puts together a ROS 2 like namespace from its constitutive parts."""
-    return "/".join(arg.strip("/") for arg in filter(None, args))
+    sanitized_args = list(filter(None, args))
+    if not sanitized_args:
+        raise ValueError("nothing to namespace")
+    sanitized_args = [arg.rstrip("/") for arg in sanitized_args]
+    namespace = sanitized_args[0]
+    for arg in sanitized_args[1:]:
+        if not arg.startswith("/"):
+            namespace += "/" + arg
+        else:
+            namespace = arg
+    return namespace
 
 
 def either_or(obj: typing.Any, name: str, default: typing.Any) -> typing.Any:
@@ -31,3 +43,15 @@ def fqn(obj: typing.Any) -> typing.Optional[str]:
         return name
     module = obj.__module__
     return f"{module}.{name}"
+
+
+def bind_to_thread(callable_: typing.Callable, thread: threading.Thread) -> typing.Callable:
+    """Binds a callable to a thread, so it can only be invoked from that thread."""
+
+    @functools.wraps(callable_)
+    def _wrapper(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
+        if threading.current_thread() is not thread:
+            raise RuntimeError(f"{fqn(callable_)}() is bound to a different thread")
+        return callable_(*args, **kwargs)
+
+    return _wrapper

@@ -8,9 +8,13 @@ from bdai_ros2_wrappers.callback_groups import NonReentrantCallbackGroup
 
 
 class Node(BaseNode):
-    """An rclpy.node.Node subclass that changes the default callback group to be non-reentrant."""
+    """
+    An rclpy.node.Node subclass that:
 
-    def __init__(self, *args: Any, default_callback_group: Optional[CallbackGroup] = None, **kwargs: Any):
+    * changes the default callback group to be non-reentrant.
+    """
+
+    def __init__(self, *args: Any, default_callback_group: Optional[CallbackGroup] = None, **kwargs: Any) -> None:
         """
         Initializes the node.
 
