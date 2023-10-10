@@ -1,5 +1,4 @@
-# Copyright [2023] Boston Dynamics AI Institute, Inc.
-
+# Copyright (c) 2023 Boston Dynamics AI Institute LLC. All rights reserved.
 repos:
 - repo: https://github.com/charliermarsh/ruff-pre-commit
   # Ruff version.
@@ -7,7 +6,6 @@ repos:
   hooks:
     - id: ruff
       args: ['--fix', '--config', 'pyproject.toml']
-
 - repo: https://github.com/psf/black
   rev: 23.3.0
   hooks:
@@ -15,15 +13,21 @@ repos:
       language_version: python3.10
       args: ['--config', 'pyproject.toml']
       verbose: true
-
 - repo: https://github.com/pre-commit/pre-commit-hooks
   rev: v4.4.0
   hooks:
   -   id: check-yaml
+      args: ['--unsafe'] # details about the unsafe flag:
+      # https://github.com/pre-commit/pre-commit-hooks#check-yaml
+      # This is the solution proposed to prevent `check-yaml` from failing on custom tags:
+      # https://github.com/pre-commit/pre-commit-hooks/issues/701
   -   id: check-added-large-files
+      args: ['--enforce-all', '--maxkb', '200']
   -   id: check-toml
   -   id: end-of-file-fixer
-
+  -   id: check-merge-conflict
+  -   id: check-executables-have-shebangs
+  -   id: check-shebang-scripts-are-executable
 - repo: https://github.com/pre-commit/mirrors-mypy
   rev: v1.2.0
   hooks:
@@ -37,3 +41,8 @@ repos:
       - types-PyYAML
       - types-toml
       - types-six
+
+- repo: https://github.com/jumanjihouse/pre-commit-hooks
+  rev: 3.0.0
+  hooks:
+  -  id: forbid-binary
