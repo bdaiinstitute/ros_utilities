@@ -534,6 +534,8 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
                         self.task._handler.close()
                     self.task._done = self.task._cancelled = True
                     schedule_callbacks = True
+                else:
+                    self.task.exception()  # always retrieve exception
             if schedule_callbacks:
                 self.task._schedule_or_invoke_done_callbacks()
 
@@ -608,7 +610,11 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
                     for task in list(self._wip):
                         if task.done():
                             del self._wip[task]
-                            task.result()
+                            try:
+                                task.result()
+                            except rclpy.executors.InvalidHandle:
+                                # ignore concurrent entity destruction
+                                pass
             except rclpy.executors.ConditionReachedException:
                 pass
             except rclpy.executors.ExternalShutdownException:

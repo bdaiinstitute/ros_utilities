@@ -39,17 +39,17 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
         *,
         prebaked: bool = True,
         global_: bool = False,
-        namespace: typing.Optional[str] = None,
         autospin: typing.Optional[bool] = None,
         forward_logging: bool = False,
+        namespace: typing.Optional[typing.Union[typing.Literal[True], str]] = None,
         context: typing.Optional[rclpy.context.Context] = None,
     ) -> None:
         """
         Initializes the ROS 2 aware scope.
 
         Args:
-            prebaked: whether to include an implicit main node in the scope graph
-            or not, for convenience. Prebaked scopes must autospin.
+            prebaked: whether to include an implicit main node in the scope graph or not,
+            for convenience.
             global_: whether to make this scope global (ie. accessible from all threads).
             Only one, outermost global scope can be entered at any given time. Global
             scopes can only be entered from the main thread.
@@ -63,9 +63,7 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
         """
         if autospin is None:
             autospin = prebaked
-        if prebaked and not autospin:
-            raise ValueError("prebaked scope must autospin")
-        if namespace is None:
+        if namespace is True:
             namespace = f"_ros_aware_scope_{os.getpid()}_{id(self)}"
         self._namespace = namespace
         self._context = context
@@ -113,11 +111,13 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
             self._stack = contextlib.ExitStack()
             self._owner = threading.current_thread()
 
-            if self._autospin:
-                logger = rclpy.logging.get_logger(self._namespace.replace("/", ".").strip("."))
-                self._executor = self._stack.enter_context(
-                    background(AutoScalingMultiThreadedExecutor(logger=logger, context=self._context))
-                )
+            if self._prebaked or self._autospin:
+                logger = rclpy.logging.get_logger(self._namespace or fqn(self.__class__))
+                executor = AutoScalingMultiThreadedExecutor(logger=logger, context=self._context)
+                if self._autospin:
+                    self._executor = self._stack.enter_context(background(executor))
+                else:
+                    self._executor = self._stack.enter_context(foreground(executor))
 
                 if self._prebaked:
                     node = Node("node", namespace=self._namespace, context=self._context)

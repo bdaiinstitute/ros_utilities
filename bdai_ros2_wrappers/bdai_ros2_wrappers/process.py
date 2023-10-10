@@ -73,8 +73,6 @@ class ROSAwareProcess:
             forward_logging = prebaked
         if autospin is None:
             autospin = prebaked
-        if prebaked and not autospin:
-            raise ValueError("prebaked process must autospin")
         if namespace is None and prebaked:
             namespace = True
         if namespace is True:
@@ -160,6 +158,26 @@ class ROSAwareProcess:
         finally:
             self._lock.release()
             ROSAwareProcess.lock.release()
+
+    def wait_for_shutdown(self, *, timeout_sec: typing.Optional[float] = None) -> bool:
+        """
+        Wait for shutdown of the underlying scope context.
+
+        Args:
+            timeout_sec: optional timeout for wait, wait indefinitely by default.
+
+        Returns:
+            True if shutdown, False on timeout.
+        """
+        with self._lock:
+            if self._scope is None:
+                raise RuntimeError("process is not executing")
+            context = self._scope.context
+            if context is None:
+                context = rclpy.get_default_context()
+            event = threading.Event()
+            context.on_shutdown(event.set)
+            return event.wait(timeout_sec)
 
     def try_shutdown(self) -> None:
         """Atempts to shutdown the underlying scope context."""
@@ -275,3 +293,19 @@ def try_shutdown() -> None:
     if process is None:
         raise RuntimeError("no process is executing")
     process.try_shutdown()
+
+
+def wait_for_shutdown(*, timeout_sec: typing.Optional[float] = None) -> bool:
+    """
+    Wait for current ROS 2 aware process to shutdown.
+
+    See `ROSAwareProcess.wait_for_shutdown` documentation for further reference
+    on positional and keyword arguments taken by this function.
+
+    Raises:
+        RuntimeError: if no process is executing.
+    """
+    process = current()
+    if process is None:
+        raise RuntimeError("no process is executing")
+    return process.wait_for_shutdown(timeout_sec=timeout_sec)
