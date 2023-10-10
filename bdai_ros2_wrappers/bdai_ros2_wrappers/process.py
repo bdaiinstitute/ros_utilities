@@ -137,7 +137,7 @@ class ROSAwareProcess:
             args = None
             if self._cli is not None:
                 args = self._cli.parse_args(rclpy.utilities.remove_ros_args(argv)[1:])
-            scope_kwargs = either_or(args, "scope_args", self._scope_kwargs)
+            scope_kwargs = either_or(args, "process_args", self._scope_kwargs)
             with scope.top(argv, global_=True, **scope_kwargs) as self._scope:
                 ROSAwareProcess.current = self
                 self._lock.release()

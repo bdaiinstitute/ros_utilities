@@ -94,6 +94,20 @@ def run(args: argparse.Namespace) -> None:
 
 @ros_process.main(cli(), prebaked=False)
 def main(args: argparse.Namespace) -> None:
+    """
+    Example entrypoint.
+
+    It is first configured as a regular ROS 2 aware process, but process-wide
+    (i.e. globally accessible) executor and node are set immediately on start.
+    Still, automatic ``logging`` logs forwarding to the ROS 2 logging system is
+    disabled. Implicit namespacing is also disabled. This is suitable for more
+    complex use cases, that require finer control over process configuration.
+
+    When executed, a single threaded executor is pushed to the background and
+    assigned as process-wide executor. A graph of ROS 2 nodes is instantiated
+    and loaded, one of which is assigned as process-wide node. These are used
+    indirectly by the actual console application.
+    """
     with background(SingleThreadedExecutor()) as main.executor:
         with ros_process.managed(graph, args) as (_, main.node):
             run(args)

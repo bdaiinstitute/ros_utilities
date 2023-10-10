@@ -51,6 +51,19 @@ def graph(**kwargs: typing.Any) -> typing.Iterable[Node]:
 
 @ros_process.main(prebaked=False, namespace=True)
 def main() -> None:
+    """
+    Example entrypoint.
+
+    It is configured almost as a regular ROS 2 aware process. That is, no process-wide node,
+    no background autoscaling multi-threaded executor, and no log forwarding to the ROS 2
+    logging system, but any ROS 2 nodes loaded in it will be implicitly namespaced after
+    the executable basename. A convenience to better organize executables bearing many
+    ROS 2 nodes.
+
+    When executed, a graph of ROS 2 nodes is spinned in foreground, on an implicitly instantiated
+    autoscaling multi-threaded executor. This continues indefinitely until the executable is
+    interrupted (e.g. by a SIGINT on Ctrl + C).
+    """
     ros_process.spin(graph)
 
 

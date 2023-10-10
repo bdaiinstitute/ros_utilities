@@ -47,6 +47,20 @@ class MinimalActionServer(Node):
 
 @ros_process.main()
 def main() -> None:
+    """
+    Example entrypoint.
+
+    It is configured almost as a prebaked ROS 2 aware process. That is, including a
+    process-wide (ie. globally accessible) node, an autoscaling multi-threaded executor
+    running in a background thread, automatic ``logging`` logs forwarding to the ROS 2
+    logging system, and implicit namespacing for all ROS 2 nodes loaded in it based on
+    the executable basename. A convenience for simple executables that need to use ROS 2
+    without having to worry about ROS 2 (or its fallout, e.g. accidental deadblocking).
+
+    When executed, an action server node is loaded, and the process-wide node is used to
+    setup an action client. This action client is then used to implement a simple console
+    application.
+    """
     main.load(MinimalActionServer)
 
     action_client = ActionClient(main.node, Fibonacci, "compute_fibonacci_sequence")

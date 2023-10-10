@@ -39,6 +39,18 @@ class TalkerNode(Node):
 
 @ros_process.main(prebaked=False)
 def main(args: typing.Sequence[str]) -> None:
+    """
+    Example entrypoint, taking command-line arguments.
+
+    It is configured as a regular ROS 2 aware process. That is, no process-wide node,
+    no background autoscaling multi-threaded executor, no log forwarding to the ROS 2
+    logging system, and no implicit node namespacing. In other words, a run-off-the-mill
+    executable that uses ROS 2.
+
+    When executed, a single `TalkerNode` is instantiated and spinned in foreground, on
+    an implicitly instantiated autoscaling multi-threaded executor. This will continue
+    indefinitely until the executable is interrupted (e.g. by a SIGINT on Ctrl + C).
+    """
     ros_process.spin(TalkerNode, " ".join(args[1:]))
 
 
