@@ -10,7 +10,7 @@ from tf2_ros import ExtrapolationException, TransformException
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 
-import bdai_ros2_wrappers.process as process
+import bdai_ros2_wrappers.scope as scope
 
 
 class TFListenerWrapper(object):
@@ -20,9 +20,9 @@ class TFListenerWrapper(object):
         wait_for_transform: Optional[Tuple[str, str]] = None,
         cache_time_s: Optional[int] = None,
     ) -> None:
-        node = node or process.node()
+        node = node or scope.node()
         if node is None:
-            raise ValueError("No process-wide ROS 2 node available (did you use bdai_ros2_wrapper.process.main?)")
+            raise ValueError("no ROS 2 node available (did you use bdai_ros2_wrapper.process.main?)")
         self._node = node
 
         if cache_time_s is not None:

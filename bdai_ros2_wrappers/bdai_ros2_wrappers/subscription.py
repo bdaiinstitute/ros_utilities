@@ -6,7 +6,7 @@ import rclpy.node
 import rclpy.qos
 import rclpy.task
 
-import bdai_ros2_wrappers.process as process
+import bdai_ros2_wrappers.scope as scope
 
 MessageT = typing.TypeVar("MessageT")
 
@@ -34,9 +34,9 @@ def wait_for_message_async(
     Raises:
         RuntimeError: if no node is available.
     """
-    node = node or process.node()
+    node = node or scope.node()
     if node is None:
-        raise ValueError("No process-wide ROS 2 node available (did you use bdai_ros2_wrapper.process.main?)")
+        raise ValueError("no ROS 2 node available (did you use bdai_ros2_wrapper.process.main?)")
     future = rclpy.task.Future()
 
     def callback(msg: MessageT) -> None:
