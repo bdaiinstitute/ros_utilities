@@ -1,5 +1,4 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
-import threading
 import typing
 
 import rclpy.node
@@ -7,6 +6,7 @@ import rclpy.qos
 import rclpy.task
 
 import bdai_ros2_wrappers.scope as scope
+from bdai_ros2_wrappers.futures import wait_for_future
 
 MessageT = typing.TypeVar("MessageT")
 
@@ -49,7 +49,12 @@ def wait_for_message_async(
 
 
 def wait_for_message(
-    msg_type: MessageT, topic_name: str, timeout_sec: typing.Optional[float] = None, **kwargs: typing.Any
+    msg_type: MessageT,
+    topic_name: str,
+    timeout_sec: typing.Optional[float] = None,
+    *,
+    node: typing.Optional[rclpy.node.Node] = None,
+    **kwargs: typing.Any,
 ) -> typing.Optional[MessageT]:
     """
     Wait for message on a given topic synchronously.
@@ -65,9 +70,11 @@ def wait_for_message(
     Returns:
         The message received, or None on timeout.
     """
-    event = threading.Event()
-    future = wait_for_message_async(msg_type, topic_name, **kwargs)
-    future.add_done_callback(lambda future: event.set())
-    if not event.wait(timeout_sec):
+    node = node or scope.node()
+    if node is None:
+        raise ValueError("no ROS 2 node available (did you use bdai_ros2_wrapper.process.main?)")
+    future = wait_for_message_async(msg_type, topic_name, node=node, **kwargs)
+    if not wait_for_future(future, timeout_sec, context=node.context):
+        future.cancel()
         return None
     return future.result()

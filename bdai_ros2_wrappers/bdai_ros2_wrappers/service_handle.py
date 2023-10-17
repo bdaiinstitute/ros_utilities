@@ -2,8 +2,10 @@
 import threading
 from typing import Callable, Optional
 
+from rclpy.context import Context
 from rclpy.impl.rcutils_logger import RcutilsLogger
 from rclpy.task import Future
+from rclpy.utilities import get_default_context
 
 from bdai_ros2_wrappers.type_hints import SrvTypeResponse
 
@@ -13,10 +15,13 @@ class ServiceHandle(object):
     as holding the various callbacks for sending an ServiceRequest (result, failure)
     """
 
-    def __init__(self, service_name: str, logger: Optional[RcutilsLogger] = None):
+    def __init__(self, service_name: str, logger: Optional[RcutilsLogger] = None, context: Optional[Context] = None):
+        if context is None:
+            context = get_default_context()
         self._service_name = service_name
         self._send_service_future: Optional[Future] = None
         self._future_ready_event = threading.Event()
+        context.on_shutdown(self._future_ready_event.set)
         self._result_callback: Optional[Callable] = None
         self._on_failure_callback: Optional[Callable] = None
         self._result: Optional[SrvTypeResponse] = None
