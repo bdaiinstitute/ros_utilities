@@ -17,7 +17,7 @@ class ActionHandle(object):
     as holding the various callbacks for sending an ActionGoal (cancel, failure, feedback, result)
     """
 
-    def __init__(self, action_name: str, logger: Optional[RcutilsLogger] = None, *, context: Optional[Context] = None):
+    def __init__(self, action_name: str, logger: Optional[RcutilsLogger] = None, context: Optional[Context] = None):
         """Constructor
 
         Args:
