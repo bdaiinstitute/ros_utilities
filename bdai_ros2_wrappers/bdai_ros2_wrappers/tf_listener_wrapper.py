@@ -116,5 +116,5 @@ class TFListenerWrapper:
         Raises:
             All the possible TransformExceptions.
         """
-        transform = self.lookup_a_tform_b(frame_a, frame_b, timeout_sec, wait_for_frames)
+        transform = self.lookup_a_tform_b(frame_a, frame_b, Time(), timeout_sec, wait_for_frames)
         return Time.from_msg(transform.header.stamp)
