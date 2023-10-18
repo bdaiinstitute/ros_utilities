@@ -1,16 +1,14 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 import array
 import time
-from typing import Any, Iterable
+from typing import Any
 
-import pytest
-import rclpy
 from action_tutorials_interfaces.action import Fibonacci
 from rclpy.action.server import ActionServer, GoalResponse, ServerGoalHandle
 
 from bdai_ros2_wrappers.action_client import ActionClientWrapper
 from bdai_ros2_wrappers.node import Node
-from bdai_ros2_wrappers.process import ROSAwareScope
+from bdai_ros2_wrappers.scope import ROSAwareScope
 
 
 class FibonacciActionServer(ActionServer):
@@ -41,20 +39,11 @@ class FibonacciActionServer(ActionServer):
         return result
 
 
-@pytest.fixture
-def ros() -> Iterable[ROSAwareScope]:
-    rclpy.init()
-    try:
-        with ROSAwareScope("fixture") as scope:
-            yield scope
-    finally:
-        rclpy.try_shutdown()
-
-
 def test_send_goal_and_wait(ros: ROSAwareScope) -> None:
     """
     Test standard operation of send_goal_and_wait
     """
+    assert ros.node is not None
     FibonacciActionServer(ros.node, "fibonacci")
     action_client = ActionClientWrapper(Fibonacci, "fibonacci", ros.node)
 
@@ -70,15 +59,13 @@ def test_timeout_send_goal_wait(ros: ROSAwareScope) -> None:
     """
     Test out the timeout of the send_goal_and_wait
     """
+    assert ros.node is not None
     FibonacciActionServer(ros.node, "fibonacci")
     action_client = ActionClientWrapper(Fibonacci, "fibonacci", ros.node)
 
     goal = Fibonacci.Goal()
     goal.order = 5
     result = action_client.send_goal_and_wait("test_timeout_send_goal_wait", goal=goal, timeout_sec=0.5)
-
-    # times out and since action client wrapper does not start its own thread
-    # it uses rclpy spin_until_future_complete which will return none
     assert result is None
 
 
@@ -93,6 +80,7 @@ def test_goal_not_accepted(ros: ROSAwareScope) -> None:
         """
         return GoalResponse.REJECT
 
+    assert ros.node is not None
     FibonacciActionServer(ros.node, "fibonacci", goal_callback=do_not_accept_goal)
     action_client = ActionClientWrapper(Fibonacci, "fibonacci", ros.node)
 

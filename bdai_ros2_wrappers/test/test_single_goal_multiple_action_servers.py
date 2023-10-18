@@ -1,15 +1,14 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 import array
 import time
-from typing import Iterable, Tuple
+from typing import Tuple
 
 import pytest
-import rclpy
 from action_tutorials_interfaces.action import Fibonacci
 from rclpy.action.server import GoalStatus, ServerGoalHandle
 
 from bdai_ros2_wrappers.action_client import ActionClientWrapper
-from bdai_ros2_wrappers.process import ROSAwareScope
+from bdai_ros2_wrappers.scope import ROSAwareScope
 from bdai_ros2_wrappers.single_goal_multiple_action_servers import SingleGoalMultipleActionServers
 
 
@@ -51,16 +50,6 @@ def execute_callback_wrong_fib(goal_handle: ServerGoalHandle) -> Fibonacci.Resul
 
 
 @pytest.fixture
-def ros() -> Iterable[ROSAwareScope]:
-    rclpy.init()
-    try:
-        with ROSAwareScope("fixture") as scope:
-            yield scope
-    finally:
-        rclpy.try_shutdown()
-
-
-@pytest.fixture
 def action_triplet(
     ros: ROSAwareScope,
 ) -> Tuple[SingleGoalMultipleActionServers, ActionClientWrapper, ActionClientWrapper]:
@@ -68,6 +57,7 @@ def action_triplet(
         (Fibonacci, "fibonacci", execute_callback, None),
         (Fibonacci, "fibonacci_wrong", execute_callback_wrong_fib, None),
     ]
+    assert ros.node is not None
     action_server = SingleGoalMultipleActionServers(ros.node, action_parameters)
     action_client_a = ActionClientWrapper(Fibonacci, "fibonacci", ros.node)
     action_client_b = ActionClientWrapper(Fibonacci, "fibonacci_wrong", ros.node)
@@ -114,6 +104,7 @@ def test_action_interruption(
         goal.order = 5
         action_client_a.send_goal_and_wait("deferred_action_request", goal=goal, timeout_sec=2)
 
+    assert ros.executor is not None
     ros.executor.create_task(deferred_request)
 
     # immediately start the request for other goal

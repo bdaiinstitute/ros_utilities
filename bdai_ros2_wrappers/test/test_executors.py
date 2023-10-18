@@ -1,15 +1,18 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 import threading
+import time
 from typing import Generator
 
 import pytest
 import rclpy
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.context import Context
+from rclpy.executors import SingleThreadedExecutor
 from rclpy.node import Node
 from std_srvs.srv import Trigger
 
-from bdai_ros2_wrappers.executors import AutoScalingMultiThreadedExecutor, AutoScalingThreadPool
+from bdai_ros2_wrappers.executors import AutoScalingMultiThreadedExecutor, AutoScalingThreadPool, background
+from bdai_ros2_wrappers.futures import wait_for_future
 
 
 @pytest.fixture
@@ -183,3 +186,22 @@ def test_autoscaling_executor(ros_context: Context, ros_node: Node) -> None:
     finally:
         executor.remove_node(ros_node)
         executor.shutdown()
+
+
+def test_background_executor(ros_context: Context) -> None:
+    """Asserts that an executor can be safely pushed to a background thread."""
+    with background(SingleThreadedExecutor(context=ros_context)) as executor:
+        with pytest.raises(RuntimeError):
+            executor.spin()
+
+        def deferred() -> bool:
+            time.sleep(1.0)
+            return True
+
+        future = executor.create_task(deferred)
+
+        with pytest.raises(RuntimeError):
+            executor.spin_until_future_complete(future)
+
+        assert wait_for_future(future, timeout_sec=10.0)
+        assert future.result()

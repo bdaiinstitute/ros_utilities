@@ -4,7 +4,7 @@ from typing import Callable, Optional, Type
 import rclpy.action
 from rclpy.node import Node
 
-import bdai_ros2_wrappers.process as process
+import bdai_ros2_wrappers.scope as scope
 from bdai_ros2_wrappers.action_handle import ActionHandle
 from bdai_ros2_wrappers.type_hints import Action
 
@@ -20,9 +20,9 @@ class ActionClientWrapper(rclpy.action.ActionClient):
             action_name (str): The name of the action (for logging purposes)
             node (Optional[Node]): optional node for action client, defaults to the current process node
         """
-        node = node or process.node()
+        node = node or scope.node()
         if node is None:
-            raise ValueError("No process-wide ROS 2 node available (did you use bdai_ros2_wrapper.process.main?)")
+            raise ValueError("no ROS 2 node available (did you use bdai_ros2_wrapper.process.main?)")
         self._node = node
         super().__init__(self._node, action_type, action_name)
         self._node.get_logger().info(f"Waiting for action server for {action_name}")

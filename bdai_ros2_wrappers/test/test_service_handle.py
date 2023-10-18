@@ -1,25 +1,13 @@
 #  Copyright (c) 2023 Boston Dynamics AI Institute LLC. All rights reserved.
 import inspect
-from typing import Iterable, Optional, Tuple
+from typing import Optional, Tuple
 
-import pytest
-import rclpy
 from rclpy.client import Client
 from std_srvs.srv import Empty, SetBool, Trigger
 
-from bdai_ros2_wrappers.process import ROSAwareScope
+from bdai_ros2_wrappers.scope import ROSAwareScope
 from bdai_ros2_wrappers.service_handle import ServiceHandle
 from bdai_ros2_wrappers.type_hints import SrvTypeRequest, SrvTypeResponse
-
-
-@pytest.fixture
-def ros() -> Iterable[ROSAwareScope]:
-    rclpy.init()
-    try:
-        with ROSAwareScope("fixture") as scope:
-            yield scope
-    finally:
-        rclpy.try_shutdown()
 
 
 def do_request(
@@ -54,6 +42,7 @@ def test_successful_trigger(ros: ROSAwareScope) -> None:
         result.message = "foo"
         return result
 
+    assert ros.node is not None
     ros.node.create_service(Trigger, "trigger_service", callback)
     client = ros.node.create_client(Trigger, "trigger_service")
     ok, result = do_request(client, Trigger.Request())
@@ -73,6 +62,7 @@ def test_failed_trigger(ros: ROSAwareScope) -> None:
         result.message = "bar"
         return result
 
+    assert ros.node is not None
     ros.node.create_service(Trigger, "trigger_service", callback)
     client = ros.node.create_client(Trigger, "trigger_service")
 
@@ -97,6 +87,7 @@ def setbool_service_callback(req: SrvTypeRequest, resp: SrvTypeResponse) -> SrvT
 
 def test_successful_set_bool(ros: ROSAwareScope) -> None:
     """Request data passes a true value. Should return a success condition with the message foo."""
+    assert ros.node is not None
     ros.node.create_service(SetBool, "setbool_service", setbool_service_callback)
     client = ros.node.create_client(SetBool, "setbool_service")
     ok, result = do_request(client, SetBool.Request(data=True))
@@ -109,6 +100,7 @@ def test_successful_set_bool(ros: ROSAwareScope) -> None:
 
 def test_failed_set_bool(ros: ROSAwareScope) -> None:
     """Request data passes a false value. Should return a failure condition with the message bar."""
+    assert ros.node is not None
     ros.node.create_service(SetBool, "setbool_service", setbool_service_callback)
     client = ros.node.create_client(SetBool, "setbool_service")
     ok, result = do_request(client, SetBool.Request(data=False))
@@ -125,6 +117,7 @@ def test_warning(ros: ROSAwareScope) -> None:
     def callback(req: SrvTypeRequest, resp: SrvTypeResponse) -> SrvTypeResponse:
         return Empty.Response()
 
+    assert ros.node is not None
     ros.node.create_service(Empty, "empty_service", callback)
     client = ros.node.create_client(Empty, "empty_service")
     ok, result = do_request(client, Empty.Request())

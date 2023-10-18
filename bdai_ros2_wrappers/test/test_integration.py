@@ -1,23 +1,21 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 import math
 import random
-from typing import Any, Generator
+from typing import Any
 
 import pytest
-import rclpy
 import tf2_ros
 from example_interfaces.action import Fibonacci
 from example_interfaces.srv import AddTwoInts
 from geometry_msgs.msg import TransformStamped
 from rclpy.action.client import ActionClient
 from rclpy.action.server import ActionServer, ServerGoalHandle
-from rclpy.context import Context
 from rclpy.duration import Duration
-from rclpy.executors import Executor
 from rclpy.time import Time
 
-from bdai_ros2_wrappers.executors import AutoScalingMultiThreadedExecutor
+from bdai_ros2_wrappers.futures import wait_for_future
 from bdai_ros2_wrappers.node import Node
+from bdai_ros2_wrappers.scope import ROSAwareScope
 
 
 class MinimalTransformPublisher(Node):
@@ -80,61 +78,26 @@ class MinimalActionServer(Node):
         return result
 
 
-@pytest.fixture
-def ros_context() -> Generator[Context, None, None]:
-    """A fixture yielding a managed rclpy.context.Context instance."""
-    context = Context()
-    rclpy.init(context=context)
-    try:
-        yield context
-    finally:
-        context.try_shutdown()
-
-
-@pytest.fixture
-def ros_executor(ros_context: Context) -> Generator[Executor, None, None]:
-    """A fixture yielding a managed AutoScalingMultiThreadedExecutor instance."""
-    executor = AutoScalingMultiThreadedExecutor(context=ros_context)
-    try:
-        yield executor
-    finally:
-        executor.shutdown()
-
-
-@pytest.fixture
-def ros_node(ros_context: Context, ros_executor: Executor) -> Generator[Node, None, None]:
-    """A fixture yielding a managed Node instance."""
-    node = Node("test_node", context=ros_context)
-    try:
-        yield node
-    finally:
-        node.destroy_node()
-
-
 @pytest.fixture(autouse=True)
-def ros_graph(ros_context: Context, ros_executor: Executor, ros_node: Node) -> Generator[None, None, None]:
+def ros_graph(ros: ROSAwareScope) -> None:
     """An automatic fixture managing execution of multiple nodes for testing purposes."""
-    ros_executor.add_node(MinimalTransformPublisher(context=ros_context))
-    ros_executor.add_node(MinimalServer(context=ros_context))
-    ros_executor.add_node(MinimalActionServer(context=ros_context))
-    ros_executor.add_node(ros_node)
-    try:
-        yield
-    finally:
-        for node in ros_executor.get_nodes():
-            ros_executor.remove_node(node)
+    ros.load(MinimalTransformPublisher)
+    ros.load(MinimalServer)
+    ros.load(MinimalActionServer)
+    return
 
 
-def test_blocking_sequence(ros_executor: Executor, ros_node: Node) -> None:
+def test_blocking_sequence(ros: ROSAwareScope) -> None:
     """
     Asserts that a blocking call sequence (single-nested if you follow the execution path
     across callbacks) is possible when using a multi-threaded executor and callback isolation.
     """
+    assert ros.node is not None
     tf_buffer = tf2_ros.Buffer()
-    tf2_ros.TransformListener(tf_buffer, node=ros_node, spin_thread=False)
+    tf2_ros.TransformListener(tf_buffer, node=ros.node, spin_thread=False)
 
-    client = ros_node.create_client(AddTwoInts, "add_two_ints")
-    action_client = ActionClient(ros_node, Fibonacci, "compute_fibonacci_sequence")
+    client = ros.node.create_client(AddTwoInts, "add_two_ints")
+    action_client = ActionClient(ros.node, Fibonacci, "compute_fibonacci_sequence")
 
     def blocking_sequence() -> TransformStamped:
         generator = random.Random(0)
@@ -157,25 +120,28 @@ def test_blocking_sequence(ros_executor: Executor, ros_node: Node) -> None:
             MinimalTransformPublisher.frame_id, MinimalTransformPublisher.child_frame_id, Time(), timeout
         )
 
-        time = ros_node.get_clock().now()
+        assert ros.node is not None
+        time = ros.node.get_clock().now()
         time += Duration(seconds=result.sequence[-1] * 10e-3)
         return tf_buffer.lookup_transform(
             MinimalTransformPublisher.frame_id, MinimalTransformPublisher.child_frame_id, time, timeout
         )
 
-    future = ros_executor.create_task(blocking_sequence)
-    ros_executor.spin_until_future_complete(future, timeout_sec=10)
+    assert ros.executor is not None
+    future = ros.executor.create_task(blocking_sequence)
+    assert wait_for_future(future, timeout_sec=10)
     transform = future.result()
     assert transform is not None
     assert transform.header.frame_id == MinimalTransformPublisher.frame_id
 
 
-def test_chain_sequence(ros_executor: Executor, ros_node: Node) -> None:
+def test_chain_sequence(ros: ROSAwareScope) -> None:
     """
     Asserts that a chained call sequence (double-nested if you follow the execution path
     across callbacks) is possible when using a multi-threaded executor and callback isolation.
     """
-    action_client = ActionClient(ros_node, Fibonacci, "compute_fibonacci_sequence")
+    assert ros.node is not None
+    action_client = ActionClient(ros.node, Fibonacci, "compute_fibonacci_sequence")
 
     def add_fibonacci_sequences_server_callback(
         request: AddTwoInts.Request, response: AddTwoInts.Response
@@ -188,15 +154,16 @@ def test_chain_sequence(ros_executor: Executor, ros_node: Node) -> None:
         response.sum = sum(result_a.sequence) + sum(result_b.sequence)
         return response
 
-    ros_node.create_service(AddTwoInts, "add_two_fibonacci_sequences", add_fibonacci_sequences_server_callback)
+    ros.node.create_service(AddTwoInts, "add_two_fibonacci_sequences", add_fibonacci_sequences_server_callback)
 
-    client = ros_node.create_client(AddTwoInts, "add_two_fibonacci_sequences")
+    client = ros.node.create_client(AddTwoInts, "add_two_fibonacci_sequences")
 
     def chain_sequence() -> TransformStamped:
         assert client.wait_for_service(timeout_sec=5)
         response = client.call(AddTwoInts.Request(a=6, b=12))
         return response.sum == 396
 
-    future = ros_executor.create_task(chain_sequence)
-    ros_executor.spin_until_future_complete(future, timeout_sec=10)
+    assert ros.executor is not None
+    future = ros.executor.create_task(chain_sequence)
+    assert wait_for_future(future, timeout_sec=10)
     assert future.result()

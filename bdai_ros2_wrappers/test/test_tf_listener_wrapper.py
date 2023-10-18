@@ -1,9 +1,8 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 import time
-from typing import Iterable, Optional, Tuple
+from typing import Any, Iterable, Optional, Tuple
 
 import pytest
-import rclpy
 from geometry_msgs.msg import Quaternion, Transform, TransformStamped, Vector3
 from rclpy.duration import Duration
 from rclpy.time import Time
@@ -32,8 +31,8 @@ def equal_transform(a: Transform, b: Transform) -> bool:
 
 
 class MockTfPublisherNode(Node):
-    def __init__(self, frame_id: str, child_frame_id: str) -> None:
-        super().__init__("mock_tf_publisher")
+    def __init__(self, frame_id: str, child_frame_id: str, **kwargs: Any) -> None:
+        super().__init__("mock_tf_publisher", **kwargs)
 
         self._frame_id = frame_id
         self._child_frame_id = child_frame_id
@@ -53,26 +52,16 @@ class MockTfPublisherNode(Node):
 
 
 @pytest.fixture
-def ros() -> Iterable[ROSAwareScope]:
-    rclpy.init()
-    try:
-        with ROSAwareScope("fixture") as scope:
-            yield scope
-    finally:
-        rclpy.try_shutdown()
-
-
-@pytest.fixture
 def tf_pair(ros: ROSAwareScope) -> Iterable[Tuple[MockTfPublisherNode, TFListenerWrapper]]:
-    tf_publisher = MockTfPublisherNode(FRAME_ID, CHILD_FRAME_ID)
-    ros.executor.add_node(tf_publisher)
-    tf_listener = TFListenerWrapper(ros.node)
-    yield tf_publisher, tf_listener
-    ros.executor.remove_node(tf_publisher)
+    with ros.managed(MockTfPublisherNode, FRAME_ID, CHILD_FRAME_ID) as tf_publisher:
+        assert ros.node is not None
+        tf_listener = TFListenerWrapper(ros.node)
+        yield tf_publisher, tf_listener
 
 
 def test_non_existant_transform(ros: ROSAwareScope, tf_pair: Tuple[MockTfPublisherNode, TFListenerWrapper]) -> None:
     tf_publisher, tf_listener = tf_pair
+    assert ros.node is not None
     timestamp = ros.node.get_clock().now()
     with pytest.raises(LookupException):
         tf_listener.lookup_a_tform_b(FRAME_ID, CHILD_FRAME_ID, timestamp)
@@ -82,6 +71,7 @@ def test_non_existant_transform_timeout(
     ros: ROSAwareScope, tf_pair: Tuple[MockTfPublisherNode, TFListenerWrapper]
 ) -> None:
     tf_publisher, tf_listener = tf_pair
+    assert ros.node is not None
     timestamp = ros.node.get_clock().now()
     start = time.time()
     with pytest.raises(LookupException):
@@ -91,6 +81,7 @@ def test_non_existant_transform_timeout(
 
 def test_existing_transform(ros: ROSAwareScope, tf_pair: Tuple[MockTfPublisherNode, TFListenerWrapper]) -> None:
     tf_publisher, tf_listener = tf_pair
+    assert ros.node is not None
     timestamp = ros.node.get_clock().now()
     trans = Transform(translation=Vector3(x=1.0, y=2.0, z=3.0), rotation=Quaternion(w=1.0, x=0.0, y=0.0, z=0.0))
     tf_publisher.publish_transform(trans, timestamp)
@@ -103,6 +94,7 @@ def test_future_transform_extrapolation_exception(
     ros: ROSAwareScope, tf_pair: Tuple[MockTfPublisherNode, TFListenerWrapper]
 ) -> None:
     tf_publisher, tf_listener = tf_pair
+    assert ros.node is not None
     timestamp = ros.node.get_clock().now()
     trans = Transform(translation=Vector3(x=1.0, y=2.0, z=3.0), rotation=Quaternion(w=1.0, x=0.0, y=0.0, z=0.0))
     tf_publisher.publish_transform(trans, timestamp)
@@ -116,6 +108,7 @@ def test_future_transform_insufficient_wait(
     ros: ROSAwareScope, tf_pair: Tuple[MockTfPublisherNode, TFListenerWrapper]
 ) -> None:
     tf_publisher, tf_listener = tf_pair
+    assert ros.node is not None
     timestamp = ros.node.get_clock().now()
     trans = Transform(translation=Vector3(x=1.0, y=2.0, z=3.0), rotation=Quaternion(w=1.0, x=0.0, y=0.0, z=0.0))
     tf_publisher.publish_transform(trans, timestamp)
@@ -124,9 +117,11 @@ def test_future_transform_insufficient_wait(
 
     def delayed_publish() -> None:
         time.sleep(delay)
+        assert ros.node is not None
         delayed_timestamp = ros.node.get_clock().now()
         tf_publisher.publish_transform(trans, delayed_timestamp)
 
+    assert ros.executor is not None
     ros.executor.create_task(delayed_publish)
 
     time.sleep(0.2)
@@ -137,6 +132,7 @@ def test_future_transform_insufficient_wait(
 
 def test_future_transform_wait(ros: ROSAwareScope, tf_pair: Tuple[MockTfPublisherNode, TFListenerWrapper]) -> None:
     tf_publisher, tf_listener = tf_pair
+    assert ros.node is not None
     timestamp = ros.node.get_clock().now()
     trans = Transform(translation=Vector3(x=1.0, y=2.0, z=3.0), rotation=Quaternion(w=1.0, x=0.0, y=0.0, z=0.0))
     tf_publisher.publish_transform(trans, timestamp)
@@ -148,6 +144,7 @@ def test_future_transform_wait(ros: ROSAwareScope, tf_pair: Tuple[MockTfPublishe
         delayed_timestamp = tf_publisher.get_clock().now()
         tf_publisher.publish_transform(trans, delayed_timestamp)
 
+    assert ros.executor is not None
     ros.executor.create_task(delayed_publish)
 
     timestamp += Duration(seconds=delay)

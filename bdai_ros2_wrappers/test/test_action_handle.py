@@ -2,18 +2,16 @@
 import inspect
 import time
 from dataclasses import dataclass, field
-from typing import Any, Callable, Iterable, Optional, Tuple
+from typing import Any, Callable, Optional, Tuple
 from unittest.mock import Mock
 
-import pytest
-import rclpy
 from action_tutorials_interfaces.action import Fibonacci
 from rclpy.action import ActionClient, ActionServer
 from rclpy.action.server import CancelResponse, GoalResponse, ServerGoalHandle
 from rclpy.node import Node
 
 from bdai_ros2_wrappers.action_handle import ActionHandle
-from bdai_ros2_wrappers.process import ROSAwareScope
+from bdai_ros2_wrappers.scope import ROSAwareScope
 from bdai_ros2_wrappers.type_hints import Action
 
 
@@ -99,16 +97,6 @@ class FibonacciActionServer(ActionServer):
         return result
 
 
-@pytest.fixture
-def ros() -> Iterable[ROSAwareScope]:
-    rclpy.init()
-    try:
-        with ROSAwareScope("fixture") as scope:
-            yield scope
-    finally:
-        rclpy.try_shutdown()
-
-
 @dataclass
 class ActionHandleMocks:
     result_callback: Mock = field(default_factory=Mock)
@@ -141,6 +129,7 @@ def do_send_goal(
 
 def test_result(ros: ROSAwareScope) -> None:
     """Tests that the result callback is correctly called when the ActionGoal completes successfully"""
+    assert ros.node is not None
     FibonacciActionServer(ros.node, "fibonacci_ah")
     action_client = ActionClient(ros.node, Fibonacci, "fibonacci_ah")
     handle, mocks = do_send_goal(action_client, Fibonacci.Goal(order=5))
@@ -155,6 +144,7 @@ def test_result(ros: ROSAwareScope) -> None:
 
 def test_reject(ros: ROSAwareScope) -> None:
     """Tests the case where the action server rejects the goal"""
+    assert ros.node is not None
     FibonacciActionServer(ros.node, "fibonacci_ah", goal_callback=_goal_callback_reject)
     action_client = ActionClient(ros.node, Fibonacci, "fibonacci_ah")
     handle, mocks = do_send_goal(action_client, Fibonacci.Goal(order=5))
@@ -169,6 +159,7 @@ def test_reject(ros: ROSAwareScope) -> None:
 
 def test_abort(ros: ROSAwareScope) -> None:
     """Tests the case where the action server aborts the goal"""
+    assert ros.node is not None
     FibonacciActionServer(ros.node, "fibonacci_ah", execute_callback=_execute_callback_abort)
     action_client = ActionClient(ros.node, Fibonacci, "fibonacci_ah")
     handle, mocks = do_send_goal(action_client, Fibonacci.Goal(order=5))
@@ -182,6 +173,7 @@ def test_abort(ros: ROSAwareScope) -> None:
 
 
 def test_feedback(ros: ROSAwareScope) -> None:
+    assert ros.node is not None
     FibonacciActionServer(ros.node, "fibonacci_ah", execute_callback=_execute_callback_feedback)
     action_client = ActionClient(ros.node, Fibonacci, "fibonacci_ah")
     handle, mocks = do_send_goal(action_client, Fibonacci.Goal(order=5))
@@ -195,6 +187,7 @@ def test_feedback(ros: ROSAwareScope) -> None:
 
 
 def test_cancel_success(ros: ROSAwareScope) -> None:
+    assert ros.node is not None
     FibonacciActionServer(
         ros.node,
         "fibonacci_ah",
@@ -215,6 +208,7 @@ def test_cancel_success(ros: ROSAwareScope) -> None:
 
 
 def test_cancel_failure(ros: ROSAwareScope) -> None:
+    assert ros.node is not None
     FibonacciActionServer(ros.node, "fibonacci_ah", execute_callback=_execute_callback_slowly)
     action_client = ActionClient(ros.node, Fibonacci, "fibonacci_ah")
     handle, mocks = do_send_goal(action_client, Fibonacci.Goal(order=5))
@@ -231,6 +225,7 @@ def test_cancel_failure(ros: ROSAwareScope) -> None:
 
 def test_wait_for_result_timeout(ros: ROSAwareScope) -> None:
     """Tests the wait_for_result function for when it times out"""
+    assert ros.node is not None
     FibonacciActionServer(ros.node, "fibonacci_ah", execute_callback=_execute_callback_slowly)
     action_client = ActionClient(ros.node, Fibonacci, "fibonacci_ah")
     handle, mocks = do_send_goal(action_client, Fibonacci.Goal(order=5))
@@ -239,6 +234,7 @@ def test_wait_for_result_timeout(ros: ROSAwareScope) -> None:
 
 def test_wait_for_result_cancelled(ros: ROSAwareScope) -> None:
     """Test if the ActionServer cancels the request"""
+    assert ros.node is not None
     FibonacciActionServer(
         ros.node,
         "fibonacci_ah",
@@ -262,6 +258,7 @@ def test_wait_for_result_cancelled(ros: ROSAwareScope) -> None:
 
 def test_wait_for_result_aborted(ros: ROSAwareScope) -> None:
     """Test if the ActionServer cancels the request"""
+    assert ros.node is not None
     FibonacciActionServer(ros.node, "fibonacci_ah", execute_callback=_execute_callback_abort)
     action_client = ActionClient(ros.node, Fibonacci, "fibonacci_ah")
     handle, mocks = do_send_goal(action_client, Fibonacci.Goal(order=5))
