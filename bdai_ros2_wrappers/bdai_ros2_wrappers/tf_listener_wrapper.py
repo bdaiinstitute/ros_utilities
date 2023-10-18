@@ -3,9 +3,11 @@
 from typing import Optional
 
 from geometry_msgs.msg import TransformStamped
+from rclpy.clock import ClockType
 from rclpy.node import Node
 from rclpy.task import Future
 from rclpy.time import Duration, Time
+from tf2_ros import TransformException
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 
@@ -32,18 +34,18 @@ class TFListenerWrapper:
     def shutdown(self) -> None:
         self._tf_listener.unregister()
 
-    def wait_for_a_tform_b_async(self, frame_a: str, frame_b: str, time: Optional[Time] = None) -> Future:
-        if time is None:
-            time = Time()
-        return self._tf_buffer.wait_for_transform_async(frame_a, frame_b, time)
+    def wait_for_a_tform_b_async(self, frame_a: str, frame_b: str, transform_time: Optional[Time] = None) -> Future:
+        if transform_time is None:
+            transform_time = Time()
+        return self._tf_buffer.wait_for_transform_async(frame_a, frame_b, transform_time)
 
     def wait_for_a_tform_b(
-        self, frame_a: str, frame_b: str, time: Optional[Time] = None, timeout_sec: Optional[float] = None
+        self, frame_a: str, frame_b: str, transform_time: Optional[Time] = None, timeout_sec: Optional[float] = None
     ) -> bool:
         """
         Wait for the transform from from_frame to to_frame to become available.
         """
-        future = self.wait_for_a_tform_b_async(frame_a, frame_b, time)
+        future = self.wait_for_a_tform_b_async(frame_a, frame_b, transform_time)
         if not wait_for_future(future, timeout_sec, context=self._node.context):
             future.cancel()
             return False
@@ -59,23 +61,38 @@ class TFListenerWrapper:
     ) -> TransformStamped:
         """
         Parameters:
-            frame_a: Base frame for transform.  The transform returned will be frame_a_t_frame_b
-            frame_b: Tip frame for transform.  The transform returned will be frame_a_t_frame_b
-            transform_time: The time at which to look up the transform.  If left at None, will be the most recent
-                transform available
+            frame_a: Base frame for transform. The transform returned will be frame_a_t_frame_b
+            frame_b: Tip frame for transform. The transform returned will be frame_a_t_frame_b
+            transform_time: The time at which to look up the transform. If left at None, the most
+                recent transform available will used.
             timeout_sec: The time to wait for the transform to become available if the requested time is beyond
                 the most recent transform in the buffer. If set to 0, it will not wait. If left at None, it will
                 wait indefinitely.
-            wait_for_frames: If true, waits timeout amount of time for a path to exist from frame_a to frame_b in the
-                buffer. If false, this will return immediately if a path does not exist even if timeout is not
-                None. Note that wait_for_a_tform_b can also be used to wait for a transform to become available.
+            wait_for_frames: If true, it will wait for a path to exist from frame_a to frame_b in the
+                buffer. If false, lookup will fail immediately if a path between frames does not exist,
+                regardless of what timeout was set. Note that wait_for_a_tform_b can also be used to
+                wait for a transform to become available.
         Returns:
             The transform frame_a_t_frame_b at the time specified.
         Raises:
             All the possible TransformExceptions.
         """
         if not wait_for_frames:
-            timeout_sec = 0.0
+            try:
+                latest_time = self._tf_buffer.get_latest_common_time(frame_a, frame_b)
+                # tf2 Python bindings yield system clock timestamps rather than ROS clock
+                # timestamps, regardless of where these timestamps came from (as there is no
+                # clock notion in tf2)
+                latest_time = Time(nanoseconds=latest_time.nanoseconds, clock_type=ClockType.ROS_TIME)
+                if transform_time is not None and latest_time > transform_time:
+                    # no need to wait, either lookup can be satisfied or an extrapolation
+                    # to the past exception will ensue
+                    timeout_sec = 0.0
+            except TransformException:
+                # either frames do not exist or a path between them doesn't, do not wait
+                timeout_sec = 0.0
+        if transform_time is None:
+            transform_time = Time()
         if timeout_sec != 0.0:
             self.wait_for_a_tform_b(frame_a, frame_b, transform_time, timeout_sec)
         return self._tf_buffer.lookup_transform(frame_a, frame_b, transform_time)
@@ -90,9 +107,10 @@ class TFListenerWrapper:
             timeout_sec: The time to wait for the transform to become available if the requested time is beyond
                 the most recent transform in the buffer. If set to 0, it will not wait. If left at None, it will
                 wait indefinitely.
-            wait_for_frames: If true, waits timeout amount of time for a path to exist from frame_a to frame_b in the
-                buffer. If false, this will return immediately if a path does not exist even if timeout is not
-                None. Note that wait_for_a_tform_b can be used to wait for a transform to become available.
+            wait_for_frames: If true, it will wait for a path to exist from frame_a to frame_b in the
+                buffer. If false, lookup will fail immediately if a path between frames does not exist,
+                regardless of what timeout was set. Note that wait_for_a_tform_b can also be used to
+                wait for a transform to become available.
         Returns:
             The timestamp from the latest recorded transform frame_a_t_frame_b
         Raises:
