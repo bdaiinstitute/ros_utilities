@@ -6,14 +6,31 @@ Wrappers and other utilities for ROS2
 ### Process-wide APIs
 
 These APIs wrap [`rclpy`](https://github.com/ros2/rclpy) APIs to provide a simpler UX in common use cases.
-All APIs are thread-safe and exception-safe. Resource management is automatic. By default, callbacks are
-dispatched in the background, enabling both synchronous and asynchronous programming.
+
+These APIs are built around the notion of a ROS 2 aware _scope_. ROS 2 aware scopes manage the lifetime of a
+thread local graph of ROS 2 nodes, along with an executor that dispatches work for them. ROS 2 nodes may be
+loaded and unloaded (i.e. instantiated and put to spin, and explicitly destroyed, respectively) or have their
+entire lifecycle be managed (i.e. bound to a context manager). ROS 2 aware scopes may be nested, enforcing
+locality of ROS 2 usage in a codebase, though the innermost scope is always accessible through
+`bdai_ros2_wrappers.scope` module-level APIs.
+
+A ROS 2 aware scope may also be process local (i.e. global within a process), which allows for the notion
+of a ROS 2 aware _process_. Only one ROS 2 aware process may be active at any point in time as a top-level
+scope i.e. a ROS 2 aware process may not start within an existing ROS 2 aware scope. A ROS 2 aware process
+may also define a main ROS 2 node (for ease of use, for log forwarding, etc.). The current ROS 2 aware
+process and associated scope are always accessible process-wide through `bdai_ros2_wrappers.process`
+module-level APIs.
+
+These notions afford process-wide (and thread-wide) access to locally managed ROS 2 entities and thus ownership
+and lifetime is well defined. Moreover, callbacks are dispatched in the background by default, enabling both
+synchronous and asynchronous programming out-of-the-box.
 
 These APIs are also quite handy to reconcile past [`rospy`](http://wiki.ros.org/rospy) experience with ROS 2.
 
 #### Setting up single node processes
 
-Just decorate your executable entrypoint (or `main` function) with `bdai_ros2_wrappers.process.main`:
+To make use of ROS 2 without getting into the details, just decorate your executable entrypoint (or `main` function)
+with `bdai_ros2_wrappers.process.main`:
 
 ```python
 import logging
@@ -35,7 +52,7 @@ def entrypoint() -> None:
         pub.publish(std_msgs.msg.String(data="testing"))
     executor = ros_process.executor()  # or entrypoint.executor
     assert executor is not None
-    executor.create_task(callback)
+    executor.create_task(callback)  # dispatch callback for execution
 
     time.sleep(10)  # you can block in the main thread
 
@@ -48,11 +65,14 @@ if __name__ == "__main__":
     entrypoint()
 ```
 
-This is ideal for quick prototyping and simple scripts.
+Note a ROS 2 node and an executor are accessible process-wide through `bdai_ros2_wrappers.process` module APIs.
+This is ideal for quick prototyping and simple scripts, as the UX is largely intuitive e.g. you can make blocking
+calls from virtually anywhere.
 
 #### Setting up multi-node processes
 
-You can spin as many ROS 2 nodes as you need, and skip the default process-wide node if unnecessary:
+You can spin as many ROS 2 nodes as you need, and skip the default process-wide node if unnecessary. Here's an example that
+loads three (3) ROS 2 nodes and spins them indefinitely:
 
 ```python
 import logging
@@ -80,7 +100,8 @@ Note the use of ROS 2 node(s) factories, to load (or spin) entire collections at
 
 #### Setting up interactive multi-node applications
 
-For interactive applications, you will most likely want to keep automatic spinning in place:
+For interactive applications, you will most likely want to keep automatic spinning in place. Here's an example that waits
+for user input, sleeps for 5 seconds, and then echoes that user input from a callback without deadlocking:
 
 ```python
 import logging
@@ -118,6 +139,8 @@ if __name__ == "__main__":
 ```
 
 #### Setting up command-line single node applications
+
+Command-line arguments may affect ROS 2 configuration if need be:
 
 ```python
 import argparse
@@ -159,8 +182,9 @@ if __name__ == "__main__":
     main()
 ```
 
-Note that process arguments are set via CLI. Also, note that a process-wide node is set explicitly (rather than implicitly). 
-The same can be done for process-wide executors. This allows fine grained control over ROS 2 configuration.
+Note that process arguments are set via CLI. Also, note that a process-wide node is set explicitly (rather than implicitly).
+The same can be done for process-wide executors. This allows fine grained control over ROS 2 configuration, which is useful
+to those with special needs e.g. a custom main node (like in this case), a custom executor, etc.
 
 #### Writing ROS 2 aware libraries
 
@@ -193,17 +217,18 @@ if __name__ == "__main__":
     main()
 ```
 
-Note the use of `ros_scope` instead of `ros_process`. Both offer the same APIs, but the former reaches out to the innermost scope. This allows the library to work in more complex, multi-threaded, multi-scope applications, and for testing cases.
+Note the use of `ros_scope` instead of `ros_process`. Both offer roughly the same APIs, but the former reaches out to the innermost scope, 
+whereas the latter presumes a process is active. Therefore, and as a rule of thumb, libraries should always use `bdai_ros2_wrappers.scope` APIs. 
+This will allow such libraries to work in more complex, multi-threaded, multi-scope applications, and simplify testing.
 
 #### Writing ROS 2 aware tests
 
-To write tests, setup a global ROS 2 aware scope instead of a process.
-Consider using namespaces to avoid default, hidden ROS 2 names.
+To write tests, set up a global ROS 2 aware scope instead of a process. Also, consider using namespaces to avoid default, hidden ROS 2 names.
 
 Using [`pytest`](https://docs.pytest.org/en/6.2.x/contents.html) (recommended):
 
 ```python
-from typing import Iterable
+from typing import Iterator
 
 import bdai_ros2_wrappers.scope as ros_scope
 from bdai_ros2_wrappers.scope import ROSAwareScope
@@ -211,7 +236,12 @@ from bdai_ros2_wrappers.scope import ROSAwareScope
 import pytest
 
 @pytest.fixture
-def ros() -> Iterable[ROSAwareScope]:
+def ros() -> Iterator[ROSAwareScope]:
+    """
+    A pytest fixture that will set up and yield a ROS 2 aware global scope to each test that requests it.
+
+    See https://docs.pytest.org/en/6.2.x/fixture.html for a primer on pytest fixtures.
+    """
     with ros_scope.top(global_=True, namespace="fixture") as top:
         yield top
 
@@ -234,6 +264,10 @@ class TestCase(unittest.TestCase):
             self.assertIsNotNone(ros.node)
             ros.node.get_logger().info("Logging!")
 ```
+
+#### Reference
+
+Check the [examples](./examples) available or read up `bdai_ros2_wrappers` API documentation.
 
 ## Contribution
 To contribute, install `pre-commit` via pip, run `pre-commit install` and then run `pre-commit run --all-files` to

@@ -66,7 +66,7 @@ def main() -> None:
     action_client = ActionClient(main.node, Fibonacci, "compute_fibonacci_sequence")
     assert action_client.wait_for_server(timeout_sec=5)
 
-    while True:
+    while main.context.ok():
         line = input("Please provide a Fibonacci sequence order (or press Enter to exit): ")
         if not line:
             break

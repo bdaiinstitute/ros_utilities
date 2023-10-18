@@ -20,7 +20,7 @@ from bdai_ros2_wrappers.node import Node
 
 
 class TalkerNode(Node):
-    """A node that publishes a phrase periodically."""
+    """A node that publishes a phrase to a chat topic periodically."""
 
     def __init__(self, **kwargs: typing.Any) -> None:
         super().__init__("talker", **kwargs)
@@ -35,7 +35,7 @@ class TalkerNode(Node):
 
 
 class ListenerNode(Node):
-    """A node that subscribes to chattering."""
+    """A node that subscribes to a chat topic and echoes it."""
 
     def __init__(self, **kwargs: typing.Any) -> None:
         super().__init__("listener", **kwargs)
