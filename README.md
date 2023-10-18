@@ -138,6 +138,9 @@ if __name__ == "__main__":
     main()
 ```
 
+Note the use of `input` to read from `stdin`. This effectively prevents this executable from running with `launch`,
+as `launch` does **not** pipe its own process `stdin` to that of any executed subprocess.
+
 #### Setting up command-line single node applications
 
 Command-line arguments may affect ROS 2 configuration if need be:
