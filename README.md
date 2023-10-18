@@ -10,14 +10,14 @@ These APIs wrap [`rclpy`](https://github.com/ros2/rclpy) APIs to provide a simpl
 These APIs are built around the notion of a ROS 2 aware _scope_. ROS 2 aware scopes manage the lifetime of a
 thread local graph of ROS 2 nodes, along with an executor that dispatches work for them. ROS 2 nodes may be
 loaded and unloaded (i.e. instantiated and put to spin, and explicitly destroyed, respectively) or have their
-entire lifecycle be managed (i.e. bound to a context manager). ROS 2 aware scopes may be nested, enforcing
-locality of ROS 2 usage in a codebase, though the innermost scope is always accessible through
-`bdai_ros2_wrappers.scope` module-level APIs.
+entire lifecycle be managed (i.e. bound to a context manager). A ROS 2 aware scope may also define a main
+ROS 2 node (for ease of use, for log forwarding, etc.). ROS 2 aware scopes may be nested, enforcing locality
+of ROS 2 usage in a codebase, though the innermost scope is always accessible through `bdai_ros2_wrappers.scope`
+module-level APIs.
 
 A ROS 2 aware scope may also be process local (i.e. global within a process), which allows for the notion
 of a ROS 2 aware _process_. Only one ROS 2 aware process may be active at any point in time as a top-level
-scope i.e. a ROS 2 aware process may not start within an existing ROS 2 aware scope. A ROS 2 aware process
-may also define a main ROS 2 node (for ease of use, for log forwarding, etc.). The current ROS 2 aware
+scope i.e. a ROS 2 aware process may not start within an existing ROS 2 aware scope. The current ROS 2 aware
 process and associated scope are always accessible process-wide through `bdai_ros2_wrappers.process`
 module-level APIs.
 
@@ -220,8 +220,8 @@ if __name__ == "__main__":
     main()
 ```
 
-Note the use of `ros_scope` instead of `ros_process`. Both offer roughly the same APIs, but the former reaches out to the innermost scope, 
-whereas the latter presumes a process is active. Therefore, and as a rule of thumb, libraries should always use `bdai_ros2_wrappers.scope` APIs. 
+Note the use of `ros_scope` instead of `ros_process`. Both offer roughly the same APIs, but the former reaches out to the innermost scope,
+whereas the latter presumes a process is active. Therefore, and as a rule of thumb, libraries should always use `bdai_ros2_wrappers.scope` APIs.
 This will allow such libraries to work in more complex, multi-threaded, multi-scope applications, and simplify testing.
 
 #### Writing ROS 2 aware tests
