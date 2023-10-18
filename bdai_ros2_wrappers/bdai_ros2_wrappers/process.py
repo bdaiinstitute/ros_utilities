@@ -12,6 +12,7 @@ import rclpy.executors
 import rclpy.logging
 import rclpy.node
 
+import bdai_ros2_wrappers.context as context
 import bdai_ros2_wrappers.scope as scope
 from bdai_ros2_wrappers.scope import AnyEntity, AnyEntityFactoryCallable, ROSAwareScope
 from bdai_ros2_wrappers.utilities import either_or
@@ -172,12 +173,7 @@ class ROSAwareProcess:
         with self._lock:
             if self._scope is None:
                 raise RuntimeError("process is not executing")
-            context = self._scope.context
-            if context is None:
-                context = rclpy.get_default_context()
-            event = threading.Event()
-            context.on_shutdown(event.set)
-            return event.wait(timeout_sec)
+            return context.wait_for_shutdown(timeout_sec=timeout_sec, context=self._scope.context)
 
     def try_shutdown(self) -> None:
         """Atempts to shutdown the underlying scope context."""
