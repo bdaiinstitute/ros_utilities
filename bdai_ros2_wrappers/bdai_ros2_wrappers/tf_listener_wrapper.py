@@ -105,7 +105,7 @@ class TFListenerWrapper:
         if self._node.executor is None:
             if timeout_sec is None:
                 warnings.warn("Node is not spinning yet, wait may block forever")
-            else:
+            elif timeout_sec > 0.0:
                 warnings.warn("Node is not spinning yet, wait may be futile")
         future = self.wait_for_a_tform_b_async(frame_a, frame_b, transform_time)
         if not wait_for_future(future, timeout_sec, context=self._node.context):
