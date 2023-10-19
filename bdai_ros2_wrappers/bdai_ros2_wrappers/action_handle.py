@@ -4,8 +4,10 @@ from typing import Callable, Optional
 
 from action_msgs.msg import GoalStatus
 from rclpy.action.client import ClientGoalHandle
+from rclpy.context import Context
 from rclpy.impl.rcutils_logger import RcutilsLogger
 from rclpy.task import Future
+from rclpy.utilities import get_default_context
 
 from bdai_ros2_wrappers.type_hints import Action
 
@@ -15,20 +17,24 @@ class ActionHandle(object):
     as holding the various callbacks for sending an ActionGoal (cancel, failure, feedback, result)
     """
 
-    def __init__(self, action_name: str, logger: Optional[RcutilsLogger] = None):
+    def __init__(self, action_name: str, logger: Optional[RcutilsLogger] = None, context: Optional[Context] = None):
         """Constructor
 
         Args:
             action_name (str): The name of the action (for logging purposes)
             logger (Optional[RcutilsLogger]): An optional logger to use. If none is provided, one is created
         """
+        if context is None:
+            context = get_default_context()
         self._action_name = action_name
         self._send_goal_future: Optional[Future] = None
         self._goal_handle: Optional[ClientGoalHandle] = None
         self._wait_for_acceptance_event: Event = Event()
+        context.on_shutdown(self._wait_for_acceptance_event.set)
         self._get_result_future: Optional[Future] = None
         self._feedback_callback: Optional[Callable[[Action.Feedback], None]] = None
         self._wait_for_result_event: Event = Event()
+        context.on_shutdown(self._wait_for_result_event.set)
         self._result_callback: Optional[Callable[[Action.Result], None]] = None
         self._on_failure_callback: Optional[Callable] = None
         self._cancel_future: Optional[Future] = None

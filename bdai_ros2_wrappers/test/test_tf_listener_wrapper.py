@@ -9,7 +9,7 @@ from rclpy.time import Time
 from tf2_ros import ExtrapolationException, LookupException, TransformBroadcaster
 
 from bdai_ros2_wrappers.node import Node
-from bdai_ros2_wrappers.process import ROSAwareScope
+from bdai_ros2_wrappers.scope import ROSAwareScope
 from bdai_ros2_wrappers.tf_listener_wrapper import TFListenerWrapper
 
 ROBOT = "test_robot"
@@ -75,7 +75,7 @@ def test_non_existant_transform_timeout(
     timestamp = ros.node.get_clock().now()
     start = time.time()
     with pytest.raises(LookupException):
-        tf_listener.lookup_a_tform_b(FRAME_ID, CHILD_FRAME_ID, timestamp, timeout=20.0)
+        tf_listener.lookup_a_tform_b(FRAME_ID, CHILD_FRAME_ID, timestamp, timeout_sec=20.0)
     assert time.time() - start < 10.0
 
 
@@ -101,7 +101,7 @@ def test_future_transform_extrapolation_exception(
     time.sleep(0.2)
     timestamp = ros.node.get_clock().now()
     with pytest.raises(ExtrapolationException):
-        tf_listener.lookup_a_tform_b(FRAME_ID, CHILD_FRAME_ID, timestamp)
+        tf_listener.lookup_a_tform_b(FRAME_ID, CHILD_FRAME_ID, timestamp, timeout_sec=0.0)
 
 
 def test_future_transform_insufficient_wait(
@@ -127,7 +127,7 @@ def test_future_transform_insufficient_wait(
     time.sleep(0.2)
     timestamp = ros.node.get_clock().now() + Duration(seconds=delay)
     with pytest.raises(ExtrapolationException):
-        tf_listener.lookup_a_tform_b(FRAME_ID, CHILD_FRAME_ID, timestamp, timeout=0.5)
+        tf_listener.lookup_a_tform_b(FRAME_ID, CHILD_FRAME_ID, timestamp, timeout_sec=0.5)
 
 
 def test_future_transform_wait(ros: ROSAwareScope, tf_pair: Tuple[MockTfPublisherNode, TFListenerWrapper]) -> None:
@@ -148,5 +148,26 @@ def test_future_transform_wait(ros: ROSAwareScope, tf_pair: Tuple[MockTfPublishe
     ros.executor.create_task(delayed_publish)
 
     timestamp += Duration(seconds=delay)
-    t = tf_listener.lookup_a_tform_b(FRAME_ID, CHILD_FRAME_ID, timestamp, wait_for_frames=True, timeout=2)
+    t = tf_listener.lookup_a_tform_b(FRAME_ID, CHILD_FRAME_ID, timestamp, timeout_sec=2.0, wait_for_frames=True)
     assert equal_transform(t.transform, trans)
+
+
+def test_future_timestamp(ros: ROSAwareScope, tf_pair: Tuple[MockTfPublisherNode, TFListenerWrapper]) -> None:
+    tf_publisher, tf_listener = tf_pair
+    timestamp = tf_publisher.get_clock().now()
+
+    with pytest.raises(LookupException):
+        tf_listener.lookup_latest_timestamp(FRAME_ID, CHILD_FRAME_ID)
+
+    def delayed_publish() -> None:
+        time.sleep(1.0)
+        trans = Transform(rotation=Quaternion(w=1.0))
+        tf_publisher.publish_transform(trans, timestamp)
+
+    assert ros.executor is not None
+    ros.executor.create_task(delayed_publish)
+
+    latest_timestamp = tf_listener.lookup_latest_timestamp(
+        FRAME_ID, CHILD_FRAME_ID, timeout_sec=2.0, wait_for_frames=True
+    )
+    assert latest_timestamp == timestamp

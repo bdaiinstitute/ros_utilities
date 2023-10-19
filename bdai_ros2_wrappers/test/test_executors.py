@@ -203,5 +203,5 @@ def test_background_executor(ros_context: Context) -> None:
         with pytest.raises(RuntimeError):
             executor.spin_until_future_complete(future)
 
-        assert wait_for_future(future, timeout_sec=10.0)
+        assert wait_for_future(future, timeout_sec=10.0, context=ros_context)
         assert future.result()

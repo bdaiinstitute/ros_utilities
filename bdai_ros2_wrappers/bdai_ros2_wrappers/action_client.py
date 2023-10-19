@@ -96,7 +96,7 @@ class ActionClientWrapper(rclpy.action.ActionClient):
         Returns:
             ActionHandle: An object to manage the asynchronous lifecycle of the action request
         """
-        handle = ActionHandle(action_name=action_name, logger=self._node.get_logger())
+        handle = ActionHandle(action_name=action_name, logger=self._node.get_logger(), context=self._node.context)
         if result_callback is not None:
             handle.set_result_callback(result_callback)
 
