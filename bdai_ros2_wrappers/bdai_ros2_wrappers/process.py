@@ -74,8 +74,6 @@ class ROSAwareProcess:
             forward_logging = prebaked
         if autospin is None:
             autospin = prebaked
-        if namespace is None and prebaked:
-            namespace = True
         if namespace is True:
             if cli is None:
                 program_name = os.path.basename(sys.argv[0])
