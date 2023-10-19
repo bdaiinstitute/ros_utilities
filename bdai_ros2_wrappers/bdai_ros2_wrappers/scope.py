@@ -315,7 +315,7 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
                 raise RuntimeError("scope has not been entered (or was already exited)")
             if self._executor is None:
                 raise RuntimeError("scope executor has not been set")
-            if namespace is not None:
+            if namespace:
                 namespace = namespace_with(self._namespace, namespace)
             else:
                 namespace = self._namespace
