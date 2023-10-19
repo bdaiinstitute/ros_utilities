@@ -35,8 +35,6 @@ def test_static_tf_burst(ros: ROSAwareScope) -> None:
     head_to_camera_transform.transform.rotation.z = 1.0
     tf_broadcaster.sendTransform([body_to_head_transform, head_to_camera_transform])
 
-    ros.node.get_clock().now()
-
     world_to_fiducial_a_transform = TransformStamped()
     world_to_fiducial_a_transform.header.stamp = stamp
     world_to_fiducial_a_transform.header.frame_id = "world"
