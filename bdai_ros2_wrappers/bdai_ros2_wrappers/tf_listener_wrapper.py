@@ -4,6 +4,7 @@ import warnings
 from typing import Optional, Protocol, Union, runtime_checkable
 
 from geometry_msgs.msg import TransformStamped
+from rclpy.clock import ClockType
 from rclpy.node import Node
 from rclpy.task import Future
 from rclpy.time import Duration, Time
@@ -29,9 +30,9 @@ class TimeLike(Protocol):
 def from_time_like(obj: Union[StampLike, TimeLike]) -> Time:
     """Convert an object that exhibits a Time-like interface to a proper Time instance."""
     if isinstance(obj, StampLike):
-        return Time.from_msg(obj)
+        return Time.from_msg(obj, clock_type=ClockType.SYSTEM_TIME)
     if isinstance(obj, TimeLike):
-        return Time(nanoseconds=obj.nanoseconds)
+        return Time(nanoseconds=obj.nanoseconds, clock_type=ClockType.SYSTEM_TIME)
     raise TypeError(f"{obj} does not define a point in time")
 
 
