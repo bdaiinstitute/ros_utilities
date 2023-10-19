@@ -1,5 +1,6 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 
+import warnings
 from typing import Optional
 
 from geometry_msgs.msg import TransformStamped
@@ -16,7 +17,39 @@ from bdai_ros2_wrappers.futures import wait_for_future
 
 
 class TFListenerWrapper:
+    """
+    A `tf2_ros` lookup device, wrapping both a buffer and a listener.
+
+    When using process-wide machinery:
+
+        tf_listener = TFListenerWrapper()
+        tf_listener.wait_for_a_tform_b(target_frame, source_frame)
+        tf_listener.lookup_a_tform_b(target_frame, source_frame)
+
+    When composed by a ROS 2 node:
+
+        class MyNode(Node):
+
+            def __init__(self, **kwargs: Any) -> None:
+                super().__init__("my_node", **kwargs)
+                self.tf_listener = TFListenerWrapper(self)
+                # do not wait synchronously here or it will block forever!
+                # ...
+
+            def callback(self):
+                if tf_listener.wait_for_a_tform_b(target_frame, source_frame, timeout_sec=0.0):
+                    self.tf_listener.lookup_a_tform_b(target_frame, source_frame)
+                    # or you can lookup and handle exceptions yourself
+    """
+
     def __init__(self, node: Optional[Node] = None, cache_time_s: Optional[float] = None) -> None:
+        """
+        Initializes the wrapper.
+
+        Args:
+            node: optional node for transform listening, defaults to the current scope node.
+            cache_time_s: optional transform buffer size, in seconds.
+        """
         node = node or scope.node()
         if node is None:
             raise ValueError("no ROS 2 node available (did you use bdai_ros2_wrapper.process.main?)")
@@ -35,6 +68,17 @@ class TFListenerWrapper:
         self._tf_listener.unregister()
 
     def wait_for_a_tform_b_async(self, frame_a: str, frame_b: str, transform_time: Optional[Time] = None) -> Future:
+        """
+        Wait asynchronously for the transform from from_frame to to_frame to become available.
+
+        Parameters:
+            frame_a: Base frame for transform. The transform returned will be frame_a_t_frame_b
+            frame_b: Tip frame for transform. The transform returned will be frame_a_t_frame_b
+            transform_time: The time at which to look up the transform. If left at None, the most
+                recent transform available will used.
+        Returns:
+            A future that will tell if a transform between frame_a and frame_b is available at the time specified.
+        """
         if transform_time is None:
             transform_time = Time()
         return self._tf_buffer.wait_for_transform_async(frame_a, frame_b, transform_time)
@@ -43,8 +87,26 @@ class TFListenerWrapper:
         self, frame_a: str, frame_b: str, transform_time: Optional[Time] = None, timeout_sec: Optional[float] = None
     ) -> bool:
         """
-        Wait for the transform from from_frame to to_frame to become available.
+        Wait for a transform from frame_a to frame_b to become available.
+
+        Note this is a blocking call. If the underlying node is not spinning, an indefinite wait may block forever.
+
+        Parameters:
+            frame_a: Base frame for transform. The transform returned will be frame_a_t_frame_b
+            frame_b: Tip frame for transform. The transform returned will be frame_a_t_frame_b
+            transform_time: The time at which to look up the transform. If left at None, the most
+                recent transform available will used.
+            timeout_sec: The time to wait for the transform to become available if the requested time is beyond
+                the most recent transform in the buffer. If set to 0, it will not wait. If left at None, it will
+                wait indefinitely.
+        Returns:
+            Whether a transform between frame_a and frame_b is available at the specified time.
         """
+        if self._node.executor is None:
+            if timeout_sec is None:
+                warnings.warn("Node is not spinning yet, wait may block forever")
+            else:
+                warnings.warn("Node is not spinning yet, wait may be futile")
         future = self.wait_for_a_tform_b_async(frame_a, frame_b, transform_time)
         if not wait_for_future(future, timeout_sec, context=self._node.context):
             future.cancel()
@@ -60,6 +122,8 @@ class TFListenerWrapper:
         wait_for_frames: bool = False,
     ) -> TransformStamped:
         """
+        Looks up the transform from frame_a to frame_b at the specified time.
+
         Parameters:
             frame_a: Base frame for transform. The transform returned will be frame_a_t_frame_b
             frame_b: Tip frame for transform. The transform returned will be frame_a_t_frame_b
@@ -101,6 +165,8 @@ class TFListenerWrapper:
         self, frame_a: str, frame_b: str, timeout_sec: Optional[float] = None, wait_for_frames: bool = False
     ) -> Time:
         """
+        Looks up the latest time at which a transform from frame_a to frame_b is available.
+
         Parameters:
             frame_a: Base frame for transform.  The transform returned will be frame_a_t_frame_b
             frame_b: Tip frame for transform.  The transform returned will be frame_a_t_frame_b
