@@ -30,7 +30,7 @@ class StaticTransformBroadcaster:
     def sendTransform(self, transform: Union[TransformStamped, Iterable[TransformStamped]]) -> None:
         try:
             transforms = list(transform)
-        except TypeError:
+        except TypeError:  # in which case, transform is not iterable
             transforms = [cast(TransformStamped, transform)]
         self._net_transforms.update({tf.child_frame_id: tf for tf in transforms})
         self._pub.publish(TFMessage(transforms=list(self._net_transforms.values())))
