@@ -6,11 +6,15 @@ import os
 import sys
 import threading
 import typing
+import warnings
 
 import rclpy
 import rclpy.executors
 import rclpy.logging
 import rclpy.node
+from rclpy.exceptions import InvalidNamespaceException, InvalidNodeNameException
+from rclpy.validate_namespace import validate_namespace
+from rclpy.validate_node_name import validate_node_name
 
 import bdai_ros2_wrappers.context as context
 import bdai_ros2_wrappers.scope as scope
@@ -79,9 +83,17 @@ class ROSAwareProcess:
             program_name = cli.prog
         name, _ = os.path.splitext(program_name)
         if prebaked is True:
-            prebaked = name
+            try:
+                validate_node_name(name)
+                prebaked = name
+            except InvalidNodeNameException:
+                warnings.warn(f"'{name}' cannot be used as node name, using scope default")
         if namespace is True:
-            namespace = name
+            try:
+                validate_namespace(name)
+                namespace = name
+            except InvalidNamespaceException:
+                warnings.warn(f"'{name}' cannot be used as namespace, using scope default")
         if forward_logging is None:
             forward_logging = bool(prebaked)
         if autospin is None:
