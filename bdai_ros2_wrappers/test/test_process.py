@@ -39,7 +39,7 @@ def test_command_wrapping() -> None:
     @process.main(cli())
     def main(args: argparse.Namespace) -> int:
         assert main.node is not None
-        assert main.node.get_fully_qualified_name() == "/test_command/node"
+        assert main.node.get_fully_qualified_name() == "/test_command"
         assert args.robot == "spot"
         return 0
 

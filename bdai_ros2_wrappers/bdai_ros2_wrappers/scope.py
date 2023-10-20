@@ -37,8 +37,8 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
     def __init__(
         self,
         *,
-        prebaked: bool = True,
         global_: bool = False,
+        prebaked: typing.Union[bool, str] = True,
         autospin: typing.Optional[bool] = None,
         forward_logging: bool = False,
         namespace: typing.Optional[typing.Union[typing.Literal[True], str]] = None,
@@ -49,7 +49,7 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
 
         Args:
             prebaked: whether to include an implicit main node in the scope graph or not,
-            for convenience.
+            for convenience. May also specify the exact name for the implicit node.
             global_: whether to make this scope global (ie. accessible from all threads).
             Only one, outermost global scope can be entered at any given time. Global
             scopes can only be entered from the main thread.
@@ -62,7 +62,9 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
             context: optional context for the underlying executor and nodes.
         """
         if autospin is None:
-            autospin = prebaked
+            autospin = bool(prebaked)
+        if prebaked is True:
+            prebaked = "node"
         if namespace is True:
             namespace = f"_ros_aware_scope_{os.getpid()}_{id(self)}"
         self._namespace = namespace
@@ -120,7 +122,7 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
                     self._executor = self._stack.enter_context(foreground(executor))
 
                 if self._prebaked:
-                    node = Node("node", namespace=self._namespace, context=self._context)
+                    node = Node(self._prebaked, namespace=self._namespace, context=self._context)
                     self._executor.add_node(node)
                     self._graph.append(node)
                     if self._forward_logging:

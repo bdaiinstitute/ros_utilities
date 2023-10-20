@@ -41,7 +41,7 @@ class ROSAwareProcess:
         self,
         func: MainCallable,
         *,
-        prebaked: bool = True,
+        prebaked: typing.Union[bool, str] = True,
         autospin: typing.Optional[bool] = None,
         forward_logging: typing.Optional[bool] = None,
         namespace: typing.Optional[typing.Union[typing.Literal[True], str]] = None,
@@ -55,8 +55,11 @@ class ROSAwareProcess:
             func: a ``main``-like function to wrap ie. a callable taking a sequence of strings,
             an `argparse.Namespace` (if a CLI is specified), or nothing, and returning a integer
             exit code or nothing.
-            prebaked: whether to instantiate a prebaked or a bare process. Bare processes do not bear
-            a node nor spin an executor, which brings them closest to standard ROS 2 idioms.
+            prebaked: whether to instantiate a prebaked or a bare process i.e. a process bearing
+            an implicit node and executor, or not. May also specificy the exact name for the implicit
+            node, or, if True, the current executable basename without its extension (or CLI program
+            name if one is specified) will be used. Note that completely bare processes do not bear a
+            node nor spin an executor, which brings them closest to standard ROS 2 idioms.
             autospin: whether to automatically equip the underlying scope with a background executor
             or not. Defaults to True for prebaked processes and to False for bare processes.
             forward_logging: whether to forward `logging` logs to the ROS 2 logging system or not.
@@ -70,16 +73,19 @@ class ROSAwareProcess:
         Raises:
             ValueError: if a prebaked process is configured without autospin.
         """
-        if forward_logging is None:
-            forward_logging = prebaked
-        if autospin is None:
-            autospin = prebaked
+        if cli is None:
+            program_name = os.path.basename(sys.argv[0])
+        else:
+            program_name = cli.prog
+        name, _ = os.path.splitext(program_name)
+        if prebaked is True:
+            prebaked = name
         if namespace is True:
-            if cli is None:
-                program_name = os.path.basename(sys.argv[0])
-            else:
-                program_name = cli.prog
-            namespace, _ = os.path.splitext(program_name)
+            namespace = name
+        if forward_logging is None:
+            forward_logging = bool(prebaked)
+        if autospin is None:
+            autospin = bool(prebaked)
         self._func = func
         self._cli = cli
         self._scope_kwargs = dict(
