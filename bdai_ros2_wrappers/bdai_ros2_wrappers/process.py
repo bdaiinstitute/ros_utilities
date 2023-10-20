@@ -6,11 +6,15 @@ import os
 import sys
 import threading
 import typing
+import warnings
 
 import rclpy
 import rclpy.executors
 import rclpy.logging
 import rclpy.node
+from rclpy.exceptions import InvalidNamespaceException, InvalidNodeNameException
+from rclpy.validate_namespace import validate_namespace
+from rclpy.validate_node_name import validate_node_name
 
 import bdai_ros2_wrappers.context as context
 import bdai_ros2_wrappers.scope as scope
@@ -41,7 +45,7 @@ class ROSAwareProcess:
         self,
         func: MainCallable,
         *,
-        prebaked: bool = True,
+        prebaked: typing.Union[bool, str] = True,
         autospin: typing.Optional[bool] = None,
         forward_logging: typing.Optional[bool] = None,
         namespace: typing.Optional[typing.Union[typing.Literal[True], str]] = None,
@@ -55,8 +59,11 @@ class ROSAwareProcess:
             func: a ``main``-like function to wrap ie. a callable taking a sequence of strings,
             an `argparse.Namespace` (if a CLI is specified), or nothing, and returning a integer
             exit code or nothing.
-            prebaked: whether to instantiate a prebaked or a bare process. Bare processes do not bear
-            a node nor spin an executor, which brings them closest to standard ROS 2 idioms.
+            prebaked: whether to instantiate a prebaked or a bare process i.e. a process bearing
+            an implicit node and executor, or not. May also specificy the exact name for the implicit
+            node, or, if True, the current executable basename without its extension (or CLI program
+            name if one is specified) will be used. Note that completely bare processes do not bear a
+            node nor spin an executor, which brings them closest to standard ROS 2 idioms.
             autospin: whether to automatically equip the underlying scope with a background executor
             or not. Defaults to True for prebaked processes and to False for bare processes.
             forward_logging: whether to forward `logging` logs to the ROS 2 logging system or not.
@@ -70,18 +77,27 @@ class ROSAwareProcess:
         Raises:
             ValueError: if a prebaked process is configured without autospin.
         """
-        if forward_logging is None:
-            forward_logging = prebaked
-        if autospin is None:
-            autospin = prebaked
-        if namespace is None and prebaked:
-            namespace = True
+        if cli is None:
+            program_name = os.path.basename(sys.argv[0])
+        else:
+            program_name = cli.prog
+        name, _ = os.path.splitext(program_name)
+        if prebaked is True:
+            try:
+                validate_node_name(name)
+                prebaked = name
+            except InvalidNodeNameException:
+                warnings.warn(f"'{name}' cannot be used as node name, using scope default")
         if namespace is True:
-            if cli is None:
-                program_name = os.path.basename(sys.argv[0])
-            else:
-                program_name = cli.prog
-            namespace, _ = os.path.splitext(program_name)
+            try:
+                validate_namespace(name)
+                namespace = name
+            except InvalidNamespaceException:
+                warnings.warn(f"'{name}' cannot be used as namespace, using scope default")
+        if forward_logging is None:
+            forward_logging = bool(prebaked)
+        if autospin is None:
+            autospin = bool(prebaked)
         self._func = func
         self._cli = cli
         self._scope_kwargs = dict(
@@ -134,9 +150,16 @@ class ROSAwareProcess:
         self._lock.acquire()
         try:
             args = None
+            scope_kwargs = dict(self._scope_kwargs)
             if self._cli is not None:
                 args = self._cli.parse_args(rclpy.utilities.remove_ros_args(argv)[1:])
-            scope_kwargs = either_or(args, "process_args", self._scope_kwargs)
+                scope_kwargs.update(either_or(args, "process_args", {}))
+                prebaked = scope_kwargs.get("prebaked")
+                if isinstance(prebaked, str):
+                    scope_kwargs["prebaked"] = prebaked.format(**vars(args))
+                namespace = scope_kwargs.get("namespace")
+                if isinstance(namespace, str):
+                    scope_kwargs["namespace"] = namespace.format(**vars(args))
             with scope.top(argv, global_=True, **scope_kwargs) as self._scope:
                 ROSAwareProcess.current = self
                 self._lock.release()
