@@ -138,9 +138,16 @@ class ROSAwareProcess:
         self._lock.acquire()
         try:
             args = None
+            scope_kwargs = dict(self._scope_kwargs)
             if self._cli is not None:
                 args = self._cli.parse_args(rclpy.utilities.remove_ros_args(argv)[1:])
-            scope_kwargs = either_or(args, "process_args", self._scope_kwargs)
+                scope_kwargs.update(either_or(args, "process_args", {}))
+                prebaked = scope_kwargs.get("prebaked")
+                if isinstance(prebaked, str):
+                    scope_kwargs["prebaked"] = prebaked.format(**vars(args))
+                namespace = scope_kwargs.get("namespace")
+                if isinstance(namespace, str):
+                    scope_kwargs["namespace"] = namespace.format(**vars(args))
             with scope.top(argv, global_=True, **scope_kwargs) as self._scope:
                 ROSAwareProcess.current = self
                 self._lock.release()
