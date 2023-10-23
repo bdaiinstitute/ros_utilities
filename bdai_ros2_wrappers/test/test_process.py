@@ -2,9 +2,11 @@
 import argparse
 import unittest.mock as mock
 
+from geometry_msgs.msg import TransformStamped
 from std_srvs.srv import Trigger
 
 import bdai_ros2_wrappers.process as process
+from bdai_ros2_wrappers.static_transform_broadcaster import StaticTransformBroadcaster
 
 
 def test_process_wrapping() -> None:
@@ -24,6 +26,31 @@ def test_process_wrapping() -> None:
 
         response = client.call(Trigger.Request())
         assert response.success
+        return 0
+
+    assert main() == 0
+
+
+def test_process_using_tf() -> None:
+    """Asserts that the process bound tf listener is made available."""
+
+    @process.main(uses_tf=True)
+    def main() -> int:
+        assert main.node is not None
+        stamp = main.node.get_clock().now().to_msg()
+
+        expected_transform = TransformStamped()
+        expected_transform.header.stamp = stamp
+        expected_transform.header.frame_id = "world"
+        expected_transform.child_frame_id = "robot"
+        expected_transform.transform.rotation.w = 1.0
+        tf_broadcaster = StaticTransformBroadcaster(main.node)
+        tf_broadcaster.sendTransform(expected_transform)
+
+        assert main.tf_listener is not None
+        transform = main.tf_listener.lookup_a_tform_b("world", "robot", stamp, timeout_sec=5.0, wait_for_frames=True)
+        assert transform.header.stamp == expected_transform.header.stamp
+        assert transform.transform.rotation.w == expected_transform.transform.rotation.w
         return 0
 
     assert main() == 0

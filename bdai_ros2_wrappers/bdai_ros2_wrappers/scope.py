@@ -12,6 +12,7 @@ import rclpy.node
 from bdai_ros2_wrappers.executors import AutoScalingMultiThreadedExecutor, background, foreground
 from bdai_ros2_wrappers.logging import logs_to_ros
 from bdai_ros2_wrappers.node import Node
+from bdai_ros2_wrappers.tf_listener_wrapper import TFListenerWrapper
 from bdai_ros2_wrappers.utilities import fqn, namespace_with
 
 AnyEntity = typing.Union[rclpy.node.Node, typing.List[rclpy.node.Node]]
@@ -38,9 +39,10 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
         self,
         *,
         global_: bool = False,
+        uses_tf: bool = False,
+        forward_logging: bool = False,
         prebaked: typing.Union[bool, str] = True,
         autospin: typing.Optional[bool] = None,
-        forward_logging: bool = False,
         namespace: typing.Optional[typing.Union[typing.Literal[True], str]] = None,
         context: typing.Optional[rclpy.context.Context] = None,
     ) -> None:
@@ -57,6 +59,8 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
             a unique hidden namespace.
             autospin: whether to automatically instantiate and push an executor
             to a background thread on scope entry or not.
+            uses_tf: whether to instantiate a tf listener bound to the scope main node.
+            Defaults to False.
             forward_logging: whether to forward `logging` logs to the ROS 2 logging
             system or not. Defaults to False.
             context: optional context for the underlying executor and nodes.
@@ -70,12 +74,14 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
         self._namespace = namespace
         self._context = context
         self._prebaked = prebaked
+        self._uses_tf = uses_tf
         self._autospin = autospin
         self._forward_logging = forward_logging
         self._global = global_
         self._lock = threading.Lock()
         self._node: typing.Optional[rclpy.node.Node] = None
         self._graph: typing.List[rclpy.node.Node] = []
+        self._tf_listener: typing.Optional[TFListenerWrapper] = None
         self._executor: typing.Optional[rclpy.executors.Executor] = None
         self._stack: typing.Optional[contextlib.ExitStack] = None
         self._owner: typing.Optional[threading.Thread] = None
@@ -125,6 +131,8 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
                     node = Node(self._prebaked, namespace=self._namespace, context=self._context)
                     self._executor.add_node(node)
                     self._graph.append(node)
+                    if self._uses_tf:
+                        self._tf_listener = TFListenerWrapper(node)
                     if self._forward_logging:
                         self._stack.enter_context(logs_to_ros(node))
                     self._node = node
@@ -155,6 +163,9 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
             self._stack.close()
             self._stack = None
             self._owner = None
+            if self._tf_listener is not None:
+                self._tf_listener.shutdown()
+                self._tf_listener = None
             assert self._executor is not None
             for node in self._graph:
                 self._executor.remove_node(node)
@@ -193,6 +204,31 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
             self._executor = executor
 
     @property
+    def tf_listener(self) -> typing.Optional[TFListenerWrapper]:
+        """Gets scope tf listener, if any."""
+        return self._tf_listener
+
+    @tf_listener.setter
+    def tf_listener(self, tf_listener: TFListenerWrapper) -> None:
+        """
+        Sets scope tf listener.
+
+        Args:
+            tf_listener: tf listener to be used as tf listener in scope.
+            It must be bound to a node that is known to the scope.
+
+        Raises:
+            RuntimeError: if the scope has not been entered (or already exited), or
+            if the node bound to the listener is foreign to the scope.
+        """
+        with self._lock:
+            if self._stack is None:
+                raise RuntimeError("scope has not been entered (or already exited)")
+            if tf_listener._node not in self._graph:
+                raise RuntimeError("tf listener node is not in scope")
+            self._tf_listener = tf_listener
+
+    @property
     def node(self) -> typing.Optional[rclpy.node.Node]:
         """Gets scope main node, if any."""
         return self._node
@@ -216,6 +252,8 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
                 raise RuntimeError("main scope node already set")
             if node not in self._graph:
                 raise RuntimeError("node is not in scope")
+            if self._uses_tf:
+                self._tf_listener = TFListenerWrapper(node)
             if self._forward_logging:
                 self._stack.enter_context(logs_to_ros(node))
             self._node = node
@@ -472,6 +510,14 @@ def node() -> typing.Optional[rclpy.node.Node]:
     if scope is None:
         return None
     return scope.node
+
+
+def tf_listener() -> typing.Optional[TFListenerWrapper]:
+    """Gets the tf listener of the current ROS 2 aware scope, if any."""
+    scope = current()
+    if scope is None:
+        return None
+    return scope.tf_listener
 
 
 def executor() -> typing.Optional[rclpy.executors.Executor]:
