@@ -19,6 +19,7 @@ from rclpy.validate_node_name import validate_node_name
 import bdai_ros2_wrappers.context as context
 import bdai_ros2_wrappers.scope as scope
 from bdai_ros2_wrappers.scope import AnyEntity, AnyEntityFactoryCallable, ROSAwareScope
+from bdai_ros2_wrappers.tf_listener_wrapper import TFListenerWrapper
 from bdai_ros2_wrappers.utilities import either_or
 
 MainCallableTakingArgs = typing.Callable[[argparse.Namespace], typing.Optional[int]]
@@ -45,6 +46,7 @@ class ROSAwareProcess:
         self,
         func: MainCallable,
         *,
+        uses_tf: bool = False,
         prebaked: typing.Union[bool, str] = True,
         autospin: typing.Optional[bool] = None,
         forward_logging: typing.Optional[bool] = None,
@@ -66,6 +68,7 @@ class ROSAwareProcess:
             node nor spin an executor, which brings them closest to standard ROS 2 idioms.
             autospin: whether to automatically equip the underlying scope with a background executor
             or not. Defaults to True for prebaked processes and to False for bare processes.
+            uses_tf: whether to instantiate a tf listener bound to the process main node. Defaults to False.
             forward_logging: whether to forward `logging` logs to the ROS 2 logging system or not.
             Defaults to True for prebaked processes and to False for bare processes (though it requires
             a process node to be set to function).
@@ -96,12 +99,10 @@ class ROSAwareProcess:
                 warnings.warn(f"'{name}' cannot be used as namespace, using scope default")
         if forward_logging is None:
             forward_logging = bool(prebaked)
-        if autospin is None:
-            autospin = bool(prebaked)
         self._func = func
         self._cli = cli
         self._scope_kwargs = dict(
-            prebaked=prebaked, autospin=autospin, namespace=namespace, forward_logging=forward_logging
+            prebaked=prebaked, autospin=autospin, uses_tf=uses_tf, namespace=namespace, forward_logging=forward_logging
         )
         self._scope: typing.Optional[ROSAwareScope] = None
         self._lock = threading.Lock()
@@ -225,6 +226,14 @@ def executor() -> typing.Optional[rclpy.executors.Executor]:
     if process is None:
         return None
     return process.executor
+
+
+def tf_listener() -> typing.Optional[TFListenerWrapper]:
+    """Gets the tf listener of the current ROS 2 aware scope, if any."""
+    process = current()
+    if process is None:
+        return None
+    return process.tf_listener
 
 
 def load(factory: AnyEntityFactoryCallable, *args: typing.Any, **kwargs: typing.Any) -> AnyEntity:

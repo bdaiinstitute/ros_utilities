@@ -69,9 +69,10 @@ def graph(args: argparse.Namespace, **kwargs: Any) -> Iterable[Node]:
 
 
 def run(args: argparse.Namespace) -> None:
-    tf_listener = TFListenerWrapper(cache_time_s=args.cache_time)
     print("Buffering transforms...")
     time.sleep(args.buffer_time)
+    tf_listener = ros_process.tf_listener()
+    assert tf_listener is not None
     print(tf_listener.buffer.all_frames_as_string())
     while True:
         target_frame = input("Please provide target frame (or press Enter to exit): ")
@@ -110,6 +111,7 @@ def main(args: argparse.Namespace) -> None:
     """
     with background(SingleThreadedExecutor()) as main.executor:
         with ros_process.managed(graph, args) as (_, main.node):
+            main.tf_listener = TFListenerWrapper(main.node, cache_time_s=args.cache_time)
             run(args)
 
 
