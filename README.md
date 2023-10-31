@@ -148,38 +148,32 @@ Command-line arguments may affect ROS 2 configuration if need be:
 ```python
 import argparse
 import logging
-import time
 
-from typing import Any
-
-from bdai_ros2_wrappers.futures import wait_for_future
-from bdai_ros2_wrappers.node import Node
 import bdai_ros2_wrappers.process as ros_process
+import bdai_ros2_wrappers.scope as ros_scope
 
-class Application(Node):
+class Application:
 
-    def __init__(self, robot_name: str, **kwargs: Any) -> None:
-        super().__init__("app_node", **kwargs)
+    def __init__(self, robot_name: str) -> None:
         self.robot_name = robot_name
+        self.node = ros_scope.node()
 
 def cli() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument("robot_name")
     parser.add_argument("-v", "--verbose", action="store_true")
     # define ROS 2 aware process arguments based on CLI arguments
-    parser.set_default(process_args=lambda args: dict(
-        prebaked=False, forward_logging=args.verbose))
+    parser.set_defaults(process_args=lambda args: dict(forward_logging=args.verbose))
     return parser
 
-@ros_process.main(cli())
+@ros_process.main(cli(), autospin=False)
 def main(args: argparse.Namespace) -> None:
-    # set process-wide node for log forwarding to take effect
-    with ros_process.managed(Application, args.robot_name) as main.node:
-        if args.verbose:
-            root = logging.getLogger()
-            root.setLevel(logging.INFO)
-        logging.info("Application started!")
-        ros_process.spin()  # or main.spin
+    app = Application(args.robot_name)
+    if args.verbose:
+        root = logging.getLogger()
+        root.setLevel(logging.INFO)
+    logging.info("Application started!")
+    ros_process.spin()  # or main.spin
 
 if __name__ == "__main__":
     main()
