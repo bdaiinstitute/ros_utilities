@@ -102,7 +102,12 @@ class ROSAwareProcess:
         self._func = func
         self._cli = cli
         self._scope_kwargs = dict(
-            prebaked=prebaked, autospin=autospin, uses_tf=uses_tf, namespace=namespace, forward_logging=forward_logging
+            prebaked=prebaked,
+            autospin=autospin,
+            uses_tf=uses_tf,
+            namespace=namespace,
+            forward_logging=forward_logging,
+            **init_arguments,
         )
         self._scope: typing.Optional[ROSAwareScope] = None
         self._lock = threading.Lock()
