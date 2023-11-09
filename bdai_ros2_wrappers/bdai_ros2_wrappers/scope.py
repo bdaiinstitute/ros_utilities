@@ -473,6 +473,7 @@ def top(
     *,
     context: typing.Optional[rclpy.context.Context] = None,
     global_: bool = False,
+    domain_id: typing.Optional[int] = None,
     **kwargs: typing.Any,
 ) -> typing.Iterator[ROSAwareScope]:
     """
@@ -491,7 +492,7 @@ def top(
     """
     if context is None and not global_:
         context = rclpy.context.Context()
-    rclpy.init(args=args, context=context)
+    rclpy.init(args=args, context=context, domain_id=domain_id)
     try:
         with ROSAwareScope(global_=global_, context=context, **kwargs) as scope:
             yield scope
