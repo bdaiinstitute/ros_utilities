@@ -61,11 +61,13 @@ class ROSAwareProcess:
             func: a ``main``-like function to wrap ie. a callable taking a sequence of strings,
             an `argparse.Namespace` (if a CLI is specified), or nothing, and returning a integer
             exit code or nothing.
-            prebaked: whether to instantiate a prebaked or a bare process i.e. a process bearing
-            an implicit node and executor, or not. May also specificy the exact name for the implicit
-            node, or, if True, the current executable basename without its extension (or CLI program
-            name if one is specified) will be used. Note that completely bare processes do not bear a
-            node nor spin an executor, which brings them closest to standard ROS 2 idioms.
+            prebaked: whether to instantiate a prebaked process or a bare process. Defaults to True.
+                - a prebaked process has an implicit node and an executor
+                - a bare process does not bear a node nor spin an executor, which brings them closest to standard
+                ROS 2 idioms.
+                - for `prebaked=True`, the ROS node name is the the current executable basename without its extension
+                (or CLI program name if one is specified)
+                - The ROS node name can be set to `foo` with `prebaked="foo"`
             autospin: whether to automatically equip the underlying scope with a background executor
             or not. Defaults to True for prebaked processes and to False for bare processes.
             uses_tf: whether to instantiate a tf listener bound to the process main node. Defaults to False.
