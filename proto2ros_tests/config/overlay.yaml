@@ -1,0 +1,11 @@
+message_mapping:
+  bosdyn.api.Vec3: geometry_msgs/Vector3
+  bosdyn.api.Quaternion: geometry_msgs/Quaternion
+  bosdyn.api.SE3Pose: geometry_msgs/Pose
+  bosdyn.api.SE3Velocity: geometry_msgs/Twist
+  bosdyn.api.Wrench: geometry_msgs/Wrench
+python_imports:
+  - bosdyn.api.geometry_pb2
+  - geometry_msgs.msg
+inline_python_imports:
+  - proto2ros_tests.manual_conversions
