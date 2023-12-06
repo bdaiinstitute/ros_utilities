@@ -12,7 +12,6 @@ from tf2_ros import TransformException
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 
-import bdai_ros2_wrappers.scope as scope
 from bdai_ros2_wrappers.futures import wait_for_future
 
 
@@ -70,7 +69,9 @@ class TFListenerWrapper:
             node: optional node for transform listening, defaults to the current scope node.
             cache_time_s: optional transform buffer size, in seconds.
         """
-        node = node or scope.node()
+        import bdai_ros2_wrappers.scope  # locally to avoid circular import
+
+        node = node or bdai_ros2_wrappers.scope.node()
         if node is None:
             raise ValueError("no ROS 2 node available (did you use bdai_ros2_wrapper.process.main?)")
         self._node = node
