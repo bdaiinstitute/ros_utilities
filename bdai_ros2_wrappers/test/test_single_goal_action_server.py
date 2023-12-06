@@ -34,9 +34,7 @@ def test_single_goal_action_server(ros: ROSAwareScope) -> None:
 
     goal = Fibonacci.Goal()
     goal.order = 5
-    result = action_client.send_goal_and_wait(
-        "test_single_goal_action_server", goal=goal, timeout_sec=2
-    )
+    result = action_client.send_goal_and_wait("test_single_goal_action_server", goal=goal, timeout_sec=2)
     assert result is not None
 
     expected_result = array.array("i", [0, 1, 1, 2, 3, 5])

@@ -17,12 +17,7 @@ class ActionHandle(object):
     as holding the various callbacks for sending an ActionGoal (cancel, failure, feedback, result)
     """
 
-    def __init__(
-        self,
-        action_name: str,
-        logger: Optional[RcutilsLogger] = None,
-        context: Optional[Context] = None,
-    ):
+    def __init__(self, action_name: str, logger: Optional[RcutilsLogger] = None, context: Optional[Context] = None):
         """Constructor
 
         Args:
@@ -73,8 +68,7 @@ class ActionHandle(object):
             True if successful; False if the timeout was triggered or the action was rejected, cancelled, or abort
         """
         return self._wait_for_result_event.wait(timeout=timeout_sec) and (
-            self._result is not None
-            and self._result.status == GoalStatus.STATUS_SUCCEEDED
+            self._result is not None and self._result.status == GoalStatus.STATUS_SUCCEEDED
         )
 
     def wait_for_acceptance(self, timeout_sec: Optional[float] = None) -> bool:
@@ -97,15 +91,11 @@ class ActionHandle(object):
         self._send_goal_future = send_goal_future
         self._send_goal_future.add_done_callback(self._goal_response_callback)
 
-    def set_feedback_callback(
-        self, feedback_callback: Callable[[Action.Feedback], None]
-    ) -> None:
+    def set_feedback_callback(self, feedback_callback: Callable[[Action.Feedback], None]) -> None:
         """Sets the callback used to process feedback received while an Action is being executed"""
         self._feedback_callback = feedback_callback
 
-    def set_result_callback(
-        self, result_callback: Callable[[Action.Result], None]
-    ) -> None:
+    def set_result_callback(self, result_callback: Callable[[Action.Result], None]) -> None:
         """Sets the callback for processing the result from executing an Action"""
         self._result_callback = result_callback
 
@@ -113,15 +103,11 @@ class ActionHandle(object):
         """Set the callback to execute upon failure"""
         self._on_failure_callback = on_failure_callback
 
-    def set_on_cancel_success_callback(
-        self, on_cancel_success_callback: Callable
-    ) -> None:
+    def set_on_cancel_success_callback(self, on_cancel_success_callback: Callable) -> None:
         """Set the callback to execute upon successfully canceling the action"""
         self._on_cancel_success_callback = on_cancel_success_callback
 
-    def set_on_cancel_failure_callback(
-        self, on_cancel_failure_callback: Callable
-    ) -> None:
+    def set_on_cancel_failure_callback(self, on_cancel_failure_callback: Callable) -> None:
         """Set the callback to execute upon failing to cancel the action"""
         self._on_cancel_failure_callback = on_cancel_failure_callback
 

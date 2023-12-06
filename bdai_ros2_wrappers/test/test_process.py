@@ -14,9 +14,7 @@ def test_process_wrapping() -> None:
 
     @process.main()
     def main() -> int:
-        def dummy_server_callback(
-            _: Trigger.Request, response: Trigger.Response
-        ) -> Trigger.Response:
+        def dummy_server_callback(_: Trigger.Request, response: Trigger.Response) -> Trigger.Response:
             response.success = True
             return response
 
@@ -50,9 +48,7 @@ def test_process_using_tf() -> None:
         tf_broadcaster.sendTransform(expected_transform)
 
         assert main.tf_listener is not None
-        transform = main.tf_listener.lookup_a_tform_b(
-            "world", "robot", stamp, timeout_sec=5.0, wait_for_frames=True
-        )
+        transform = main.tf_listener.lookup_a_tform_b("world", "robot", stamp, timeout_sec=5.0, wait_for_frames=True)
         assert transform.header.stamp == expected_transform.header.stamp
         assert transform.transform.rotation.w == expected_transform.transform.rotation.w
         return 0
@@ -85,9 +81,7 @@ def test_cli_configuration() -> None:  # type: ignore
         parser = argparse.ArgumentParser("test_command")
         parser.add_argument("robot")
         parser.add_argument("-q", "--quiet", action="store_true")
-        parser.set_defaults(
-            process_args=lambda args: dict(forward_logging=not args.quiet)
-        )
+        parser.set_defaults(process_args=lambda args: dict(forward_logging=not args.quiet))
         return parser
 
     @process.main(cli(), namespace="{robot}")

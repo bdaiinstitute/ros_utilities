@@ -6,9 +6,7 @@ from rclpy.context import Context
 from rclpy.utilities import get_default_context
 
 
-def wait_for_shutdown(
-    *, timeout_sec: Optional[float] = None, context: Optional[Context] = None
-) -> bool:
+def wait_for_shutdown(*, timeout_sec: Optional[float] = None, context: Optional[Context] = None) -> bool:
     """
     Wait for context shutdown.
 

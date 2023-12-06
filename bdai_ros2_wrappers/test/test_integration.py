@@ -24,9 +24,7 @@ class MinimalTransformPublisher(Node):
     frame_id = "world"
     child_frame_id = "robot"
 
-    def __init__(
-        self, node_name: str = "minimal_transform_publisher", **kwargs: Any
-    ) -> None:
+    def __init__(self, node_name: str = "minimal_transform_publisher", **kwargs: Any) -> None:
         super().__init__(node_name, **kwargs)
         self._broadcaster = tf2_ros.TransformBroadcaster(self)
         self._transform = TransformStamped()
@@ -51,13 +49,9 @@ class MinimalServer(Node):
 
     def __init__(self, node_name: str = "minimal_server", **kwargs: Any) -> None:
         super().__init__(node_name, **kwargs)
-        self._service_server = self.create_service(
-            AddTwoInts, "add_two_ints", self.service_callback
-        )
+        self._service_server = self.create_service(AddTwoInts, "add_two_ints", self.service_callback)
 
-    def service_callback(
-        self, request: AddTwoInts.Request, response: AddTwoInts.Response
-    ) -> AddTwoInts.Response:
+    def service_callback(self, request: AddTwoInts.Request, response: AddTwoInts.Response) -> AddTwoInts.Response:
         response.sum = request.a + request.b
         return response
 
@@ -67,9 +61,7 @@ class MinimalActionServer(Node):
 
     def __init__(self, node_name: str = "minimal_action_server", **kwargs: Any) -> None:
         super().__init__(node_name, **kwargs)
-        self._action_server = ActionServer(
-            self, Fibonacci, "compute_fibonacci_sequence", self.execute_callback
-        )
+        self._action_server = ActionServer(self, Fibonacci, "compute_fibonacci_sequence", self.execute_callback)
 
     def execute_callback(self, goal_handle: ServerGoalHandle) -> Fibonacci.Result:
         sequence = [0, 1]
@@ -117,8 +109,7 @@ def test_blocking_sequence(ros: ROSAwareScope) -> None:
         assert action_client.wait_for_server(timeout_sec=5)
         feedback = []
         result = action_client.send_goal(
-            Fibonacci.Goal(order=response.sum),
-            feedback_callback=lambda f: feedback.append(f.feedback),
+            Fibonacci.Goal(order=response.sum), feedback_callback=lambda f: feedback.append(f.feedback)
         ).result
         assert len(feedback) > 0
         partial_sequence = feedback[-1].sequence
@@ -126,20 +117,14 @@ def test_blocking_sequence(ros: ROSAwareScope) -> None:
 
         timeout = Duration(seconds=5)
         assert tf_buffer.can_transform(
-            MinimalTransformPublisher.frame_id,
-            MinimalTransformPublisher.child_frame_id,
-            Time(),
-            timeout,
+            MinimalTransformPublisher.frame_id, MinimalTransformPublisher.child_frame_id, Time(), timeout
         )
 
         assert ros.node is not None
         time = ros.node.get_clock().now()
         time += Duration(seconds=result.sequence[-1] * 10e-3)
         return tf_buffer.lookup_transform(
-            MinimalTransformPublisher.frame_id,
-            MinimalTransformPublisher.child_frame_id,
-            time,
-            timeout,
+            MinimalTransformPublisher.frame_id, MinimalTransformPublisher.child_frame_id, time, timeout
         )
 
     assert ros.executor is not None
@@ -169,11 +154,7 @@ def test_chain_sequence(ros: ROSAwareScope) -> None:
         response.sum = sum(result_a.sequence) + sum(result_b.sequence)
         return response
 
-    ros.node.create_service(
-        AddTwoInts,
-        "add_two_fibonacci_sequences",
-        add_fibonacci_sequences_server_callback,
-    )
+    ros.node.create_service(AddTwoInts, "add_two_fibonacci_sequences", add_fibonacci_sequences_server_callback)
 
     client = ros.node.create_client(AddTwoInts, "add_two_fibonacci_sequences")
 

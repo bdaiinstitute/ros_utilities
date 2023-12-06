@@ -28,9 +28,7 @@ class MinimalActionServer(Node):
 
     def __init__(self, node_name: str = "minimal_action_server", **kwargs: Any) -> None:
         super().__init__(node_name, **kwargs)
-        self._action_server = ActionServer(
-            self, Fibonacci, "compute_fibonacci_sequence", self.execute_callback
-        )
+        self._action_server = ActionServer(self, Fibonacci, "compute_fibonacci_sequence", self.execute_callback)
 
     def execute_callback(self, goal_handle: ServerGoalHandle) -> Fibonacci.Result:
         sequence = [0, 1]
@@ -69,9 +67,7 @@ def main() -> None:
     assert action_client.wait_for_server(timeout_sec=5)
 
     while main.context.ok():
-        line = input(
-            "Please provide a Fibonacci sequence order (or press Enter to exit): "
-        )
+        line = input("Please provide a Fibonacci sequence order (or press Enter to exit): ")
         if not line:
             break
         try:

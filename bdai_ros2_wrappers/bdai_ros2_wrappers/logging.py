@@ -42,9 +42,7 @@ class RcutilsLogHandler(logging.Handler):
 
     default_formatter = logging.Formatter("(logging.%(name)s) %(message)s")
 
-    def __init__(
-        self, node: Node, level: typing.Union[int, str] = logging.NOTSET
-    ) -> None:
+    def __init__(self, node: Node, level: typing.Union[int, str] = logging.NOTSET) -> None:
         super().__init__(level=level)
         self.node = node
         self.logger = node.get_logger()
@@ -63,12 +61,7 @@ class RcutilsLogHandler(logging.Handler):
             # NOTE(hidmic): this bypasses the rclpy logger API to avoid the extra meaningless
             # computations (e.g. call stack inspection).
             impl.rclpy_logging_rcutils_log(
-                severity,
-                self.logger.name,
-                message,
-                record.funcName,
-                record.pathname,
-                record.lineno,
+                severity, self.logger.name, message, record.funcName, record.pathname, record.lineno
             )
         except Exception:
             self.handleError(record)

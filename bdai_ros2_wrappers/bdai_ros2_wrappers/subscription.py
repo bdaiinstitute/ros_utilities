@@ -36,9 +36,7 @@ def wait_for_message_async(
     """
     node = node or scope.node()
     if node is None:
-        raise ValueError(
-            "no ROS 2 node available (did you use bdai_ros2_wrapper.process.main?)"
-        )
+        raise ValueError("no ROS 2 node available (did you use bdai_ros2_wrapper.process.main?)")
     future = rclpy.task.Future()
 
     def callback(msg: MessageT) -> None:
@@ -74,9 +72,7 @@ def wait_for_message(
     """
     node = node or scope.node()
     if node is None:
-        raise ValueError(
-            "no ROS 2 node available (did you use bdai_ros2_wrapper.process.main?)"
-        )
+        raise ValueError("no ROS 2 node available (did you use bdai_ros2_wrapper.process.main?)")
     future = wait_for_message_async(msg_type, topic_name, node=node, **kwargs)
     if not wait_for_future(future, timeout_sec, context=node.context):
         future.cancel()

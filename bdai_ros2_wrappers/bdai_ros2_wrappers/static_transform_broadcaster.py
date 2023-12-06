@@ -13,15 +13,9 @@ class StaticTransformBroadcaster:
     sent through it, matching ``rclcpp::StaticTransformBroadcaster`` behavior.
     """
 
-    DEFAULT_QOS = QoSProfile(
-        depth=1,
-        durability=DurabilityPolicy.TRANSIENT_LOCAL,
-        history=HistoryPolicy.KEEP_LAST,
-    )
+    DEFAULT_QOS = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL, history=HistoryPolicy.KEEP_LAST)
 
-    def __init__(
-        self, node: Node, qos: Optional[Union[QoSProfile, int]] = None
-    ) -> None:
+    def __init__(self, node: Node, qos: Optional[Union[QoSProfile, int]] = None) -> None:
         """
         Constructor.
 
@@ -33,9 +27,7 @@ class StaticTransformBroadcaster:
         self._net_transforms: Dict[str, TransformStamped] = {}
         self._pub = node.create_publisher(TFMessage, "/tf_static", qos)
 
-    def sendTransform(
-        self, transform: Union[TransformStamped, Iterable[TransformStamped]]
-    ) -> None:
+    def sendTransform(self, transform: Union[TransformStamped, Iterable[TransformStamped]]) -> None:
         try:
             transforms = list(transform)
         except TypeError:  # in which case, transform is not iterable

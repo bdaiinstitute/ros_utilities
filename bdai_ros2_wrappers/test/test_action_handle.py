@@ -40,9 +40,7 @@ def _execute_callback_feedback(goal_handle: ServerGoalHandle) -> Fibonacci.Resul
     time.sleep(0.001)
 
     for i in range(1, goal_handle.request.order):
-        feedback.partial_sequence.append(
-            feedback.partial_sequence[i] + feedback.partial_sequence[i - 1]
-        )
+        feedback.partial_sequence.append(feedback.partial_sequence[i] + feedback.partial_sequence[i - 1])
         goal_handle.publish_feedback(feedback)
         time.sleep(0.01)
 
@@ -82,11 +80,7 @@ class FibonacciActionServer(ActionServer):
     """
 
     def __init__(
-        self,
-        node: Node,
-        name: str,
-        execute_callback: Callable = _default_execute_callback,
-        **kwargs: Any
+        self, node: Node, name: str, execute_callback: Callable = _default_execute_callback, **kwargs: Any
     ) -> None:
         super().__init__(node, Fibonacci, name, execute_callback, **kwargs)
 
@@ -128,9 +122,7 @@ def do_send_goal(
     handle.set_on_cancel_success_callback(mocks.cancel_success_callback)
     handle.set_on_cancel_failure_callback(mocks.cancel_failure_callback)
 
-    send_goal_future = action_client.send_goal_async(
-        goal, feedback_callback=handle.get_feedback_callback
-    )
+    send_goal_future = action_client.send_goal_async(goal, feedback_callback=handle.get_feedback_callback)
     handle.set_send_goal_future(send_goal_future)
     return handle, mocks
 
@@ -168,9 +160,7 @@ def test_reject(ros: ROSAwareScope) -> None:
 def test_abort(ros: ROSAwareScope) -> None:
     """Tests the case where the action server aborts the goal"""
     assert ros.node is not None
-    FibonacciActionServer(
-        ros.node, "fibonacci_ah", execute_callback=_execute_callback_abort
-    )
+    FibonacciActionServer(ros.node, "fibonacci_ah", execute_callback=_execute_callback_abort)
     action_client = ActionClient(ros.node, Fibonacci, "fibonacci_ah")
     handle, mocks = do_send_goal(action_client, Fibonacci.Goal(order=5))
     assert not handle.wait_for_result(timeout_sec=1.0)
@@ -184,9 +174,7 @@ def test_abort(ros: ROSAwareScope) -> None:
 
 def test_feedback(ros: ROSAwareScope) -> None:
     assert ros.node is not None
-    FibonacciActionServer(
-        ros.node, "fibonacci_ah", execute_callback=_execute_callback_feedback
-    )
+    FibonacciActionServer(ros.node, "fibonacci_ah", execute_callback=_execute_callback_feedback)
     action_client = ActionClient(ros.node, Fibonacci, "fibonacci_ah")
     handle, mocks = do_send_goal(action_client, Fibonacci.Goal(order=5))
     assert handle.wait_for_result(timeout_sec=1.0)
@@ -221,9 +209,7 @@ def test_cancel_success(ros: ROSAwareScope) -> None:
 
 def test_cancel_failure(ros: ROSAwareScope) -> None:
     assert ros.node is not None
-    FibonacciActionServer(
-        ros.node, "fibonacci_ah", execute_callback=_execute_callback_slowly
-    )
+    FibonacciActionServer(ros.node, "fibonacci_ah", execute_callback=_execute_callback_slowly)
     action_client = ActionClient(ros.node, Fibonacci, "fibonacci_ah")
     handle, mocks = do_send_goal(action_client, Fibonacci.Goal(order=5))
     assert handle.wait_for_acceptance(timeout_sec=1.0)
@@ -240,9 +226,7 @@ def test_cancel_failure(ros: ROSAwareScope) -> None:
 def test_wait_for_result_timeout(ros: ROSAwareScope) -> None:
     """Tests the wait_for_result function for when it times out"""
     assert ros.node is not None
-    FibonacciActionServer(
-        ros.node, "fibonacci_ah", execute_callback=_execute_callback_slowly
-    )
+    FibonacciActionServer(ros.node, "fibonacci_ah", execute_callback=_execute_callback_slowly)
     action_client = ActionClient(ros.node, Fibonacci, "fibonacci_ah")
     handle, mocks = do_send_goal(action_client, Fibonacci.Goal(order=5))
     assert not handle.wait_for_result(timeout_sec=0.01)
@@ -275,9 +259,7 @@ def test_wait_for_result_cancelled(ros: ROSAwareScope) -> None:
 def test_wait_for_result_aborted(ros: ROSAwareScope) -> None:
     """Test if the ActionServer cancels the request"""
     assert ros.node is not None
-    FibonacciActionServer(
-        ros.node, "fibonacci_ah", execute_callback=_execute_callback_abort
-    )
+    FibonacciActionServer(ros.node, "fibonacci_ah", execute_callback=_execute_callback_abort)
     action_client = ActionClient(ros.node, Fibonacci, "fibonacci_ah")
     handle, mocks = do_send_goal(action_client, Fibonacci.Goal(order=5))
     # Check the return value and make sure the result is both executed to completion and returns negatively

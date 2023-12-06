@@ -15,12 +15,7 @@ class ServiceHandle(object):
     as holding the various callbacks for sending an ServiceRequest (result, failure)
     """
 
-    def __init__(
-        self,
-        service_name: str,
-        logger: Optional[RcutilsLogger] = None,
-        context: Optional[Context] = None,
-    ):
+    def __init__(self, service_name: str, logger: Optional[RcutilsLogger] = None, context: Optional[Context] = None):
         if context is None:
             context = get_default_context()
         self._service_name = service_name
@@ -78,9 +73,7 @@ class ServiceHandle(object):
         service_has_success = hasattr(result, "success")
 
         if self._on_failure_callback is not None and not service_has_success:
-            self._logger.warning(
-                "Failure callback is set, but result has no success attribute"
-            )
+            self._logger.warning("Failure callback is set, but result has no success attribute")
             self._future_ready_event.set()
             return
 
@@ -91,9 +84,7 @@ class ServiceHandle(object):
                 self._future_ready_event.set()
                 return
         else:
-            self._logger.warning(
-                f"Service {self._service_name} has no success or failure flag"
-            )
+            self._logger.warning(f"Service {self._service_name} has no success or failure flag")
 
         self._logger.info("Service completed")
         self._future_ready_event.set()

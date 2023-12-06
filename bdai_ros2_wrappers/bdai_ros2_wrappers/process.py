@@ -25,9 +25,7 @@ from bdai_ros2_wrappers.utilities import either_or
 MainCallableTakingArgs = typing.Callable[[argparse.Namespace], typing.Optional[int]]
 MainCallableTakingArgv = typing.Callable[[typing.Sequence[str]], typing.Optional[int]]
 MainCallableTakingNoArgs = typing.Callable[[], typing.Optional[int]]
-MainCallable = typing.Union[
-    MainCallableTakingNoArgs, MainCallableTakingArgv, MainCallableTakingArgs
-]
+MainCallable = typing.Union[MainCallableTakingNoArgs, MainCallableTakingArgv, MainCallableTakingArgs]
 
 
 class ROSAwareProcess:
@@ -92,17 +90,13 @@ class ROSAwareProcess:
                 validate_node_name(name)
                 prebaked = name
             except InvalidNodeNameException:
-                warnings.warn(
-                    f"'{name}' cannot be used as node name, using scope default"
-                )
+                warnings.warn(f"'{name}' cannot be used as node name, using scope default")
         if namespace is True:
             try:
                 validate_namespace(name)
                 namespace = name
             except InvalidNamespaceException:
-                warnings.warn(
-                    f"'{name}' cannot be used as namespace, using scope default"
-                )
+                warnings.warn(f"'{name}' cannot be used as namespace, using scope default")
         if forward_logging is None:
             forward_logging = bool(prebaked)
         self._func = func
@@ -144,9 +138,7 @@ class ROSAwareProcess:
             return
         super().__setattr__(name, value)
 
-    def __call__(
-        self, argv: typing.Optional[typing.Sequence[str]] = None
-    ) -> typing.Optional[int]:
+    def __call__(self, argv: typing.Optional[typing.Sequence[str]] = None) -> typing.Optional[int]:
         """
         Invokes wrapped process function in a ROS 2 aware scope.
 
@@ -180,14 +172,10 @@ class ROSAwareProcess:
                 try:
                     sig = inspect.signature(self._func)
                     if not sig.parameters:
-                        func_taking_no_args = typing.cast(
-                            MainCallableTakingNoArgs, self._func
-                        )
+                        func_taking_no_args = typing.cast(MainCallableTakingNoArgs, self._func)
                         return func_taking_no_args()
                     if args is not None:
-                        func_taking_args = typing.cast(
-                            MainCallableTakingArgs, self._func
-                        )
+                        func_taking_args = typing.cast(MainCallableTakingArgs, self._func)
                         return func_taking_args(args)
                     func_taking_argv = typing.cast(MainCallableTakingArgv, self._func)
                     return func_taking_argv(rclpy.utilities.remove_ros_args(argv))
@@ -214,9 +202,7 @@ class ROSAwareProcess:
         with self._lock:
             if self._scope is None:
                 raise RuntimeError("process is not executing")
-            return context.wait_for_shutdown(
-                timeout_sec=timeout_sec, context=self._scope.context
-            )
+            return context.wait_for_shutdown(timeout_sec=timeout_sec, context=self._scope.context)
 
     def try_shutdown(self) -> None:
         """Atempts to shutdown the underlying scope context."""
@@ -255,9 +241,7 @@ def tf_listener() -> typing.Optional[TFListenerWrapper]:
     return process.tf_listener
 
 
-def load(
-    factory: AnyEntityFactoryCallable, *args: typing.Any, **kwargs: typing.Any
-) -> AnyEntity:
+def load(factory: AnyEntityFactoryCallable, *args: typing.Any, **kwargs: typing.Any) -> AnyEntity:
     """
     Loads a ROS 2 node (or a collection thereof) within the current ROS 2 aware process scope.
 
@@ -307,11 +291,7 @@ def managed(
     return process.managed(factory, *args, **kwargs)
 
 
-def spin(
-    factory: typing.Optional[AnyEntityFactoryCallable] = None,
-    *args: typing.Any,
-    **kwargs: typing.Any,
-) -> None:
+def spin(factory: typing.Optional[AnyEntityFactoryCallable] = None, *args: typing.Any, **kwargs: typing.Any) -> None:
     """
     Spins current ROS 2 aware process executor (and all ROS 2 nodes in it).
 

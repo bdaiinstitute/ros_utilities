@@ -3,8 +3,8 @@
 <package format="3">
   <name>bdai_ros2_wrappers</name>
   <version>0.0.1</version>
-  <description>BDAII wrappers for ROS2</description>
-  <maintainer email="engineering@theaiinstitute.com">BD AI Institute</maintainer>
+  <description>The AI Institute's wrappers for ROS2</description>
+  <maintainer email="engineering@theaiinstitute.com">The AI Institute</maintainer>
   <license>MIT</license>
 
   <test_depend>python3-pytest</test_depend>
