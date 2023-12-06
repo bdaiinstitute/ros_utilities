@@ -30,7 +30,9 @@ class TalkerNode(Node):
         self.timer = self.create_timer(1 / rate, self.callback)
 
     def callback(self) -> None:
-        message = std_msgs.msg.String(data=f"Hi there, from {self.get_name()} (#{next(self.counter)})")
+        message = std_msgs.msg.String(
+            data=f"Hi there, from {self.get_name()} (#{next(self.counter)})"
+        )
         self.pub.publish(message)
 
 
@@ -39,7 +41,9 @@ class ListenerNode(Node):
 
     def __init__(self, **kwargs: typing.Any) -> None:
         super().__init__("listener", **kwargs)
-        self.sub = self.create_subscription(std_msgs.msg.String, "chat", self.callback, 1)
+        self.sub = self.create_subscription(
+            std_msgs.msg.String, "chat", self.callback, 1
+        )
 
     def callback(self, message: std_msgs.msg.String) -> None:
         self.get_logger().info(message.data)

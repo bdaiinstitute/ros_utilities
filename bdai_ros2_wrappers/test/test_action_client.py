@@ -49,7 +49,9 @@ def test_send_goal_and_wait(ros: ROSAwareScope) -> None:
 
     goal = Fibonacci.Goal()
     goal.order = 5
-    result = action_client.send_goal_and_wait("test_send_goal_and_wait", goal=goal, timeout_sec=5)
+    result = action_client.send_goal_and_wait(
+        "test_send_goal_and_wait", goal=goal, timeout_sec=5
+    )
     assert result is not None
     expected_result = array.array("i", [0, 1, 1, 2, 3, 5])
     assert result.sequence == expected_result
@@ -65,7 +67,9 @@ def test_timeout_send_goal_wait(ros: ROSAwareScope) -> None:
 
     goal = Fibonacci.Goal()
     goal.order = 5
-    result = action_client.send_goal_and_wait("test_timeout_send_goal_wait", goal=goal, timeout_sec=0.5)
+    result = action_client.send_goal_and_wait(
+        "test_timeout_send_goal_wait", goal=goal, timeout_sec=0.5
+    )
     assert result is None
 
 
@@ -86,5 +90,7 @@ def test_goal_not_accepted(ros: ROSAwareScope) -> None:
 
     goal = Fibonacci.Goal()
     goal.order = 5
-    result = action_client.send_goal_and_wait("test_goal_not_accepted", goal=goal, timeout_sec=5)
+    result = action_client.send_goal_and_wait(
+        "test_goal_not_accepted", goal=goal, timeout_sec=5
+    )
     assert result is None

@@ -17,13 +17,22 @@ class SingleGoalMultipleActionServers(object):
     canceled"""
 
     def __init__(
-        self, node: Node, action_server_parameters: List[Tuple[ActionType, str, Callable, Optional[CallbackGroup]]]
+        self,
+        node: Node,
+        action_server_parameters: List[
+            Tuple[ActionType, str, Callable, Optional[CallbackGroup]]
+        ],
     ) -> None:
         self._node = node
         self._goal_handle: Optional[ServerGoalHandle] = None
         self._goal_lock = threading.Lock()
         self._action_servers = []
-        for action_type, action_topic, execute_callback, callback_group in action_server_parameters:
+        for (
+            action_type,
+            action_topic,
+            execute_callback,
+            callback_group,
+        ) in action_server_parameters:
             self._action_servers.append(
                 ActionServer(
                     node,

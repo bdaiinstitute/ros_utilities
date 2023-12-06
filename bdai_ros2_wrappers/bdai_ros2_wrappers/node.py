@@ -14,7 +14,12 @@ class Node(BaseNode):
     * changes the default callback group to be non-reentrant.
     """
 
-    def __init__(self, *args: Any, default_callback_group: Optional[CallbackGroup] = None, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        *args: Any,
+        default_callback_group: Optional[CallbackGroup] = None,
+        **kwargs: Any
+    ) -> None:
         """
         Initializes the node.
 

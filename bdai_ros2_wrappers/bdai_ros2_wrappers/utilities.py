@@ -45,7 +45,9 @@ def fqn(obj: typing.Any) -> typing.Optional[str]:
     return f"{module}.{name}"
 
 
-def bind_to_thread(callable_: typing.Callable, thread: threading.Thread) -> typing.Callable:
+def bind_to_thread(
+    callable_: typing.Callable, thread: threading.Thread
+) -> typing.Callable:
     """Binds a callable to a thread, so it can only be invoked from that thread."""
 
     @functools.wraps(callable_)

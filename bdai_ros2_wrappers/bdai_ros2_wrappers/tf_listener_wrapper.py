@@ -62,7 +62,9 @@ class TFListenerWrapper:
                     # or you can lookup and handle exceptions yourself
     """
 
-    def __init__(self, node: Optional[Node] = None, cache_time_s: Optional[float] = None) -> None:
+    def __init__(
+        self, node: Optional[Node] = None, cache_time_s: Optional[float] = None
+    ) -> None:
         """
         Initializes the wrapper.
 
@@ -72,7 +74,9 @@ class TFListenerWrapper:
         """
         node = node or scope.node()
         if node is None:
-            raise ValueError("no ROS 2 node available (did you use bdai_ros2_wrapper.process.main?)")
+            raise ValueError(
+                "no ROS 2 node available (did you use bdai_ros2_wrapper.process.main?)"
+            )
         self._node = node
         cache_time_py = None
         if cache_time_s is not None:
@@ -88,7 +92,10 @@ class TFListenerWrapper:
         self._tf_listener.unregister()
 
     def wait_for_a_tform_b_async(
-        self, frame_a: str, frame_b: str, transform_time: Optional[Union[StampLike, TimeLike]] = None
+        self,
+        frame_a: str,
+        frame_b: str,
+        transform_time: Optional[Union[StampLike, TimeLike]] = None,
     ) -> Future:
         """
         Wait asynchronously for the transform from from_frame to to_frame to become available.
@@ -103,7 +110,9 @@ class TFListenerWrapper:
         """
         if transform_time is None:
             transform_time = Time()
-        return self._tf_buffer.wait_for_transform_async(frame_a, frame_b, transform_time)
+        return self._tf_buffer.wait_for_transform_async(
+            frame_a, frame_b, transform_time
+        )
 
     def wait_for_a_tform_b(
         self,
@@ -189,7 +198,11 @@ class TFListenerWrapper:
         return self._tf_buffer.lookup_transform(frame_a, frame_b, transform_time)
 
     def lookup_latest_timestamp(
-        self, frame_a: str, frame_b: str, timeout_sec: Optional[float] = None, wait_for_frames: bool = False
+        self,
+        frame_a: str,
+        frame_b: str,
+        timeout_sec: Optional[float] = None,
+        wait_for_frames: bool = False,
     ) -> Time:
         """
         Looks up the latest time at which a transform from frame_a to frame_b is available.
@@ -209,5 +222,7 @@ class TFListenerWrapper:
         Raises:
             All the possible TransformExceptions.
         """
-        transform = self.lookup_a_tform_b(frame_a, frame_b, Time(), timeout_sec, wait_for_frames)
+        transform = self.lookup_a_tform_b(
+            frame_a, frame_b, Time(), timeout_sec, wait_for_frames
+        )
         return Time.from_msg(transform.header.stamp)

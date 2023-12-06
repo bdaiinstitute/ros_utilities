@@ -5,7 +5,9 @@ from typing import Callable, Optional
 from rclpy.callback_groups import CallbackGroup
 from rclpy.node import Node
 
-from bdai_ros2_wrappers.single_goal_multiple_action_servers import SingleGoalMultipleActionServers
+from bdai_ros2_wrappers.single_goal_multiple_action_servers import (
+    SingleGoalMultipleActionServers,
+)
 from bdai_ros2_wrappers.type_hints import ActionType
 
 # Note: for this to work correctly you must use a multi-threaded executor when spinning the node!  E.g.:
@@ -16,7 +18,8 @@ from bdai_ros2_wrappers.type_hints import ActionType
 
 class SingleGoalActionServer(SingleGoalMultipleActionServers):
     """Wrapper around a single action server that only allows a single Action to be executing at one time. If a new
-    Action.Goal is received, the existing Action (if there is one) is preemptively canceled"""
+    Action.Goal is received, the existing Action (if there is one) is preemptively canceled
+    """
 
     def __init__(
         self,
@@ -27,5 +30,8 @@ class SingleGoalActionServer(SingleGoalMultipleActionServers):
         callback_group: Optional[CallbackGroup] = None,
     ) -> None:
         super().__init__(
-            node=node, action_server_parameters=[(action_type, action_topic, execute_callback, callback_group)]
+            node=node,
+            action_server_parameters=[
+                (action_type, action_topic, execute_callback, callback_group)
+            ],
         )

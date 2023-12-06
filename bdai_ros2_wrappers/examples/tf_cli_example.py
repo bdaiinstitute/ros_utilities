@@ -33,7 +33,10 @@ class TFBroadcasterNode(Node):
         super().__init__("tf_broadcaster", **kwargs)
         self.tf_broadcaster = TransformBroadcaster(self)
         self.transforms: List[TransformStamped] = []
-        tree = [("world", "odom", 0.0, 1.0, math.degrees(90.0)), ("odom", "robot", 3.0, -0.5, math.degrees(-30.0))]
+        tree = [
+            ("world", "odom", 0.0, 1.0, math.degrees(90.0)),
+            ("odom", "robot", 3.0, -0.5, math.degrees(-30.0)),
+        ]
         for parent_frame, child_frame, x, y, theta in tree:
             transform = TransformStamped()
             transform.header.frame_id = namespace_with(tf_prefix, parent_frame)
@@ -83,7 +86,9 @@ def run(args: argparse.Namespace) -> None:
             source_frame = target_frame
         target_frame = namespace_with(args.tf_prefix, target_frame)
         source_frame = namespace_with(args.tf_prefix, source_frame)
-        transform = tf_listener.lookup_a_tform_b(target_frame, source_frame, wait_for_frames=True)
+        transform = tf_listener.lookup_a_tform_b(
+            target_frame, source_frame, wait_for_frames=True
+        )
         t = transform.transform.translation
         q = transform.transform.rotation
         print(f"Transform {target_frame} -> {source_frame}")
@@ -111,7 +116,9 @@ def main(args: argparse.Namespace) -> None:
     """
     with background(SingleThreadedExecutor()) as main.executor:
         with ros_process.managed(graph, args) as (_, main.node):
-            main.tf_listener = TFListenerWrapper(main.node, cache_time_s=args.cache_time)
+            main.tf_listener = TFListenerWrapper(
+                main.node, cache_time_s=args.cache_time
+            )
             run(args)
 
 

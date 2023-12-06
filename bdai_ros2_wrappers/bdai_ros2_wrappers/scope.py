@@ -9,7 +9,11 @@ import rclpy.executors
 import rclpy.logging
 import rclpy.node
 
-from bdai_ros2_wrappers.executors import AutoScalingMultiThreadedExecutor, background, foreground
+from bdai_ros2_wrappers.executors import (
+    AutoScalingMultiThreadedExecutor,
+    background,
+    foreground,
+)
 from bdai_ros2_wrappers.logging import logs_to_ros
 from bdai_ros2_wrappers.node import Node
 from bdai_ros2_wrappers.tf_listener_wrapper import TFListenerWrapper
@@ -110,25 +114,35 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
 
             if self._global:
                 if threading.current_thread() is not threading.main_thread():
-                    raise RuntimeError("a global scope can only be entered from main thread")
+                    raise RuntimeError(
+                        "a global scope can only be entered from main thread"
+                    )
                 if ROSAwareScope.global_ is not None:
                     raise RuntimeError("a global scope has been entered already")
                 if ROSAwareScope.local.top is not None:
-                    raise RuntimeError("a global scope must be entered before any local scopes")
+                    raise RuntimeError(
+                        "a global scope must be entered before any local scopes"
+                    )
 
             self._stack = contextlib.ExitStack()
             self._owner = threading.current_thread()
 
             if self._prebaked or self._autospin:
-                logger = rclpy.logging.get_logger(self._namespace or fqn(self.__class__))
-                executor = AutoScalingMultiThreadedExecutor(logger=logger, context=self._context)
+                logger = rclpy.logging.get_logger(
+                    self._namespace or fqn(self.__class__)
+                )
+                executor = AutoScalingMultiThreadedExecutor(
+                    logger=logger, context=self._context
+                )
                 if self._autospin:
                     self._executor = self._stack.enter_context(background(executor))
                 else:
                     self._executor = self._stack.enter_context(foreground(executor))
 
                 if self._prebaked:
-                    node = Node(self._prebaked, namespace=self._namespace, context=self._context)
+                    node = Node(
+                        self._prebaked, namespace=self._namespace, context=self._context
+                    )
                     self._executor.add_node(node)
                     self._graph.append(node)
                     if self._uses_tf:
@@ -303,7 +317,9 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
             self.unload(loaded)
 
     @typing.overload
-    def load(self, factory: NodeFactoryCallable, *args: typing.Any, **kwargs: typing.Any) -> rclpy.node.Node:
+    def load(
+        self, factory: NodeFactoryCallable, *args: typing.Any, **kwargs: typing.Any
+    ) -> rclpy.node.Node:
         """
         Instantiates and loads a ROS 2 node.
 
@@ -359,7 +375,9 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
                 namespace = namespace_with(self._namespace, namespace)
             else:
                 namespace = self._namespace
-            node_or_graph = factory(*args, context=self._context, namespace=namespace, **kwargs)
+            node_or_graph = factory(
+                *args, context=self._context, namespace=namespace, **kwargs
+            )
             if not isinstance(node_or_graph, rclpy.node.Node):
                 graph = list(node_or_graph)
                 for node in graph:
@@ -409,7 +427,9 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
         """
 
     @typing.overload
-    def spin(self, factory: NodeFactoryCallable, *args: typing.Any, **kwargs: typing.Any) -> None:
+    def spin(
+        self, factory: NodeFactoryCallable, *args: typing.Any, **kwargs: typing.Any
+    ) -> None:
         """
         Spins scope executor (and all nodes in it).
 
@@ -429,7 +449,9 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
         """
 
     @typing.overload
-    def spin(self, factory: GraphFactoryCallable, *args: typing.Any, **kwargs: typing.Any) -> None:
+    def spin(
+        self, factory: GraphFactoryCallable, *args: typing.Any, **kwargs: typing.Any
+    ) -> None:
         """
         Spins scope executor (and all nodes in it).
 
@@ -448,7 +470,10 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
         """
 
     def spin(
-        self, factory: typing.Optional[AnyEntityFactoryCallable] = None, *args: typing.Any, **kwargs: typing.Any
+        self,
+        factory: typing.Optional[AnyEntityFactoryCallable] = None,
+        *args: typing.Any,
+        **kwargs: typing.Any,
     ) -> None:
         if self._stack is None:
             raise RuntimeError("scope has not been entered (or already exited)")
@@ -456,9 +481,15 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
             raise RuntimeError("scope executor already spinning")
         with self._lock:
             if self._executor is None:
-                logger = rclpy.logging.get_logger(self._namespace or fqn(self.__class__))
+                logger = rclpy.logging.get_logger(
+                    self._namespace or fqn(self.__class__)
+                )
                 self._executor = self._stack.enter_context(
-                    foreground(AutoScalingMultiThreadedExecutor(logger=logger, context=self._context))
+                    foreground(
+                        AutoScalingMultiThreadedExecutor(
+                            logger=logger, context=self._context
+                        )
+                    )
                 )
         with contextlib.ExitStack() as stack:
             if factory is not None:
@@ -529,7 +560,9 @@ def executor() -> typing.Optional[rclpy.executors.Executor]:
     return scope.executor
 
 
-def load(factory: AnyEntityFactoryCallable, *args: typing.Any, **kwargs: typing.Any) -> AnyEntity:
+def load(
+    factory: AnyEntityFactoryCallable, *args: typing.Any, **kwargs: typing.Any
+) -> AnyEntity:
     """
     Loads a ROS 2 node (or a collection thereof) within the current ROS 2 aware scope.
 
@@ -579,7 +612,11 @@ def managed(
     return scope.managed(factory, *args, **kwargs)
 
 
-def spin(factory: typing.Optional[AnyEntityFactoryCallable] = None, *args: typing.Any, **kwargs: typing.Any) -> None:
+def spin(
+    factory: typing.Optional[AnyEntityFactoryCallable] = None,
+    *args: typing.Any,
+    **kwargs: typing.Any,
+) -> None:
     """
     Spins current ROS 2 aware scope executor (and all the ROS 2 nodes in it).
 

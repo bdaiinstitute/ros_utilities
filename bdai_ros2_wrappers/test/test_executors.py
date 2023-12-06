@@ -11,7 +11,11 @@ from rclpy.executors import SingleThreadedExecutor
 from rclpy.node import Node
 from std_srvs.srv import Trigger
 
-from bdai_ros2_wrappers.executors import AutoScalingMultiThreadedExecutor, AutoScalingThreadPool, background
+from bdai_ros2_wrappers.executors import (
+    AutoScalingMultiThreadedExecutor,
+    AutoScalingThreadPool,
+    background,
+)
 from bdai_ros2_wrappers.futures import wait_for_future
 
 
@@ -126,7 +130,9 @@ def test_autoscaling_thread_pool_with_quota() -> None:
     Asserts that the autoscaling thread pool respects submission quotas.
     """
 
-    with AutoScalingThreadPool(submission_quota=5, submission_patience=1.0, max_idle_time=2.0) as pool:
+    with AutoScalingThreadPool(
+        submission_quota=5, submission_patience=1.0, max_idle_time=2.0
+    ) as pool:
         assert len(pool.workers) == 0
         assert not pool.working
 
@@ -162,15 +168,22 @@ def test_autoscaling_executor(ros_context: Context, ros_node: Node) -> None:
     the same executor.
     """
 
-    def dummy_server_callback(_: Trigger.Request, response: Trigger.Response) -> Trigger.Response:
+    def dummy_server_callback(
+        _: Trigger.Request, response: Trigger.Response
+    ) -> Trigger.Response:
         response.success = True
         return response
 
     ros_node.create_service(
-        Trigger, "/dummy/trigger", dummy_server_callback, callback_group=MutuallyExclusiveCallbackGroup()
+        Trigger,
+        "/dummy/trigger",
+        dummy_server_callback,
+        callback_group=MutuallyExclusiveCallbackGroup(),
     )
 
-    client = ros_node.create_client(Trigger, "/dummy/trigger", callback_group=MutuallyExclusiveCallbackGroup())
+    client = ros_node.create_client(
+        Trigger, "/dummy/trigger", callback_group=MutuallyExclusiveCallbackGroup()
+    )
 
     executor = AutoScalingMultiThreadedExecutor(context=ros_context)
     assert len(executor.thread_pool.workers) == 0

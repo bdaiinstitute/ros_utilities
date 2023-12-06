@@ -12,7 +12,9 @@ from bdai_ros2_wrappers.type_hints import Action
 class ActionClientWrapper(rclpy.action.ActionClient):
     """A wrapper for ros2's ActionClient for extra functionality"""
 
-    def __init__(self, action_type: Type[Action], action_name: str, node: Optional[Node] = None) -> None:
+    def __init__(
+        self, action_type: Type[Action], action_name: str, node: Optional[Node] = None
+    ) -> None:
         """Constructor
 
         Args:
@@ -22,7 +24,9 @@ class ActionClientWrapper(rclpy.action.ActionClient):
         """
         node = node or scope.node()
         if node is None:
-            raise ValueError("no ROS 2 node available (did you use bdai_ros2_wrapper.process.main?)")
+            raise ValueError(
+                "no ROS 2 node available (did you use bdai_ros2_wrapper.process.main?)"
+            )
         self._node = node
         super().__init__(self._node, action_type, action_name)
         self._node.get_logger().info(f"Waiting for action server for {action_name}")
@@ -60,7 +64,9 @@ class ActionClientWrapper(rclpy.action.ActionClient):
             nonlocal failed
             failed = True
 
-        handle = self.send_goal_async_handle(action_name=action_name, goal=goal, on_failure_callback=_on_failure)
+        handle = self.send_goal_async_handle(
+            action_name=action_name, goal=goal, on_failure_callback=_on_failure
+        )
         handle.set_on_cancel_success_callback(_on_cancel_succeeded)
         if not handle.wait_for_result(timeout_sec=timeout_sec):
             # If the action didn't fail and wasn't canceled then it timed out and should be canceled
@@ -96,7 +102,11 @@ class ActionClientWrapper(rclpy.action.ActionClient):
         Returns:
             ActionHandle: An object to manage the asynchronous lifecycle of the action request
         """
-        handle = ActionHandle(action_name=action_name, logger=self._node.get_logger(), context=self._node.context)
+        handle = ActionHandle(
+            action_name=action_name,
+            logger=self._node.get_logger(),
+            context=self._node.context,
+        )
         if result_callback is not None:
             handle.set_result_callback(result_callback)
 
@@ -107,7 +117,9 @@ class ActionClientWrapper(rclpy.action.ActionClient):
             send_goal_future = self.send_goal_async(goal)
         else:
             handle.set_feedback_callback(feedback_callback)
-            send_goal_future = self.send_goal_async(goal, feedback_callback=handle.get_feedback_callback)
+            send_goal_future = self.send_goal_async(
+                goal, feedback_callback=handle.get_feedback_callback
+            )
         handle.set_send_goal_future(send_goal_future)
 
         return handle
