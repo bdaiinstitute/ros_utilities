@@ -2,7 +2,8 @@
 [mypy]
 ignore_missing_imports = true
 mypy_path = "@MYPY_PATH@"
-explicit_package_bases = true
+# Ignore missing type annotations, mainly coming from ROS 2 imports.
+disable_error_code = var-annotated
 
 [mypy-google.*]
 # Ignore google.* modules explicitly to avoid missing type hints errors.
