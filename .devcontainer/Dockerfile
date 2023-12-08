@@ -47,5 +47,11 @@ RUN python -m pip install --no-cache-dir --upgrade pip==22.3.1 \
     numpy==1.24.1 \
     && pip cache purge
 
+# Install dependencies for repository packages
+RUN --mount=type=bind,source=.,target=/tmp/context \
+    apt-get update -q && rosdep update && \
+    rosdep install -y -i --from-paths /tmp/context && \
+    rm -rf /var/lib/apt/lists/*
+
 # ROS doesn't recognize the docker shells as terminals so force colored output
 ENV RCUTILS_COLORIZED_OUTPUT=1
