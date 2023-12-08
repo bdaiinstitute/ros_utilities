@@ -1,5 +1,8 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute LLC. All rights reserved.
 
+# A dynamically typed (scalar or composite) value. Equivalent to the google.protobuf.Value message.
+# See https://protobuf.dev/reference/protobuf/google.protobuf/#value for further reference.
+
 int8 NO_VALUE_SET=0
 int8 NUMBER_VALUE_SET=1
 int8 STRING_VALUE_SET=2

@@ -4,10 +4,11 @@
 This module provides APIs to extract Protobuf <-> ROS message equivalences.
 
 These equivalences are defined in terms of Protobuf composite descriptors
-and ROS message specifications. See
+and ROS message specifications. See Protobuf descriptor messages and ROS 2
+``MessageSpecification`` class definition and documentation in
 https://github.com/protocolbuffers/protobuf/blob/main/src/google/protobuf/descriptor.proto
-and https://github.com/ros2/rosidl/blob/rolling/rosidl_adapter/rosidl_adapter/parser.py#L386
-for further reference.
+and https://github.com/ros2/rosidl/blob/rolling/rosidl_adapter/rosidl_adapter/parser.py
+respectively for further reference.
 """
 
 import dataclasses
