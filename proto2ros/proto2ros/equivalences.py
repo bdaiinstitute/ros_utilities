@@ -212,7 +212,7 @@ def translate_type(name: str, repeated: bool, config: Configuration) -> Type:
         if repeated:
             ros_type_name += "[]"
     else:
-        ros_type_name = "string[]" if repeated else "uint8[]"
+        ros_type_name = "proto2ros/Bytes[]" if repeated else "uint8[]"
     return Type(ros_type_name)
 
 

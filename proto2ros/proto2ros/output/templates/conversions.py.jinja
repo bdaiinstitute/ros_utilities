@@ -52,9 +52,9 @@ for {{ input_item }} in {{ source }}:
 {{ ros_to_proto_composite_field_code_block(source, destination, spec) }}
         {%- endif -%}
     {%- elif spec.annotations["proto-type"] == "bytes" -%}
-        {#- Handle bytes case i.e. extract them from string equivalents. -#}
-        {%- if spec.type.type == "string" -%}
-{{ destination }}.extend(blob.encode("ascii") for blob in {{ source }})
+        {#- Handle bytes case. -#}
+        {%- if to_ros_base_type(spec.type) == "proto2ros/Bytes" -%}
+{{ destination }}.extend(blob.data.tobytes() for blob in {{ source }})
         {%- else -%}
 {{ destination }} = {{ source }}.tobytes()
         {%- endif -%}
@@ -162,9 +162,9 @@ for {{ input_item }} in {{ input_iterable }}:
 {{ proto_to_ros_composite_field_code_block(source, destination, spec) }}
         {%- endif -%}
     {%- elif spec.annotations["proto-type"] == "bytes" -%}
-        {#- Handle bytes case i.e. convert them to string equivalents. -#}
-        {%- if spec.type.type == "string" -%}
-{{ destination }} = [blob.decode("ascii") for blob in {{ source }}]
+        {#- Handle bytes case. -#}
+        {%- if to_ros_base_type(spec.type) == "proto2ros/Bytes" -%}
+{{ destination }} = [proto2ros.msg.Bytes(data=array.array("B", blob)) for blob in {{ source }}]
         {%- else -%}
 {{ destination }} = array.array("B", {{ source }})
         {%- endif -%}
