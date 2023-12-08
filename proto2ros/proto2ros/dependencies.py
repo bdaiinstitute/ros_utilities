@@ -7,9 +7,9 @@ This module provides APIs to manipulate dependencies between Protobuf <-> ROS me
 import warnings
 from typing import List
 
-import networkx as nx
 from rosidl_adapter.parser import MessageSpecification
 
+from proto2ros.compatibility import networkx as nx
 from proto2ros.utilities import pairwise, to_ros_base_type
 
 
