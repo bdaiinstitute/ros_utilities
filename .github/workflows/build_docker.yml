@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - ".devcontainer/**"
+      - "*/package.xml"
   push:
     branches:
       - main
