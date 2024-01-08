@@ -5,7 +5,7 @@ This module provides utilities to work with Protobuf descriptors.
 
 Many of these utilities trade in terms of paths and locations.
 
-Paths are sequences of numbers that refere to an arbitrarily nested value in a Protobuf message.
+Paths are sequences of numbers that refer to an arbitrarily nested value in a Protobuf message.
 Each part of a path is one or two numbers: the field number if it is not a repeated field, and
 the field number and item index if it is. For example, ``[4, 1, 3]`` can be (but it ultimately
 depends on the concrete Protobuf message type) a path to the third item of field number 1 of
