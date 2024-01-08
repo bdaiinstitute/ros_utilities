@@ -20,7 +20,7 @@ jobs:
           image-names: ${{ env.IMAGE_NAME }}
           skip-tags: main
           cut-off: One week ago UTC
-          account-name: ${{ env.ORG_NAME }}
+          org-name: ${{ env.ORG_NAME }}
           account-type: org
           token: ${{ secrets.GITHUB_TOKEN }}
           token-type: github-token
