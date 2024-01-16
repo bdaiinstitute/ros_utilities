@@ -86,8 +86,8 @@ typed_field_message = rclpy.serialization.deserialize_message({{ source }}.value
 convert_{{ spec.type | as_ros_base_type | as_python_identifier }}_message_to_{{ spec.annotations["proto-type"] | as_python_identifier }}_proto(typed_field_message, {{ destination }})
     {%- elif spec.annotations.get("type-casted") -%}
         {#- ROS message must be converted and packed for assignment. -#}
-typed_proto_message = {{ proto_type_name | as_pb2_python_type }}()
-convert_{{ spec.type | as_ros_base_type | as_python_idenfier }}_message_to_{{ proto_type_name | as_python_identifier }}_proto({{ source }}, typed_proto_message)
+typed_proto_message = {{ spec.annotations["proto-type"] | as_pb2_python_type }}()
+convert_{{ spec.type | as_ros_base_type | as_python_identifier }}_message_to_{{ spec.annotations["proto-type"] | as_python_identifier }}_proto({{ source }}, typed_proto_message)
 {{ destination }}.Pack(typed_proto_message)
     {%- elif spec.annotations.get("type-casts") -%}
         {#- ROS message must be deserialized according to type, then converted, then packed for assignment. -#}
@@ -192,17 +192,17 @@ convert_{{ spec.annotations["proto-type"] | as_python_identifier }}_proto_to_{{ 
 {{ destination }}.type_name = "{{ spec.type | as_ros_base_type }}"
     {%- elif spec.annotations.get("type-casted") -%}
         {#- Protobuf message must be unpacked for conversion. -#}
-typed_proto_message = {{ field_spec.annotations["proto-type"] | as_pb2_python_type }}()
+typed_proto_message = {{ spec.annotations["proto-type"] | as_pb2_python_type }}()
 {{ source }}.Unpack(typed_proto_message)
 convert_{{ spec.annotations["proto-type"] | as_python_identifier }}_proto_to_{{ spec.type | as_ros_base_type | as_python_identifier }}_message(typed_proto_message, {{ destination }})
     {%- elif spec.annotations.get("type-casts") -%}
         {#- Protobuf message must be unpacked according to type, then converted, then serialized for assignment. -#}
         {%- for proto_type_name, ros_type_name in spec.annotations["type-casts"] -%}
             {%- if loop.first -%}
-if {{ source }}.Is({{ proto_type_name | as_pb2_python_type }}):
-            {%- else -%}
-elif {{ source }}.Is({{ proto_type_name | as_pb2_python_type }}):
-            {%- endif -%}
+if {{ source }}.Is({{ proto_type_name | as_pb2_python_type }}.DESCRIPTOR):
+            {%- else %}
+elif {{ source }}.Is({{ proto_type_name | as_pb2_python_type }}.DESCRIPTOR):
+            {%- endif %}
     typed_proto_message = {{ proto_type_name | as_pb2_python_type }}()
     ok = {{ source }}.Unpack(typed_proto_message)
     assert ok, "Failed to unpack any protobuf, internal error"
@@ -210,9 +210,9 @@ elif {{ source }}.Is({{ proto_type_name | as_pb2_python_type }}):
     convert_{{ proto_type_name | as_python_identifier }}_proto_to_{{ ros_type_name | as_python_identifier }}_message(typed_proto_message, typed_field_message)
     {{ destination }}.value = rclpy.serialization.serialize_message(typed_field_message)
     {{ destination }}.type_name = "{{ ros_type_name }}"
-        {%- endfor -%}
+        {%- endfor %}
 else:
-    raise ValueError("unknown protobuf message type in {{ spec.name }} member: %s" %s {{ source }}.type_url)
+    raise ValueError("unknown protobuf message type in {{ spec.name }} member: %s" % {{ source }}.type_url)
     {%- elif type_spec and type_spec.annotations.get("tagged") -%}
         {#- Handle one-of field case i.e. determine and convert the Protobuf message member that is set. -#}
 match {{ source.rpartition(".")[0] }}.WhichOneof("{{ spec.name }}"):
@@ -238,7 +238,7 @@ convert_{{ spec.annotations["proto-type"] | as_python_identifier }}_proto_to_{{ 
 def convert_{{ spec.base_type | string | as_python_identifier }}_message_to_{{ spec.annotations["proto-type"] | as_python_identifier  }}_proto(
     ros_msg: {{ spec.base_type | string | as_ros_python_type }}, proto_msg: {{ spec.annotations["proto-type"] | as_pb2_python_type }}
 ) -> None:
-    """Converts from {{ spec.base_type }} ROS messages to {{ spec.annotations["proto-type"] }} Protobuf messages."""
+    """Convert from {{ spec.base_type }} ROS messages to {{ spec.annotations["proto-type"] }} Protobuf messages."""
     {%- if spec.fields %}
     proto_msg.Clear()
         {%- for field_spec in spec.fields if field_spec.name != "has_field" %}
@@ -250,10 +250,11 @@ def convert_{{ spec.base_type | string | as_python_identifier }}_message_to_{{ s
             {%- else %}
     {{ ros_to_proto_field_code(source, destination, field_spec) | indent(4) }}
             {%- endif -%}
-        {% endfor %}
+        {%- endfor -%}
     {% else -%}{#- Handle empty message. #}
     pass
-    {% endif %}
+    {%- endif %}
+
 
 convert_{{ spec.base_type | string | as_python_identifier }}_to_proto = \
     convert_{{ spec.base_type | string | as_python_identifier }}_message_to_{{ spec.annotations["proto-type"] | as_python_identifier  }}_proto
@@ -263,7 +264,7 @@ convert_{{ spec.base_type | string | as_python_identifier }}_to_proto = \
 def convert_{{ spec.annotations["proto-type"] | as_python_identifier  }}_proto_to_{{ spec.base_type | string | as_python_identifier }}_message(
     proto_msg: {{ spec.annotations["proto-type"] | as_pb2_python_type }}, ros_msg: {{ spec.base_type | string | as_ros_python_type }}
 ) -> None:
-    """Converts from {{ spec.annotations["proto-type"] }} Protobuf messages to {{ spec.base_type }} ROS messages."""
+    """Convert from {{ spec.annotations["proto-type"] }} Protobuf messages to {{ spec.base_type }} ROS messages."""
     {%- if spec.fields %}
         {%- if spec.annotations["has-optionals"] %}
     ros_msg.has_field = 0
@@ -278,10 +279,11 @@ def convert_{{ spec.annotations["proto-type"] | as_python_identifier  }}_proto_t
             {%- else %}
     {{ proto_to_ros_field_code(source, destination, field_spec) | indent(4) }}
             {%- endif -%}
-        {% endfor %}
+        {%- endfor -%}
     {% else -%}{#- Handle empty message. #}
     pass
-    {% endif %}
+    {%- endif %}
+
 
 convert_proto_to_{{ spec.base_type | string | as_python_identifier }} = \
     convert_{{ spec.annotations["proto-type"] | as_python_identifier  }}_proto_to_{{ spec.base_type | string | as_python_identifier }}_message

@@ -6,6 +6,9 @@ package proto2ros_tests;
 
 option java_outer_classname = "Proto2ROSTests";
 
+import "google/protobuf/any.proto";
+import "google/protobuf/type.proto";
+
 import "bosdyn/api/geometry.proto";
 
 enum Direction {
@@ -194,4 +197,20 @@ message Map {
         bytes grid = 3;
     }
     map<int32, Fragment> submaps = 1;
+}
+
+// Protobuf type query request message.
+message RTTIQueryRequest {
+    google.protobuf.Any msg = 1;
+}
+
+// Protobuf type query result message.
+message RTTIQueryResult {
+    google.protobuf.Type type = 1;
+}
+
+// Generalized goal.
+message Goal {
+    google.protobuf.Any target = 1;
+    google.protobuf.Any roi = 2;
 }
