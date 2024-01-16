@@ -1,11 +1,17 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute LLC. All rights reserved.
 
 import filecmp
+import math
 import os
 import pathlib
 
+import google.protobuf.type_pb2
+import bosdyn.api.geometry_pb2
 import test_pb2
 
+import geometry_msgs.msg
+
+import proto2ros.msg
 import proto2ros_tests.msg
 from proto2ros_tests.conversions import convert
 
@@ -239,3 +245,89 @@ def test_messages_with_submessage_map_field() -> None:
     assert other_proto_fragment.height == proto_fragment.height
     assert other_proto_fragment.width == proto_fragment.width
     assert other_proto_fragment.grid == proto_fragment.grid
+
+
+def test_messages_with_any_fields() -> None:
+    proto_matrix = test_pb2.Matrix()
+    proto_matrix.rows = 1
+    proto_matrix.cols = 1
+    proto_matrix.data.append(0)
+
+    proto_request = test_pb2.RTTIQueryRequest()
+    proto_request.msg.Pack(proto_matrix)
+
+    ros_request = proto2ros_tests.msg.RTTIQueryRequest()
+    convert(proto_request, ros_request)
+    assert isinstance(ros_request.msg, proto2ros.msg.AnyProto)
+
+    unpacked_proto_matrix = test_pb2.Matrix()
+    convert(ros_request.msg, unpacked_proto_matrix)
+    assert unpacked_proto_matrix.rows == proto_matrix.rows
+    assert unpacked_proto_matrix.cols == proto_matrix.cols
+    assert unpacked_proto_matrix.data == proto_matrix.data
+
+    other_proto_request = test_pb2.RTTIQueryRequest()
+    convert(ros_request, other_proto_request)
+
+    other_unpacked_proto_matrix = test_pb2.Matrix()
+    other_proto_request.msg.Unpack(other_unpacked_proto_matrix)
+    assert other_unpacked_proto_matrix.rows == proto_matrix.rows
+    assert other_unpacked_proto_matrix.cols == proto_matrix.cols
+    assert other_unpacked_proto_matrix.data == proto_matrix.data
+
+
+def test_messages_with_unknown_type_fields() -> None:
+    proto_result = test_pb2.RTTIQueryResult()
+    proto_result.type.name = "SomeMessage"
+
+    ros_result = proto2ros_tests.msg.RTTIQueryResult()
+    convert(proto_result, ros_result)
+    assert isinstance(ros_result.type, proto2ros.msg.AnyProto)
+
+    unpacked_proto_type = google.protobuf.type_pb2.Type()
+    convert(ros_result.type, unpacked_proto_type)
+    assert unpacked_proto_type.name == proto_result.type.name
+
+    other_proto_result = test_pb2.RTTIQueryResult()
+    convert(ros_result, other_proto_result)
+    assert other_proto_result.type.name == proto_result.type.name
+
+
+def test_messages_with_expanded_any_fields() -> None:
+    proto_target = bosdyn.api.geometry_pb2.SE2Pose()
+    proto_target.position.x = 1.0
+    proto_target.position.y = -1.0
+    proto_target.angle = math.pi
+
+    proto_roi = bosdyn.api.geometry_pb2.Polygon()
+    for dx in (-0.5, 0.5):
+        for dy in (-0.5, 0.5):
+            vertex = proto_roi.vertexes.add()
+            vertex.x = proto_target.position.x + dx
+            vertex.y = proto_target.position.y + dy
+
+    proto_goal = test_pb2.Goal()
+    proto_goal.target.Pack(proto_target)
+    proto_goal.roi.Pack(proto_roi)
+
+    ros_goal = proto2ros_tests.msg.Goal()
+    convert(proto_goal, ros_goal)
+    assert isinstance(ros_goal.target, geometry_msgs.msg.Pose)
+    assert isinstance(ros_goal.roi, proto2ros.msg.Any)
+    assert ros_goal.target.position.x == proto_target.position.x
+    assert ros_goal.target.position.y == proto_target.position.y
+    assert ros_goal.roi.type_name == "geometry_msgs/Polygon"
+
+    other_proto_goal = test_pb2.Goal()
+    convert(ros_goal, other_proto_goal)
+    other_proto_target = bosdyn.api.geometry_pb2.SE2Pose()
+    other_proto_goal.target.Unpack(other_proto_target)
+    assert proto_target.position.x == other_proto_target.position.x
+    assert proto_target.position.y == other_proto_target.position.y
+    assert proto_target.angle == other_proto_target.angle
+
+    other_proto_roi = bosdyn.api.geometry_pb2.Polygon()
+    other_proto_goal.roi.Unpack(other_proto_roi)
+    assert len(other_proto_roi.vertexes) == 4
+    for a, b in zip(proto_roi.vertexes, other_proto_roi.vertexes):
+        assert a.x == b.x and a.y == b.y

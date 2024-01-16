@@ -15,7 +15,7 @@ import dataclasses
 import functools
 import math
 from collections.abc import Sequence
-from typing import Any, Iterable, List, Optional, Union
+from typing import Any, Iterable, List, Optional, Set, Union
 
 import inflection
 from google.protobuf.descriptor_pb2 import (
@@ -155,7 +155,7 @@ def translate_type_name(name: str, config: Configuration) -> str:
     proto_type_name = name[1:]
 
     if proto_type_name == "google.protobuf.Any":
-        return "proto2ros/Any"
+        return "proto2ros/AnyProto"
 
     if proto_type_name in config.message_mapping:
         return config.message_mapping[proto_type_name]
@@ -217,6 +217,33 @@ def translate_type(name: str, repeated: bool, config: Configuration) -> Type:
     return Type(ros_type_name)
 
 
+def translate_any_type(
+    any_expansion: Union[Set[str], str], repeated: bool, config: Configuration
+) -> Type:
+    """
+    Translates a ``google.protobuf.Any`` type to its ROS equivalent given an any expansion.
+
+    Args:
+        any_expansion: a Protobuf message type set that the given ``google.protobuf.Any``
+        is expected to pack. A single Protobuf message type may also be specified in lieu
+        of a single element set. All Protobuf message types must be fully qualified.
+        repeated: whether the Protobuf type applies to a repeated field.
+        config: a suitable configuration for the procedure.
+
+    Returns:
+        a ROS message type.
+    """
+    if config.allow_any_casts and isinstance(any_expansion, str):
+        # Type name is expected to be fully qualified, thus the leading dot. See
+        # https://github.com/protocolbuffers/protobuf/blob/main/src/google/protobuf/descriptor.proto#L265-L270
+        # for further reference.
+        return translate_type(f".{any_expansion}", repeated, config)
+    ros_type_name = "proto2ros/Any"
+    if repeated:
+        ros_type_name += "[]"
+    return Type(ros_type_name)
+
+
 def translate_field(
     descriptor: FieldDescriptorProto,
     source: FileDescriptorProto,
@@ -239,36 +266,33 @@ def translate_field(
         ValueError: when the given field is of an unsupported or unknown type.
         ValueError: when an any expansion is specified for a fully typed field.
     """
-    any_expansion = config.any_expansions.get(protofqn(source, location))
-    if any_expansion and descriptor.type_name != ".google.protobuf.Any":
-        raise ValueError(f"any expansion specified for '{descriptor.name}' field of {descriptor.type_name} type")
-    if descriptor.type in PRIMITIVE_TYPE_NAMES:
-        type_name = PRIMITIVE_TYPE_NAMES[descriptor.type]
-    elif descriptor.type in COMPOSITE_TYPES:
-        if any_expansion:
-            if config.allow_any_casts and isinstance(any_expansion, str):
-                # Type name is expected to be fully qualified, thus the leading dot. See
-                # https://github.com/protocolbuffers/protobuf/blob/main/src/google/protobuf/descriptor.proto#L265-L270
-                # for further reference.
-                type_name = f".{any_expansion}"
-            else:
-                type_name = descriptor.type_name
-        else:
-            type_name = descriptor.type_name
-    else:
-        raise ValueError(f"unsupported field type: {descriptor.type}")
     repeated = descriptor.label == FieldDescriptorProto.LABEL_REPEATED
+    any_expansion = config.any_expansions.get(protofqn(source, location))
+    if any_expansion:
+        if descriptor.type_name != ".google.protobuf.Any":
+            raise ValueError(f"any expansion specified for '{descriptor.name}' field of {descriptor.type_name} type")
+        type_name = descriptor.type_name
 
-    field_type = translate_type(type_name, repeated, config)
+        field_type = translate_any_type(any_expansion, repeated, config)
+    else:
+        if descriptor.type in PRIMITIVE_TYPE_NAMES:
+            type_name = PRIMITIVE_TYPE_NAMES[descriptor.type]
+        elif descriptor.type in COMPOSITE_TYPES:
+            type_name = descriptor.type_name
+        else:
+            raise ValueError(f"unsupported field type: {descriptor.type}")
+        field_type = translate_type(type_name, repeated, config)
     field = Field(field_type, to_ros_field_name(descriptor.name))
     if any_expansion:
         if not config.allow_any_casts or not isinstance(any_expansion, str):
             # Annotate field with paired Protobuf and ROS message type names,
             # so that any expansions can be resolved in conversion code.
             field.annotations["type-casts"] = [
-                (proto_type, translate_type_name(proto_type, config)) for proto_type in any_expansion
+                (proto_type, translate_type_name(f".{proto_type}", config))
+                for proto_type in any_expansion
             ]
         else:
+            type_name = f".{any_expansion}"
             field.annotations["type-casted"] = True
     if source.syntax == "proto3":
         field.annotations["optional"] = descriptor.proto3_optional or (
@@ -280,7 +304,8 @@ def translate_field(
     else:
         raise ValueError(f"unknown proto syntax: {source.syntax}")
     field.annotations["proto-name"] = descriptor.name
-    if to_ros_base_type(field_type) == "proto2ros/AnyProto":
+    ros_type_name = to_ros_base_type(field_type)
+    if type_name != ".google.protobuf.Any" and ros_type_name == "proto2ros/AnyProto":
         type_name = "some"
     field.annotations["proto-type"] = type_name.strip(".")
     leading_comments = extract_leading_comments(location)

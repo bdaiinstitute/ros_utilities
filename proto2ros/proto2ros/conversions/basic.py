@@ -26,7 +26,7 @@ def convert_proto2ros_any_proto_message_to_some_proto(ros_msg: proto2ros.msg.Any
         ValueError: if the given ROS message cannot be unpacked onto the given Protobuf message.
     """
     proto_msg.Clear()
-    wrapper = google.protobuf.Any()
+    wrapper = google.protobuf.any_pb2.Any()
     wrapper.type_url = ros_msg.type_url
     wrapper.value = ros_msg.value.tobytes()
     if not wrapper.Unpack(proto_msg):
@@ -36,11 +36,16 @@ def convert_proto2ros_any_proto_message_to_some_proto(ros_msg: proto2ros.msg.Any
 @convert.register(object, proto2ros.msg.AnyProto)
 def convert_some_proto_to_proto2ros_any_proto_message(proto_msg: Any, ros_msg: proto2ros.msg.AnyProto) -> None:
     """Packs any Protobuf message into a proto2ros/AnyProto ROS message."""
-    wrapper = google.protobuf.Any()
+    wrapper = google.protobuf.any_pb2.Any()
     wrapper.Pack(proto_msg)
     ros_msg.type_url = wrapper.type_url
     ros_msg.value = wrapper.value
 
+
+@convert.register(proto2ros.msg.AnyProto, proto2ros.msg.AnyProto)
+def _(proto_msg: proto2ros.msg.AnyProto, ros_msg: proto2ros.msg.AnyProto) -> None:
+    # address multipledispatch ambiguous resolution concerns
+    raise RuntimeError("invalid overload")
 
 @convert.register(proto2ros.msg.AnyProto, google.protobuf.any_pb2.Any)
 def convert_proto2ros_any_proto_message_to_google_protobuf_any_proto(

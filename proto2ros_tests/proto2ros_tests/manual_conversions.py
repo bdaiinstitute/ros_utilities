@@ -1,3 +1,5 @@
+import math
+
 import bosdyn.api.geometry_pb2
 import geometry_msgs.msg
 
@@ -43,7 +45,7 @@ def convert_bosdyn_api_quaternion_proto_to_geometry_msgs_quaternion_message(
 
 
 @convert.register(geometry_msgs.msg.Pose, bosdyn.api.geometry_pb2.SE3Pose)
-def convert_geometry_msgs_pose_message_to_bosdyn_api_pose_proto(
+def convert_geometry_msgs_pose_message_to_bosdyn_api_se3_pose_proto(
     ros_msg: geometry_msgs.msg.Pose, proto_msg: bosdyn.api.geometry_pb2.SE3Pose
 ) -> None:
     convert_geometry_msgs_vector3_message_to_bosdyn_api_vec3_proto(ros_msg.position, proto_msg.position)
@@ -51,11 +53,70 @@ def convert_geometry_msgs_pose_message_to_bosdyn_api_pose_proto(
 
 
 @convert.register(bosdyn.api.geometry_pb2.SE3Pose, geometry_msgs.msg.Pose)
-def convert_bosdyn_api_pose_proto_to_geometry_msgs_pose_message(
+def convert_bosdyn_api_se3_pose_proto_to_geometry_msgs_pose_message(
     proto_msg: bosdyn.api.geometry_pb2.SE3Pose, ros_msg: geometry_msgs.msg.Pose
 ) -> None:
     convert_bosdyn_api_vec3_proto_to_geometry_msgs_vector3_message(proto_msg.position, ros_msg.position)
     convert_bosdyn_api_quaternion_proto_to_geometry_msgs_quaternion_message(proto_msg.rotation, ros_msg.orientation)
+
+
+@convert.register(geometry_msgs.msg.Pose, bosdyn.api.geometry_pb2.SE2Pose)
+def convert_geometry_msgs_pose_message_to_bosdyn_api_se2_pose_proto(
+    ros_msg: geometry_msgs.msg.Pose, proto_msg: bosdyn.api.geometry_pb2.SE2Pose
+) -> None:
+    proto_msg.position.x = ros_msg.position.x
+    proto_msg.position.y = ros_msg.position.y
+    proto_msg.angle = 2.0 * math.acos(ros_msg.orientation.w)
+
+
+@convert.register(bosdyn.api.geometry_pb2.SE2Pose, geometry_msgs.msg.Pose)
+def convert_bosdyn_api_se2_pose_proto_to_geometry_msgs_pose_message(
+    proto_msg: bosdyn.api.geometry_pb2.SE2Pose, ros_msg: geometry_msgs.msg.Pose
+) -> None:
+    ros_msg.position.x = proto_msg.position.x
+    ros_msg.position.y = proto_msg.position.y
+    ros_msg.orientation.w = math.cos(proto_msg.angle / 2.0)
+    ros_msg.orientation.z = math.sin(proto_msg.angle / 2.0)
+
+
+@convert.register(geometry_msgs.msg.Polygon, bosdyn.api.geometry_pb2.Polygon)
+def convert_geometry_msgs_polygon_message_to_bosdyn_api_polygon_proto(
+    ros_msg: geometry_msgs.msg.Polygon, proto_msg: bosdyn.api.geometry_pb2.Polygon
+) -> None:
+    proto_msg.Clear()
+    for point in ros_msg.points:
+        vertex = proto_msg.vertexes.add()
+        vertex.x = point.x
+        vertex.y = point.y
+
+
+@convert.register(bosdyn.api.geometry_pb2.Polygon, geometry_msgs.msg.Polygon)
+def convert_bosdyn_api_polygon_proto_to_geometry_msgs_polygon_message(
+    proto_msg: bosdyn.api.geometry_pb2.Polygon, ros_msg: geometry_msgs.msg.Polygon
+) -> None:
+    ros_msg.points = [
+        geometry_msgs.msg.Point32(
+            x=vertex.x, y=vertex.y, z=0.0
+        ) for vertex in proto_msg.vertexes
+    ]
+
+
+@convert.register(geometry_msgs.msg.Vector3, bosdyn.api.geometry_pb2.Circle)
+def convert_geometry_msgs_vector3_message_to_bosdyn_api_circle_proto(
+    ros_msg: geometry_msgs.msg.Vector3, proto_msg: bosdyn.api.geometry_pb2.Circle
+) -> None:
+    proto_msg.center_pt.x = ros_msg.x
+    proto_msg.center_pt.y = ros_msg.y
+    proto_msg.radius = ros_msg.z
+
+
+@convert.register(bosdyn.api.geometry_pb2.Circle, geometry_msgs.msg.Vector3)
+def convert_bosdyn_api_circle_proto_to_geometry_msgs_vector3_message(
+    proto_msg: bosdyn.api.geometry_pb2.Circle, ros_msg: geometry_msgs.msg.Vector3
+) -> None:
+    ros_msg.x = proto_msg.center_pt.x
+    ros_msg.y = proto_msg.center_pt.y
+    ros_msg.z = proto_msg.radius
 
 
 @convert.register(geometry_msgs.msg.Twist, bosdyn.api.geometry_pb2.SE3Velocity)
