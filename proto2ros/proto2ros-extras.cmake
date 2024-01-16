@@ -2,6 +2,7 @@
 include("${proto2ros_DIR}/rosidl_helpers.cmake")
 
 find_package(Python3 REQUIRED)
+find_package(PythonInterp REQUIRED)  # to prevent failure deep down rosidl
 find_package(Protobuf REQUIRED)
 if(BUILD_TESTING)
   find_package(ament_cmake_mypy QUIET)
