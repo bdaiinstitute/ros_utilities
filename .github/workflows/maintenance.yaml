@@ -7,7 +7,7 @@ on:
 env:
   ORG_NAME: bdaiinstitute
   # github.repository as <account>/<repo>
-  IMAGE_NAME: bdaiinstitute/ros_utilties_jammy_humble
+  IMAGE_NAME: ros_utilities_jammy_humble
 
 jobs:
   clean-ghcr:
