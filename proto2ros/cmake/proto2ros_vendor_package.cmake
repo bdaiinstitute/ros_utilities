@@ -38,15 +38,9 @@ macro(proto2ros_vendor_package target)
     ${proto2ros_generate_OPTIONS}
   )
 
-  set(rosidl_generate_interfaces_OPTIONS)
-  if(NOT ARG_NO_LINT)
-    list(APPEND rosidl_generate_interfaces_OPTIONS ADD_LINTER_TESTS)
-  endif()
-
   rosidl_generate_interfaces(
     ${target} ${ros_messages}
     DEPENDENCIES ${ARG_ROS_DEPENDENCIES} builtin_interfaces proto2ros
-    ${rosidl_generate_interfaces_OPTIONS}
   )
   add_dependencies(${target} ${target}_messages_gen)
 
