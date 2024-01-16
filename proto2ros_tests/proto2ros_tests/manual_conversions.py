@@ -94,11 +94,7 @@ def convert_geometry_msgs_polygon_message_to_bosdyn_api_polygon_proto(
 def convert_bosdyn_api_polygon_proto_to_geometry_msgs_polygon_message(
     proto_msg: bosdyn.api.geometry_pb2.Polygon, ros_msg: geometry_msgs.msg.Polygon
 ) -> None:
-    ros_msg.points = [
-        geometry_msgs.msg.Point32(
-            x=vertex.x, y=vertex.y, z=0.0
-        ) for vertex in proto_msg.vertexes
-    ]
+    ros_msg.points = [geometry_msgs.msg.Point32(x=vertex.x, y=vertex.y, z=0.0) for vertex in proto_msg.vertexes]
 
 
 @convert.register(geometry_msgs.msg.Vector3, bosdyn.api.geometry_pb2.Circle)

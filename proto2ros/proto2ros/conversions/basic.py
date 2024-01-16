@@ -47,6 +47,7 @@ def _(proto_msg: proto2ros.msg.AnyProto, ros_msg: proto2ros.msg.AnyProto) -> Non
     # address multipledispatch ambiguous resolution concerns
     raise RuntimeError("invalid overload")
 
+
 @convert.register(proto2ros.msg.AnyProto, google.protobuf.any_pb2.Any)
 def convert_proto2ros_any_proto_message_to_google_protobuf_any_proto(
     ros_msg: proto2ros.msg.AnyProto, proto_msg: google.protobuf.any_pb2.Any

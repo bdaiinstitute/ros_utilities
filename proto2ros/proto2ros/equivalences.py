@@ -217,9 +217,7 @@ def translate_type(name: str, repeated: bool, config: Configuration) -> Type:
     return Type(ros_type_name)
 
 
-def translate_any_type(
-    any_expansion: Union[Set[str], str], repeated: bool, config: Configuration
-) -> Type:
+def translate_any_type(any_expansion: Union[Set[str], str], repeated: bool, config: Configuration) -> Type:
     """
     Translates a ``google.protobuf.Any`` type to its ROS equivalent given an any expansion.
 
@@ -288,8 +286,7 @@ def translate_field(
             # Annotate field with paired Protobuf and ROS message type names,
             # so that any expansions can be resolved in conversion code.
             field.annotations["type-casts"] = [
-                (proto_type, translate_type_name(f".{proto_type}", config))
-                for proto_type in any_expansion
+                (proto_type, translate_type_name(f".{proto_type}", config)) for proto_type in any_expansion
             ]
         else:
             type_name = f".{any_expansion}"

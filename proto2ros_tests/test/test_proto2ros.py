@@ -5,11 +5,10 @@ import math
 import os
 import pathlib
 
-import google.protobuf.type_pb2
 import bosdyn.api.geometry_pb2
-import test_pb2
-
 import geometry_msgs.msg
+import google.protobuf.type_pb2
+import test_pb2
 
 import proto2ros.msg
 import proto2ros_tests.msg
