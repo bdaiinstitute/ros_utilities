@@ -1,6 +1,7 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute LLC. All rights reserved.
 import argparse
 import collections
+import importlib
 import importlib.resources
 import os
 import pathlib
@@ -17,9 +18,9 @@ from proto2ros.equivalences import Equivalence, all_message_specifications, extr
 from proto2ros.output.interfaces import dump_message_specification, which_message_specification
 from proto2ros.output.python import (
     dump_conversions_python_module,
+    dump_specifications_python_module,
     to_pb2_python_module_name,
     to_ros_python_module_name,
-    which_conversions_python_module,
 )
 
 
@@ -55,10 +56,14 @@ def do_generate(args: argparse.Namespace) -> int:
     message_specifications = list(all_message_specifications(equivalences))
     fix_dependency_cycles(message_specifications, quiet=args.dry)
 
+    # Collect all known message specifications.
+    known_message_specifications = list(message_specifications)
+    for module_name in config.package_specifications:
+        module = importlib.import_module(module_name)
+        known_message_specifications.extend(module.messages)
+
     # Ensure no name clashes between message specifications.
-    all_known_message_specifications = list(message_specifications)
-    all_known_message_specifications.extend(config.known_message_specifications.values())
-    message_types = [spec.base_type for spec in all_known_message_specifications]
+    message_types = [spec.base_type for spec in known_message_specifications]
     message_type_instances = collections.Counter(message_types)
     if len(message_type_instances) != len(message_types):
         unique_message_type_instances = collections.Counter(set(message_type_instances))
@@ -70,7 +75,7 @@ def do_generate(args: argparse.Namespace) -> int:
                     sorted(
                         [
                             f"{spec.annotations['proto-type']} maps to {spec.base_type}"
-                            for spec in all_known_message_specifications
+                            for spec in known_message_specifications
                             if spec.base_type in message_type_duplicates
                         ]
                     )
@@ -81,10 +86,14 @@ def do_generate(args: argparse.Namespace) -> int:
         )
         return 1
 
-    # Update database of known message specifications.
-    config.known_message_specifications.update({str(spec.base_type): spec for spec in message_specifications})
-
     files_written: List[os.PathLike] = []
+
+    # Write message specifications to .py file.
+    specifications_python_file = args.output_directory / "specifications.py"
+    if not args.dry:
+        specifications_python_file.write_text(dump_specifications_python_module(message_specifications, config) + "\n")
+    files_written.append(specifications_python_file)
+
     messages_output_directory = args.output_directory / "msg"
     if args.force_message_gen or not args.dry:
         messages_output_directory.mkdir(exist_ok=True)
@@ -96,10 +105,12 @@ def do_generate(args: argparse.Namespace) -> int:
             message_output_file.write_text(dump_message_specification(message_specification) + "\n")
         files_written.append(message_output_file)
 
-    # Write Python conversion .py file.
-    conversions_python_file = which_conversions_python_module(args.output_directory)
+    # Write Python conversion APIs .py file.
+    conversions_python_file = args.output_directory / "conversions.py"
     if not args.dry:
-        conversions_python_file.write_text(dump_conversions_python_module(message_specifications, config) + "\n")
+        conversions_python_file.write_text(
+            dump_conversions_python_module(message_specifications, known_message_specifications, config) + "\n"
+        )
     files_written.append(conversions_python_file)
 
     if args.manifest_file:

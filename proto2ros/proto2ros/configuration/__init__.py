@@ -39,8 +39,8 @@ class Configuration:
         allow_any_casts: when a single Protobuf message type is specified in an any expansion,
           allowing any casts means to allow using the equivalent ROS message type instead of a
           a type erased, ``proto2ros/Any`` field.
-        known_message_specifications: a mapping from ROS message type names to known message
-          specifications. Necessary to cascade message generation for interdependent packages.
+        package_specifications: set of Python modules to gather message specifications from.
+          Necessary to cascade message generation for interdependent packages.
         python_imports: set of Python modules to be imported (as ``import <module-name>``) in
           generated conversion modules. Typically, Protobuf and ROS message Python modules.
         inline_python_imports: set of Python modules to be imported into moodule scope
@@ -58,7 +58,7 @@ class Configuration:
     any_expansions: Dict[str, Union[Set[str], str]] = dataclasses.field(default_factory=dict)
     allow_any_casts: bool = True
 
-    known_message_specifications: Dict[str, MessageSpecification] = dataclasses.field(default_factory=dict)
+    package_specifications: Set[str] = dataclasses.field(default_factory=set)
 
     python_imports: Set[str] = dataclasses.field(default_factory=set)
     inline_python_imports: Set[str] = dataclasses.field(default_factory=set)
@@ -70,6 +70,7 @@ class Configuration:
             key: set(value) if not isinstance(value, str) else value for key, value in self.any_expansions.items()
         }
         self.python_imports = set(self.python_imports)
+        self.package_specifications = set(self.package_specifications)
 
     def update(self, **attributes: Any) -> None:
         """Updates configuration attributes with a shallow merge."""

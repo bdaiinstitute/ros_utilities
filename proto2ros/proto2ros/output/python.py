@@ -4,9 +4,9 @@
 
 import importlib
 import os
-import pathlib
+import pickle
 import sys
-from typing import Dict, Iterable, List, Optional, Union
+from typing import Any, Dict, Iterable, List, Optional, Union
 
 import inflection
 import jinja2
@@ -108,28 +108,19 @@ def build_pb2_python_type_lut(module_names: Iterable[str], inline_module_names: 
     return pb2_python_type_lut
 
 
-def which_conversions_python_module(root: Optional[Union[str, os.PathLike[str]]] = None) -> pathlib.Path:
-    """
-    Returns a suitable .py file path for Protobuf <-> ROS conversion APIs.
-
-    Args:
-        output_directory: directory where to write the .py source. Directory is assumed to exist.
-
-    Returns:
-        the full .py file path.
-    """
-    if root is None:
-        root = "."
-    return pathlib.Path(root) / "conversions.py"
-
-
-def dump_conversions_python_module(message_specifications: List[MessageSpecification], config: Configuration) -> str:
+def dump_conversions_python_module(
+    message_specifications: List[MessageSpecification],
+    known_message_specifications: List[MessageSpecification],
+    config: Configuration,
+) -> str:
     """
     Dumps the Python module source for Protobuf <-> ROS conversion APIs.
 
     Args:
         message_specifications: annotated ROS message specifications,
         as derived from equivalence relations (see `proto2ros.equivalences`).
+        known_message_specifications: all annotated ROS message specifications known,
+        including those from dependencies. A superset of ``message_specifications``.
         config: a suitable configuration for the procedure.
 
     Returns:
@@ -148,4 +139,32 @@ def dump_conversions_python_module(message_specifications: List[MessageSpecifica
     env.filters["as_pb2_python_type"] = lookup_pb2_python_type
     env.filters["as_ros_base_type"] = to_ros_base_type
     python_conversions_template = env.get_template("conversions.py.jinja")
-    return python_conversions_template.render(message_specifications=message_specifications, config=config)
+    return python_conversions_template.render(
+        message_specifications=message_specifications,
+        known_message_specifications={str(spec.base_type): spec for spec in known_message_specifications},
+        config=config,
+    )
+
+
+def dump_specifications_python_module(message_specifications: List[MessageSpecification], config: Configuration) -> str:
+    """
+    Dumps the Python module source bearing message specifications.
+
+    This is the mechanism that enables proto2ros generated packages to depend on other proto2ros generated packages.
+
+    Args:
+        message_specifications: annotated ROS message specifications,
+        as derived from equivalence relations (see `proto2ros.equivalences`).
+        config: a suitable configuration for the procedure.
+
+    Returns:
+        the specifications Python module source.
+    """
+    env = jinja2.Environment(loader=jinja2.PackageLoader("proto2ros.output"))
+
+    def as_pickle_dump(obj: Any) -> str:
+        return repr(pickle.dumps(obj))
+
+    env.filters["as_pickle_dump"] = as_pickle_dump
+    python_specifications_template = env.get_template("specifications.py.jinja")
+    return python_specifications_template.render(message_specifications=message_specifications, config=config)
