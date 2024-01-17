@@ -82,23 +82,22 @@ for {{ input_item }} in {{ source }}:
         {#- ROS message must be deserialized for conversion. -#}
 if {{ source }}.type_name != "{{ spec.type | as_ros_base_type }}":
     raise ValueError("expected {{ spec.type | as_ros_base_type }} message for {{ spec.name }} member, got %s" % {{ source }}.type)
-typed_field_message = rclpy.serialization.deserialize_message({{ source }}.value.tobytes(), {{ spec.type | as_ros_base_type | as_ros_python_type }})
-convert_{{ spec.type | as_ros_base_type | as_python_identifier }}_message_to_{{ spec.annotations["proto-type"] | as_python_identifier }}_proto(typed_field_message, {{ destination }})
+typed_{{ source | python_identifier_name }}_message = rclpy.serialization.deserialize_message({{ source }}.value.tobytes(), {{ spec.type | as_ros_base_type | as_ros_python_type }})
+convert_{{ spec.type | as_ros_base_type | as_python_identifier }}_message_to_{{ spec.annotations["proto-type"] | as_python_identifier }}_proto(typed_{{ source | python_identifier_name }}_message, {{ destination }})
     {%- elif spec.annotations.get("type-casted") -%}
         {#- ROS message must be converted and packed for assignment. -#}
-typed_proto_message = {{ spec.annotations["proto-type"] | as_pb2_python_type }}()
-convert_{{ spec.type | as_ros_base_type | as_python_identifier }}_message_to_{{ spec.annotations["proto-type"] | as_python_identifier }}_proto({{ source }}, typed_proto_message)
-{{ destination }}.Pack(typed_proto_message)
+typed_{{ source | python_identifier_name }}_message = {{ spec.annotations["proto-type"] | as_pb2_python_type }}()
+convert_{{ spec.type | as_ros_base_type | as_python_identifier }}_message_to_{{ spec.annotations["proto-type"] | as_python_identifier }}_proto({{ source }}, typed_{{ source | python_identifier_name }}_message)
+{{ destination }}.Pack(typed_{{ source | python_identifier_name }}_message)
     {%- elif spec.annotations.get("type-casts") -%}
         {#- ROS message must be deserialized according to type, then converted, then packed for assignment. -#}
 match {{ source }}.type_name:
     {% for proto_type_name, ros_type_name in spec.annotations["type-casts"] -%}
     case "{{ ros_type_name }}":
-        typed_field_message = rclpy.serialization.deserialize_message(
-            {{ source }}.value.tobytes(), {{ ros_type_name | as_ros_python_type }})
-        typed_proto_message = {{ proto_type_name | as_pb2_python_type }}()
-        convert_{{ ros_type_name | as_python_identifier }}_message_to_{{ proto_type_name | as_python_identifier }}_proto(typed_field_message, typed_proto_message)
-        {{ destination }}.Pack(typed_proto_message)
+        typed_{{ ros_type_name | as_python_identifier | python_identifier_name }}_message = rclpy.serialization.deserialize_message({{ source }}.value.tobytes(), {{ ros_type_name | as_ros_python_type }})
+        typed_{{ proto_type_name | as_python_identifier | python_identifier_name }}_message = {{ proto_type_name | as_pb2_python_type }}()
+        convert_{{ ros_type_name | as_python_identifier }}_message_to_{{ proto_type_name | as_python_identifier }}_proto(typed_{{ ros_type_name | as_python_identifier | python_identifier_name }}_message, typed_{{ proto_type_name | as_python_identifier | python_identifier_name }}_message)
+        {{ destination }}.Pack(typed_{{ proto_type_name | as_python_identifier | python_identifier_name }}_message)
     {% endfor -%}
     case _:
         raise ValueError("unexpected %s in {{ spec.name }} member:" % ros_msg.{{ spec.name }}.type)
@@ -186,15 +185,15 @@ for {{ input_item }} in {{ input_iterable }}:
     {%- set type_spec = known_message_specifications.get(to_ros_base_type(spec.type)) -%}
     {%- if spec.annotations.get("type-erased") -%}
         {#- ROS message must be serialized for assignment. -#}
-typed_field_message = {{ spec.type | as_ros_base_type | as_ros_python_type }}()
-convert_{{ spec.annotations["proto-type"] | as_python_identifier }}_proto_to_{{ spec.type | as_ros_base_type | as_python_identifier }}_message({{ source }}, typed_field_message)
-{{ destination }}.value = rclpy.serialization.serialize_message(typed_field_message)
+typed_{{ source | python_identifier_name }}_message = {{ spec.type | as_ros_base_type | as_ros_python_type }}()
+convert_{{ spec.annotations["proto-type"] | as_python_identifier }}_proto_to_{{ spec.type | as_ros_base_type | as_python_identifier }}_message({{ source }}, typed_{{ source | python_identifier_name }}_message)
+{{ destination }}.value = rclpy.serialization.serialize_message(typed_{{ source | python_identifier_name }}_message)
 {{ destination }}.type_name = "{{ spec.type | as_ros_base_type }}"
     {%- elif spec.annotations.get("type-casted") -%}
         {#- Protobuf message must be unpacked for conversion. -#}
-typed_proto_message = {{ spec.annotations["proto-type"] | as_pb2_python_type }}()
-{{ source }}.Unpack(typed_proto_message)
-convert_{{ spec.annotations["proto-type"] | as_python_identifier }}_proto_to_{{ spec.type | as_ros_base_type | as_python_identifier }}_message(typed_proto_message, {{ destination }})
+typed_{{ source | python_identifier_name }}_message = {{ spec.annotations["proto-type"] | as_pb2_python_type }}()
+{{ source }}.Unpack(typed_{{ source | python_identifier_name }}_message)
+convert_{{ spec.annotations["proto-type"] | as_python_identifier }}_proto_to_{{ spec.type | as_ros_base_type | as_python_identifier }}_message(typed_{{ source | python_identifier_name }}_message, {{ destination }})
     {%- elif spec.annotations.get("type-casts") -%}
         {#- Protobuf message must be unpacked according to type, then converted, then serialized for assignment. -#}
         {%- for proto_type_name, ros_type_name in spec.annotations["type-casts"] -%}
@@ -203,12 +202,12 @@ if {{ source }}.Is({{ proto_type_name | as_pb2_python_type }}.DESCRIPTOR):
             {%- else %}
 elif {{ source }}.Is({{ proto_type_name | as_pb2_python_type }}.DESCRIPTOR):
             {%- endif %}
-    typed_proto_message = {{ proto_type_name | as_pb2_python_type }}()
-    ok = {{ source }}.Unpack(typed_proto_message)
+    typed_{{ proto_type_name | as_python_identifier | python_identifier_name }}_message = {{ proto_type_name | as_pb2_python_type }}()
+    ok = {{ source }}.Unpack(typed_{{ proto_type_name | as_python_identifier | python_identifier_name }}_message)
     assert ok, "Failed to unpack any protobuf, internal error"
-    typed_field_message = {{ ros_type_name | as_ros_python_type }}()
-    convert_{{ proto_type_name | as_python_identifier }}_proto_to_{{ ros_type_name | as_python_identifier }}_message(typed_proto_message, typed_field_message)
-    {{ destination }}.value = rclpy.serialization.serialize_message(typed_field_message)
+    typed_{{ ros_type_name | as_python_identifier | python_identifier_name }}_message = {{ ros_type_name | as_ros_python_type }}()
+    convert_{{ proto_type_name | as_python_identifier }}_proto_to_{{ ros_type_name | as_python_identifier }}_message(typed_{{ proto_type_name | as_python_identifier | python_identifier_name }}_message, typed_{{ ros_type_name | as_python_identifier | python_identifier_name }}_message)
+    {{ destination }}.value = rclpy.serialization.serialize_message(typed_{{ ros_type_name | as_python_identifier | python_identifier_name }}_message)
     {{ destination }}.type_name = "{{ ros_type_name }}"
         {%- endfor %}
 else:
