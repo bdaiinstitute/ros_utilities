@@ -25,12 +25,19 @@ def to_python_module_name(module_path: os.PathLike) -> str:
 
 def to_python_identifier(string: str) -> str:
     """Transforms an arbitrary string into a valid Python identifier."""
-    return inflection.underscore(string.replace("/", "_").replace(".", "_"))
+    denormalized_identifier = string.replace("/", "_").replace(".", "_")
+    denormalized_identifier = denormalized_identifier.replace("UInt", "uint")
+    return inflection.underscore(denormalized_identifier)
+
+
+def unqualify_python_identifier(identifier: str) -> str:
+    """Extracts a Python identifier basename."""
+    return identifier.rpartition(".")[-1]
 
 
 def itemize_python_identifier(identifier: str, prefix: Optional[str] = None) -> str:
     """Derives a loop variable identifier for its iterable variable identifier."""
-    _, _, basename = identifier.rpartition(".")
+    basename = unqualify_python_identifier(identifier)
     if prefix and not basename.startswith(prefix):
         basename = prefix + basename
     if not basename.endswith("item"):
@@ -130,6 +137,7 @@ def dump_conversions_python_module(
     env.globals["to_ros_base_type"] = to_ros_base_type
     env.globals["itemize_python_identifier"] = itemize_python_identifier
     env.filters["as_python_identifier"] = to_python_identifier
+    env.filters["python_identifier_name"] = unqualify_python_identifier
     env.filters["as_ros_python_type"] = to_ros_python_type
     pb2_python_type_lut = build_pb2_python_type_lut(config.python_imports, config.inline_python_imports)
 
