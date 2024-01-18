@@ -78,6 +78,7 @@ def test_one_of_messages() -> None:
     ros_any_command = proto2ros_tests.msg.AnyCommand()
     convert(proto_any_command, ros_any_command)
     walk_set = proto2ros_tests.msg.AnyCommandOneOfCommands.COMMANDS_WALK_SET
+    assert ros_any_command.commands.which == walk_set
     assert ros_any_command.commands.commands_choice == walk_set
     assert ros_any_command.commands.walk.distance == proto_any_command.walk.distance
     assert ros_any_command.commands.walk.speed == proto_any_command.walk.speed
@@ -87,6 +88,21 @@ def test_one_of_messages() -> None:
     assert other_proto_any_command.WhichOneof("commands") == "walk"
     assert other_proto_any_command.walk.distance == proto_any_command.walk.distance
     assert other_proto_any_command.walk.speed == proto_any_command.walk.speed
+
+
+def test_one_of_empty_messages() -> None:
+    proto_any_command = test_pb2.AnyCommand()
+    proto_any_command.sit.SetInParent()
+
+    ros_any_command = proto2ros_tests.msg.AnyCommand()
+    convert(proto_any_command, ros_any_command)
+    sit_set = proto2ros_tests.msg.AnyCommandOneOfCommands.COMMANDS_SIT_SET
+    assert ros_any_command.commands.which == sit_set
+    assert ros_any_command.commands.commands_choice == sit_set
+
+    other_proto_any_command = test_pb2.AnyCommand()
+    convert(ros_any_command, other_proto_any_command)
+    assert other_proto_any_command.WhichOneof("commands") == "sit"
 
 
 def test_messages_with_map_field() -> None:
