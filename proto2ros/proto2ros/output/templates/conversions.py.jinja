@@ -251,7 +251,7 @@ def convert_{{ spec.base_type | string | as_python_identifier }}_message_to_{{ s
             {%- endif -%}
         {%- endfor -%}
     {% else -%}{#- Handle empty message. #}
-    pass
+    proto_msg.SetInParent()
     {%- endif %}
 
 

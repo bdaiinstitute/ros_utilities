@@ -94,9 +94,13 @@ message AnyCommand {
         // Jump height.
         float height = 1;
     }
+    // Sit command.
+    message Sit {}
+
     oneof commands {
         Walk walk = 1;
         Jump jump = 2;
+        Sit sit = 3;
     }
 }
 
