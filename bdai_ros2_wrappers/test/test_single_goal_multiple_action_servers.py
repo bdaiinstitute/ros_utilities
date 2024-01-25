@@ -4,7 +4,7 @@ import time
 from typing import Tuple
 
 import pytest
-from action_tutorials_interfaces.action import Fibonacci
+from example_interfaces.action import Fibonacci
 from rclpy.action.server import GoalStatus, ServerGoalHandle
 
 from bdai_ros2_wrappers.action_client import ActionClientWrapper
