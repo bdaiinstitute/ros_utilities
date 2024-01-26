@@ -8,7 +8,8 @@ import rclpy.executors
 
 
 class NonReentrantCallbackGroup(rclpy.callback_groups.CallbackGroup):
-    """A callback group to prevent concurrent execution of the same callback while allowing it for different callbacks.
+    """
+    A callback group to prevent concurrent execution of the same callback while allowing it for different callbacks.
 
     Note this behavior sits in between that offered by
     rclpy.callback_groups.MutuallyExclusiveCallbackGroup and
@@ -27,7 +28,8 @@ class NonReentrantCallbackGroup(rclpy.callback_groups.CallbackGroup):
         self._lock = threading.Lock()
 
     def can_execute(self, entity: rclpy.executors.WaitableEntityType) -> bool:
-        """Determine if a callback for an entity can be executed.
+        """
+        Determine if a callback for an entity can be executed.
 
         Args:
             entity: A subscription, timer, client, service, or waitable instance.
@@ -40,7 +42,8 @@ class NonReentrantCallbackGroup(rclpy.callback_groups.CallbackGroup):
             return entity not in self._active_entities
 
     def beginning_execution(self, entity: rclpy.executors.WaitableEntityType) -> bool:
-        """Get permission for the callback from the group to begin executing an entity.
+        """
+        Get permission for the callback from the group to begin executing an entity.
 
         If this returns `True` then `CallbackGroup.ending_execution` must be called after
         the callback has been executed.
@@ -59,7 +62,8 @@ class NonReentrantCallbackGroup(rclpy.callback_groups.CallbackGroup):
         return False
 
     def ending_execution(self, entity: rclpy.executors.WaitableEntityType) -> None:
-        """Notify group that a callback has finished executing.
+        """
+        Notify group that a callback has finished executing.
 
         Args:
             entity: A subscription, timer, client, service, or waitable instance.

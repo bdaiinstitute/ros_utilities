@@ -67,7 +67,8 @@ def to_pb2_python_module_name(source_path: os.PathLike) -> str:
 
 
 def build_pb2_python_type_lut(module_names: Iterable[str], inline_module_names: Iterable[str]) -> Dict[str, str]:
-    """Builds a lookup table to go from Protobuf message type names to Python class name.
+    """
+    Builds a lookup table to go from Protobuf message type names to Python class name.
 
     For instance, if `google.protobuf.any_pb2` is listed as an imported module name and
     `google.protobuf.timestamp_pb2` is listed as an inline imported module name, the
@@ -119,7 +120,8 @@ def dump_conversions_python_module(
     known_message_specifications: List[MessageSpecification],
     config: Configuration,
 ) -> str:
-    """Dumps the Python module source for Protobuf <-> ROS conversion APIs.
+    """
+    Dumps the Python module source for Protobuf <-> ROS conversion APIs.
 
     Args:
         message_specifications: annotated ROS message specifications,
@@ -153,7 +155,8 @@ def dump_conversions_python_module(
 
 
 def dump_specifications_python_module(message_specifications: List[MessageSpecification], config: Configuration) -> str:
-    """Dumps the Python module source bearing message specifications.
+    """
+    Dumps the Python module source bearing message specifications.
 
     This is the mechanism that enables proto2ros generated packages to depend on other proto2ros generated packages.
 

@@ -8,7 +8,8 @@ from rclpy.utilities import get_default_context
 
 
 def wait_for_future(future: Future, timeout_sec: Optional[float] = None, *, context: Optional[Context] = None) -> bool:
-    """Blocks while waiting for a future to become done
+    """
+    Blocks while waiting for a future to become done
 
     Args:
         future (Future): The future to be waited on

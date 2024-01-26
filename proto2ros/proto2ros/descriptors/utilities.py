@@ -1,6 +1,7 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute LLC. All rights reserved.
 
-"""This module provides utilities to work with Protobuf descriptors.
+"""
+This module provides utilities to work with Protobuf descriptors.
 
 Many of these utilities trade in terms of paths and locations.
 
@@ -35,7 +36,8 @@ def index_source_code_locations(file_descriptor: FileDescriptorProto) -> Dict[Tu
 
 
 def walk(proto: Any, path: Sequence[int]) -> Iterable[Any]:
-    """Iterates a Protobuf message down a given path.
+    """
+    Iterates a Protobuf message down a given path.
 
     Args:
         proto: a Protobuf message instance to visit.
@@ -54,7 +56,8 @@ def walk(proto: Any, path: Sequence[int]) -> Iterable[Any]:
 
 
 def locate_repeated(member: str, proto: Any) -> Iterable[Tuple[Sequence[int], Any]]:
-    """Iterates over items of a repeated Protobuf message member, also yield their local paths.
+    """
+    Iterates over items of a repeated Protobuf message member, also yield their local paths.
 
     Local paths are tuples of member field number and item index.
 
@@ -79,7 +82,8 @@ def resolve(
     path: Iterable[int],
     root: Optional[SourceCodeInfo.Location] = None,
 ) -> SourceCodeInfo.Location:
-    """Resolves a source path to a location.
+    """
+    Resolves a source path to a location.
 
     Args:
         source: source file descriptor.
@@ -101,7 +105,8 @@ def resolve(
 
 
 def protofqn(source: FileDescriptorProto, location: SourceCodeInfo.Location) -> str:
-    """Returns the fully qualified name of a Protobuf composite type.
+    """
+    Returns the fully qualified name of a Protobuf composite type.
 
     This type is to be found at a given `location` in a given `source` file.
     """

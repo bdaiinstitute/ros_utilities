@@ -40,7 +40,8 @@ def from_time_like(obj: Union[StampLike, TimeLike]) -> Time:
 
 
 class TFListenerWrapper:
-    """A `tf2_ros` lookup device, wrapping both a buffer and a listener.
+    """
+    A `tf2_ros` lookup device, wrapping both a buffer and a listener.
 
     When using process-wide machinery:
 
@@ -65,7 +66,8 @@ class TFListenerWrapper:
     """
 
     def __init__(self, node: Optional[Node] = None, cache_time_s: Optional[float] = None) -> None:
-        """Initializes the wrapper.
+        """
+        Initializes the wrapper.
 
         Args:
             node: optional node for transform listening, defaults to the current scope node.
@@ -98,7 +100,8 @@ class TFListenerWrapper:
         frame_b: str,
         transform_time: Optional[Union[StampLike, TimeLike]] = None,
     ) -> Future:
-        """Wait asynchronously for the transform from from_frame to to_frame to become available.
+        """
+        Wait asynchronously for the transform from from_frame to to_frame to become available.
 
         Args:
             frame_a: Base frame for transform. The transform returned will be frame_a_t_frame_b
@@ -119,7 +122,8 @@ class TFListenerWrapper:
         transform_time: Optional[Union[StampLike, TimeLike]] = None,
         timeout_sec: Optional[float] = None,
     ) -> bool:
-        """Wait for a transform from frame_a to frame_b to become available.
+        """
+        Wait for a transform from frame_a to frame_b to become available.
 
         Note this is a blocking call. If the underlying node is not spinning, an indefinite wait may block forever.
 
@@ -153,7 +157,8 @@ class TFListenerWrapper:
         timeout_sec: Optional[float] = None,
         wait_for_frames: bool = False,
     ) -> TransformStamped:
-        """Looks up the transform from frame_a to frame_b at the specified time.
+        """
+        Looks up the transform from frame_a to frame_b at the specified time.
 
         Args:
             frame_a: Base frame for transform. The transform returned will be frame_a_t_frame_b
@@ -200,7 +205,8 @@ class TFListenerWrapper:
         timeout_sec: Optional[float] = None,
         wait_for_frames: bool = False,
     ) -> Time:
-        """Looks up the latest time at which a transform from frame_a to frame_b is available.
+        """
+        Looks up the latest time at which a transform from frame_a to frame_b is available.
 
         Args:
             frame_a: Base frame for transform.  The transform returned will be frame_a_t_frame_b

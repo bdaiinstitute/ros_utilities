@@ -18,7 +18,8 @@ def wait_for_message_async(
     qos_profile: typing.Union[rclpy.qos.QoSProfile, int] = 1,
     node: typing.Optional[rclpy.node.Node] = None,
 ) -> rclpy.task.Future:
-    """Wait for message on a given topic asynchronously.
+    """
+    Wait for message on a given topic asynchronously.
 
     Args:
         msg_type: type of message to wait for.
@@ -55,7 +56,8 @@ def wait_for_message(
     node: typing.Optional[rclpy.node.Node] = None,
     **kwargs: typing.Any,
 ) -> typing.Optional[MessageT]:
-    """Wait for message on a given topic synchronously.
+    """
+    Wait for message on a given topic synchronously.
 
     Args:
         msg_type: type of message to wait for.

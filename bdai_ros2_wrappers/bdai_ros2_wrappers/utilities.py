@@ -21,7 +21,8 @@ def namespace_with(*args: typing.Optional[str]) -> str:
 
 
 def either_or(obj: typing.Any, name: str, default: typing.Any) -> typing.Any:
-    """Gets either an object attribute's value or a default value.
+    """
+    Gets either an object attribute's value or a default value.
 
     Unlike `getattr`, callable attributes are applied as getters on `obj`.
     """

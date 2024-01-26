@@ -12,7 +12,8 @@ from proto2ros.utilities import pairwise, to_ros_base_type
 
 
 def message_dependency_graph(message_specs: List[MessageSpecification]) -> nx.DiGraph:
-    """Returns the dependency graph for the given ROS message specifications.
+    """
+    Returns the dependency graph for the given ROS message specifications.
 
     This dependency graph is a directed multi-graph where message types make up nodes
     and composition relationships (has-a) make up edges. Nodes are annotated with the
@@ -30,7 +31,8 @@ def message_dependency_graph(message_specs: List[MessageSpecification]) -> nx.Di
 
 
 def fix_dependency_cycles(message_specs: List[MessageSpecification], quiet: bool = True) -> None:
-    """Fixes dependency cycles among ROS message specifications.
+    """
+    Fixes dependency cycles among ROS message specifications.
 
     ROS messages do not support recursive definitions, this functions works around this
     limitation by type erasing the thinnest link (least number of offending fields) for

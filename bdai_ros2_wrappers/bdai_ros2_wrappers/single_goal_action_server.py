@@ -12,7 +12,8 @@ from bdai_ros2_wrappers.type_hints import ActionType
 
 
 class SingleGoalActionServer(SingleGoalMultipleActionServers):
-    """An action server that only allows a single Action to be executing at one time.
+    """
+    An action server that only allows a single Action to be executing at one time.
 
     If a new Action.Goal is received, the existing Action (if there is one) is preemptively canceled.
     """

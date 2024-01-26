@@ -18,7 +18,8 @@ from bdai_ros2_wrappers.utilities import bind_to_thread, fqn
 
 
 class AutoScalingThreadPool(concurrent.futures.Executor):
-    """A concurrent.futures.Executor subclass based on a thread pool.
+    """
+    A concurrent.futures.Executor subclass based on a thread pool.
 
     Akin to the concurrent.futures.ThreadPoolExecutor class but with
     autoscaling capabilities. Within a given range, the number of
@@ -108,7 +109,8 @@ class AutoScalingThreadPool(concurrent.futures.Executor):
         """A worker in its own daemonized OS thread."""
 
         def __init__(self, executor_weakref: weakref.ref, stop_on_timeout: bool = True) -> None:
-            """Initializes the worker.
+            """
+            Initializes the worker.
 
             Args:
                 executor_weakref: a weak reference to the parent autoscaling thread pool.
@@ -207,7 +209,8 @@ class AutoScalingThreadPool(concurrent.futures.Executor):
         max_idle_time: typing.Optional[float] = None,
         logger: typing.Optional[logging.Logger] = None,
     ):
-        """Initializes the thread pool.
+        """
+        Initializes the thread pool.
 
         Args:
             min_workers: optional minimum number of workers in the pool, 0 by default.
@@ -331,7 +334,8 @@ class AutoScalingThreadPool(concurrent.futures.Executor):
             return any(work.pending() for waitqueue in self._waitqueues.values() for work in waitqueue)
 
     def wait(self, timeout: typing.Optional[float] = None) -> bool:
-        """Waits for all work in the pool to complete.
+        """
+        Waits for all work in the pool to complete.
 
         Only ongoing work at the time of invocation is watched after.
         Work added during the wait will not be considered.
@@ -405,7 +409,8 @@ class AutoScalingThreadPool(concurrent.futures.Executor):
         *args: typing.Any,
         **kwargs: typing.Any,
     ) -> concurrent.futures.Future:
-        """Submits work to the pool.
+        """
+        Submits work to the pool.
 
         Args:
             fn: a callable to execute. Must be immutable and hashable for
@@ -456,7 +461,8 @@ class AutoScalingThreadPool(concurrent.futures.Executor):
             return future
 
     def shutdown(self, wait: bool = True, *, cancel_futures: bool = False) -> None:
-        """Shuts down the pool.
+        """
+        Shuts down the pool.
 
         Args:
             wait: whether to wait for all worker threads to shutdown.
@@ -497,7 +503,8 @@ atexit.register(AutoScalingThreadPool._on_interpreter_shutdown)
 
 
 class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
-    """An rclpy.executors.Executor subclass based on an AutoScalingThreadPool.
+    """
+    An rclpy.executors.Executor subclass based on an AutoScalingThreadPool.
 
     Akin to the rclpy.executors.MultiThreadedExecutor class but with autoscaling capabilities.
     Moreover, a concurrency quota can be defined on a per callback + callback group basis to
@@ -516,7 +523,8 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
             self.callback_group = entity.callback_group if entity is not None else None
 
         def __call__(self) -> None:
-            """Run or resume a task
+            """
+            Run or resume a task
 
             See rclpy.task.Task documentation for further reference.
             """
@@ -554,7 +562,8 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
         context: typing.Optional[rclpy.context.Context] = None,
         logger: typing.Optional[logging.Logger] = None,
     ) -> None:
-        """Initializes the executor.
+        """
+        Initializes the executor.
 
         Args:
             max_threads: optional maximum number of threads to spin at any given time.
@@ -636,7 +645,8 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
         future: rclpy.task.Future,
         timeout_sec: typing.Optional[float] = None,
     ) -> None:
-        """Complete all work until the provided future is done.
+        """
+        Complete all work until the provided future is done.
 
         Args:
             future: The ros future instance
@@ -646,7 +656,8 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
         self._do_spin_once(timeout_sec, condition=future.done)
 
     def shutdown(self, timeout_sec: typing.Optional[float] = None) -> bool:
-        """Shutdown the executor.
+        """
+        Shutdown the executor.
 
         Args:
             timeout_sec: The timeout for shutting down
@@ -673,7 +684,8 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
 
 @contextlib.contextmanager
 def background(executor: rclpy.executors.Executor) -> typing.Iterator[rclpy.executors.Executor]:
-    """Pushes an executor to a background thread.
+    """
+    Pushes an executor to a background thread.
 
     Upon context entry, the executor starts spinning in a background thread.
     Upon context exit, the executor is shutdown and the background thread is joined.
@@ -702,7 +714,8 @@ def background(executor: rclpy.executors.Executor) -> typing.Iterator[rclpy.exec
 
 @contextlib.contextmanager
 def foreground(executor: rclpy.executors.Executor) -> typing.Iterator[rclpy.executors.Executor]:
-    """Manages an executor in the current thread.
+    """
+    Manages an executor in the current thread.
 
     Upon context exit, the executor is shutdown.
 

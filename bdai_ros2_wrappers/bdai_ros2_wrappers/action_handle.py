@@ -13,14 +13,16 @@ from bdai_ros2_wrappers.type_hints import Action
 
 
 class ActionHandle:
-    """Handle for the lifecycle of an action.
+    """
+    Handle for the lifecycle of an action.
 
     Handles the two stage process that is getting a result after sending an ActionGoal to an ActionServer as well
     as holding the various callbacks for sending an ActionGoal (cancel, failure, feedback, result)
     """
 
     def __init__(self, action_name: str, logger: Optional[RcutilsLogger] = None, context: Optional[Context] = None):
-        """Constructor
+        """
+        Constructor
 
         Args:
             action_name (str): The name of the action (for logging purposes)
@@ -60,7 +62,8 @@ class ActionHandle:
         return self._result.result
 
     def wait_for_result(self, timeout_sec: Optional[float] = None) -> bool:
-        """Waits until a result is received or times out
+        """
+        Waits until a result is received or times out
 
         A result is received through succeed, abort, or cancel being called on the server.
 
@@ -75,7 +78,8 @@ class ActionHandle:
         )
 
     def wait_for_acceptance(self, timeout_sec: Optional[float] = None) -> bool:
-        """Waits until goal is accepted or timeout.
+        """
+        Waits until goal is accepted or timeout.
 
         Args:
             timeout_sec (Optional[float]): A timeout in seconds. No timeout is used if None
@@ -113,7 +117,8 @@ class ActionHandle:
         self._on_cancel_failure_callback = on_cancel_failure_callback
 
     def _goal_response_callback(self, future: Future) -> None:
-        """Callback that handles receiving a response from the ActionServer
+        """
+        Callback that handles receiving a response from the ActionServer
 
         Note: This does not handle receiving a result directly
         """
@@ -138,7 +143,8 @@ class ActionHandle:
         self._wait_for_acceptance_event.set()
 
     def get_feedback_callback(self, feedback: Action.Feedback) -> None:
-        """Public feedback callback that can be given to the ActionClient
+        """
+        Public feedback callback that can be given to the ActionClient
 
         Currently just passes the feedback to the user provided callback
         """
