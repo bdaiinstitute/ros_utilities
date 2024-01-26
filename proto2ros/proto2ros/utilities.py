@@ -47,7 +47,7 @@ def pairwise(iterable: Iterable[Any]) -> Iterable[Tuple[Any, Any]]:
     """Yields an iterable over consecutive pairs."""
     a, b = itertools.tee(iterable)
     next(b, None)
-    return zip(a, b, strict=True)
+    return zip(a, b)  # noqa: B905
 
 
 def to_ros_base_type(type_: Union[str, BaseType]) -> str:
