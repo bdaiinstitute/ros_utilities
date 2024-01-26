@@ -1,12 +1,12 @@
 # Copyright (c) 2024 Boston Dynamics AI Institute Inc.  All rights reserved.
 
-import collections
 import inspect
 import queue
 import threading
 import warnings
+from collections import deque
 from collections.abc import Sequence
-from typing import Any, Callable, Iterable, List, Optional, Type, Union
+from typing import Any, Callable, Iterator, List, Optional, Type, Union
 
 import action_msgs.msg
 from rclpy.action.client import ActionClient, ClientGoalHandle
@@ -58,8 +58,9 @@ class Tape:
             Initializes the stream.
 
             Args:
-                max_size: optional maximum stream size.
+                max_size: optional maximum stream size. Must be a positive number.
             """
+            assert max_size is None or max_size > 0
             self._queue: queue.Queue = queue.Queue(max_size or 0)
             self._label = label
 
@@ -123,7 +124,9 @@ class Tape:
         """
         self._lock = threading.Lock()
         self._streams: List[Tape.Stream] = []
-        self._content: collections.deque = collections.deque(maxlen=max_length)
+        self._content: Optional[deque] = None
+        if max_length is None or max_length > 0:
+            self._content = deque(maxlen=max_length)
         self._closed = False
 
     def write(self, data: Any) -> None:
@@ -135,16 +138,18 @@ class Tape:
                     if stream.label:
                         message = f"{stream.label}: {message}"
                     warnings.warn(message, RuntimeWarning)
-            self._content.append(data)
+            if self._content is not None:
+                self._content.append(data)
 
     def content(
         self,
         *,
         follow: bool = False,
-        follow_buffer_size: Optional[int] = None,
+        forward_only: bool = False,
+        buffer_size: Optional[int] = None,
         timeout_sec: Optional[float] = None,
         label: Optional[str] = None,
-    ) -> Iterable:
+    ) -> Iterator:
         """
         Iterate over the data tape.
 
@@ -153,40 +158,51 @@ class Tape:
 
         Args:
             follow: whether to follow the data tape as it gets written or not.
-            follow_buffer_size: optional buffer size when following the data tape.
-            If none is provided, the data tape size will be used as default.
+            forward_only: if true, ignore existing content and only look ahead
+            when following the data tape.
+            buffer_size: optional buffer size when following the data tape.
+            If none is provided, the buffer will grow as necessary.
             timeout_sec: optional timeout, in seconds, when following the data tape.
             label: optional label to qualify logs and warnings.
 
         Returns:
-            a lazy iterable over the data tape.
+            a lazy iterator over the data tape.
         """
+        # Here we split the generator in two, so that setup code is executed eagerly.
         with self._lock:
-            content = self._content.copy()
+            content: Optional[deque] = None
+            if not forward_only and self._content is not None:
+                content = self._content.copy()
             stream: Optional[Tape.Stream] = None
             if follow and not self._closed:
-                stream = Tape.Stream(follow_buffer_size, label)
+                stream = Tape.Stream(buffer_size, label)
                 self._streams.append(stream)
-        try:
-            yield from content
-            if stream is not None:
-                while not self._closed:
-                    feedback = stream.read(timeout_sec)
-                    if feedback is None:
-                        break
-                    yield feedback
-                while not stream.consumed:
-                    # This is safe as long as there is
-                    # a single reader for the stream,
-                    # which is currently the case.
-                    feedback = stream.read(timeout_sec)
-                    if feedback is None:
-                        continue
-                    yield feedback
-        finally:
-            if stream is not None:
-                with self._lock:
-                    self._streams.remove(stream)
+
+        def _generator() -> Iterator:
+            nonlocal content, stream
+            try:
+                if content is not None:
+                    yield from content
+                if stream is not None:
+                    while not self._closed:
+                        feedback = stream.read(timeout_sec)
+                        if feedback is None:
+                            break
+                        yield feedback
+                    while not stream.consumed:
+                        # This is safe as long as there is
+                        # a single reader for the stream,
+                        # which is currently the case.
+                        feedback = stream.read(timeout_sec)
+                        if feedback is None:
+                            continue
+                        yield feedback
+            finally:
+                if stream is not None:
+                    with self._lock:
+                        self._streams.remove(stream)
+
+        return _generator()
 
     def close(self) -> None:
         """
@@ -205,7 +221,7 @@ class ActionFuture:
     A proxy to a ROS 2 action invocation.
 
     Action futures are to actions what plain futures are to services, with a bit more functionality
-    to cover action specific semantics such feedback and cancellation.
+    to cover action specific semantics such as feedback and cancellation.
 
     Action futures are rarely instantiated explicitly, but implicitly through `Actionable` APIs.
     """
@@ -331,29 +347,31 @@ class ActionFuture:
             raise RuntimeError("Action not accepted")
         return list(self._feedback_tape.content())
 
-    def feedback_stream(self, *, buffer_size: Optional[int] = None, timeout_sec: Optional[float] = None) -> Iterable:
+    def feedback_stream(
+        self, *, forward_only: bool = False, buffer_size: Optional[int] = None, timeout_sec: Optional[float] = None
+    ) -> Iterator:
         """
         Iterate over action feedback as it comes.
 
-        This includes buffered action feedback. Iteration stops when the given timeout
-        expires or when the action is done executing. Note that iterating over action
-        feedback to come is a blocking operation.
+        Iteration stops when the given timeout expires or when the action is done executing.
+        Note that iterating over action feedback to come is a blocking operation.
 
         Action must have been accepted before feedback streaming is allowed.
 
         Args:
+            forward_only: whether to ignore buffered action feedback or not.
             buffer_size: optional maximum size for the incoming feedback buffer.
             If none is provided, the configured feedback tracking buffer size will
             be used.
             timeout_sec: optional timeout, in seconds, for new action feedback.
 
         Returns:
-            a lazy iterable over action feedback.
+            a lazy iterator over action feedback.
 
         Raises:
             RuntimeError: if action feedback tracking is not enabled,
-            action acknowledgement has not been received yet, or
-            action was not accepted.
+            action acknowledgement has not been received yet, or action
+            was not accepted.
         """
         if self._feedback_tape is None:
             raise RuntimeError("Action feedback tracking is not enabled")
@@ -363,8 +381,12 @@ class ActionFuture:
         if not goal_handle.accepted:
             raise RuntimeError("Action not accepted")
         outerframe = inspect.stack()[1]
-        yield from self._feedback_tape.content(
-            follow=True, timeout_sec=timeout_sec, label=f"{outerframe.filename}:{outerframe.lineno}"
+        return self._feedback_tape.content(
+            follow=True,
+            forward_only=forward_only,
+            buffer_size=buffer_size,
+            timeout_sec=timeout_sec,
+            label=f"{outerframe.filename}:{outerframe.lineno}",
         )
 
     @property
@@ -427,12 +449,14 @@ class ActionFuture:
         future = Future(executor=self._executor_ref())
 
         def _done_callback(_: Future) -> None:
+            nonlocal future
             if future.cancelled():
                 self.cancel()
 
         future.add_done_callback(_done_callback)
 
         def _bridge_callback(finalization_future: Future) -> None:
+            nonlocal future
             if not self.accepted:
                 future.set_exception(ActionRejected())
                 return
@@ -570,7 +594,7 @@ class Actionable:
             the action future.
         """
         feedback_tape: Optional[Tape] = None
-        if track_feedback:
+        if track_feedback is not False:
             feedback_tape_length = None
             if track_feedback is not True:
                 feedback_tape_length = track_feedback
