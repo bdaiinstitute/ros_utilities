@@ -34,7 +34,7 @@ if not typing.TYPE_CHECKING:
     tree = ET.parse(os.path.join(share_directory, "package.xml"))
     version = tree.getroot().find("version")
     if packaging.version.parse(version.text) >= packaging.version.parse("3.9.0"):
-        warnings.warn("TODO: use subloggers in RcutilsLogHandler implementation")
+        warnings.warn("TODO: use subloggers in RcutilsLogHandler implementation", stacklevel=1)
 
 
 class RcutilsLogHandler(logging.Handler):
@@ -43,6 +43,7 @@ class RcutilsLogHandler(logging.Handler):
     default_formatter = logging.Formatter("(logging.%(name)s) %(message)s")
 
     def __init__(self, node: Node, level: typing.Union[int, str] = logging.NOTSET) -> None:
+        """Constructor"""
         super().__init__(level=level)
         self.node = node
         self.logger = node.get_logger()
@@ -51,17 +52,28 @@ class RcutilsLogHandler(logging.Handler):
         self.setFormatter(self.default_formatter)
 
     def setLevel(self, level: typing.Union[int, str]) -> None:
+        """Sets the threshold for this handler to level.
+
+        Logging messages which are less severe than level will be ignored. When a handler is created, the level is set
+        to NOTSET (which causes all messages to be processed).
+        """
         super().setLevel(level)
         self.logger.set_level(SEVERITY_MAP[self.level])
 
     def emit(self, record: logging.LogRecord) -> None:
+        """Do whatever it takes to actually log the specified logging record."""
         try:
             message = self.format(record)
             severity = SEVERITY_MAP[record.levelno]
             # NOTE(hidmic): this bypasses the rclpy logger API to avoid the extra meaningless
             # computations (e.g. call stack inspection).
             impl.rclpy_logging_rcutils_log(
-                severity, self.logger.name, message, record.funcName, record.pathname, record.lineno
+                severity,
+                self.logger.name,
+                message,
+                record.funcName,
+                record.pathname,
+                record.lineno,
             )
         except Exception:
             self.handleError(record)
@@ -69,8 +81,7 @@ class RcutilsLogHandler(logging.Handler):
 
 @contextlib.contextmanager
 def logs_to_ros(node: Node) -> typing.Iterator[None]:
-    """
-    Forwards root `logging.Logger` logs to the ROS 2 logging system.
+    """Forwards root `logging.Logger` logs to the ROS 2 logging system.
 
     Note that logs are subject to severity level thresholds and propagation
     semantics at both the `logging` module and the ROS 2 logging system. For

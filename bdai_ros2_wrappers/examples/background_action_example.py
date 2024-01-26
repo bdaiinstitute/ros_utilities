@@ -1,7 +1,6 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 
-"""
-An example of a ROS 2 aware executable using process-wide machinery.
+"""An example of a ROS 2 aware executable using process-wide machinery.
 
 Run with:
 
@@ -47,8 +46,7 @@ class MinimalActionServer(Node):
 
 @ros_process.main()
 def main() -> None:
-    """
-    Example entrypoint.
+    """Example entrypoint.
 
     It is configured almost as a prebaked ROS 2 aware process. That is, including a
     process-wide (ie. globally accessible) node, an autoscaling multi-threaded executor

@@ -25,6 +25,7 @@ from proto2ros.output.python import (
 
 
 def do_generate(args: argparse.Namespace) -> int:
+    """Primary function to execute conversion of protobufs to ros msgs."""
     # Fetch baseline configuration.
     config = Configuration.from_file(args.config_file)
 
@@ -77,8 +78,8 @@ def do_generate(args: argparse.Namespace) -> int:
                             f"{spec.annotations['proto-type']} maps to {spec.base_type}"
                             for spec in known_message_specifications
                             if spec.base_type in message_type_duplicates
-                        ]
-                    )
+                        ],
+                    ),
                 ),
                 "    ",
             ),
@@ -109,7 +110,7 @@ def do_generate(args: argparse.Namespace) -> int:
     conversions_python_file = args.output_directory / "conversions.py"
     if not args.dry:
         conversions_python_file.write_text(
-            dump_conversions_python_module(message_specifications, known_message_specifications, config) + "\n"
+            dump_conversions_python_module(message_specifications, known_message_specifications, config) + "\n",
         )
     files_written.append(conversions_python_file)
 
@@ -120,9 +121,14 @@ def do_generate(args: argparse.Namespace) -> int:
 
 
 def main() -> int:
+    """Entrypoint for proto2ros"""
     parser = argparse.ArgumentParser(description="Generate Protobuf <-> ROS 2 interoperability interfaces")
     parser.add_argument(
-        "-O", "--output-directory", type=pathlib.Path, default=".", help="Output directory for all generated files."
+        "-O",
+        "--output-directory",
+        type=pathlib.Path,
+        default=".",
+        help="Output directory for all generated files.",
     )
     parser.add_argument(
         "-c",

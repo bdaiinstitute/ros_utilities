@@ -37,10 +37,7 @@ def ros_node(ros_context: Context) -> Generator[Node, None, None]:
 
 
 def test_autoscaling_thread_pool() -> None:
-    """
-    Asserts that the autoscaling thread pool scales and de-scales on demand.
-    """
-
+    """Asserts that the autoscaling thread pool scales and de-scales on demand."""
     with AutoScalingThreadPool(max_idle_time=2.0) as pool:
         assert len(pool.workers) == 0
         assert not pool.working
@@ -64,9 +61,7 @@ def test_autoscaling_thread_pool() -> None:
 
 
 def test_autoscaling_thread_pool_checks_arguments() -> None:
-    """
-    Asserts that the autoscaling thread pool checks for valid arguments on construction.
-    """
+    """Asserts that the autoscaling thread pool checks for valid arguments on construction."""
     with pytest.raises(ValueError):
         AutoScalingThreadPool(min_workers=-1)
 
@@ -84,9 +79,7 @@ def test_autoscaling_thread_pool_checks_arguments() -> None:
 
 
 def test_autoscaling_thread_pool_when_shutdown() -> None:
-    """
-    Asserts that the autoscaling thread no longer accepts work when shutdown.
-    """
+    """Asserts that the autoscaling thread no longer accepts work when shutdown."""
     pool = AutoScalingThreadPool()
 
     pool.shutdown()
@@ -96,10 +89,7 @@ def test_autoscaling_thread_pool_when_shutdown() -> None:
 
 
 def test_autoscaling_thread_pool_with_limits() -> None:
-    """
-    Asserts that the autoscaling thread pool enforces the user-defined range on the number of workers.
-    """
-
+    """Asserts that the autoscaling thread pool enforces the user-defined range on the number of workers."""
     with AutoScalingThreadPool(min_workers=2, max_workers=5, max_idle_time=0.1) as pool:
         assert len(pool.workers) == 2
         assert not pool.working
@@ -122,10 +112,7 @@ def test_autoscaling_thread_pool_with_limits() -> None:
 
 
 def test_autoscaling_thread_pool_with_quota() -> None:
-    """
-    Asserts that the autoscaling thread pool respects submission quotas.
-    """
-
+    """Asserts that the autoscaling thread pool respects submission quotas."""
     with AutoScalingThreadPool(submission_quota=5, submission_patience=1.0, max_idle_time=2.0) as pool:
         assert len(pool.workers) == 0
         assert not pool.working
@@ -156,8 +143,7 @@ def test_autoscaling_thread_pool_with_quota() -> None:
 
 
 def test_autoscaling_executor(ros_context: Context, ros_node: Node) -> None:
-    """
-    Asserts that the autoscaling multithreaded executor scales to attend a
+    """Asserts that the autoscaling multithreaded executor scales to attend a
     synchronous service call from a "one-shot" timer callback, serviced by
     the same executor.
     """
@@ -167,7 +153,10 @@ def test_autoscaling_executor(ros_context: Context, ros_node: Node) -> None:
         return response
 
     ros_node.create_service(
-        Trigger, "/dummy/trigger", dummy_server_callback, callback_group=MutuallyExclusiveCallbackGroup()
+        Trigger,
+        "/dummy/trigger",
+        dummy_server_callback,
+        callback_group=MutuallyExclusiveCallbackGroup(),
     )
 
     client = ros_node.create_client(Trigger, "/dummy/trigger", callback_group=MutuallyExclusiveCallbackGroup())

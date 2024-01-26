@@ -1,7 +1,6 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 
-"""
-An example of a ROS 2 multi-node process using process-wide machinery.
+"""An example of a ROS 2 multi-node process using process-wide machinery.
 
 Run with:
 
@@ -51,8 +50,7 @@ def graph(**kwargs: typing.Any) -> typing.Iterable[Node]:
 
 @ros_process.main(prebaked=False, namespace=True)
 def main() -> None:
-    """
-    Example entrypoint.
+    """Example entrypoint.
 
     It is configured almost as a regular ROS 2 aware process. That is, no process-wide node,
     no background autoscaling multi-threaded executor, and no log forwarding to the ROS 2

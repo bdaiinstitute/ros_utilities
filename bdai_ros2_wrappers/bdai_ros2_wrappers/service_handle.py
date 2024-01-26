@@ -10,12 +10,21 @@ from rclpy.utilities import get_default_context
 from bdai_ros2_wrappers.type_hints import SrvTypeResponse
 
 
-class ServiceHandle(object):
-    """Handles getting a result after sending an ServiceRequest to Service
+class ServiceHandle:
+    """A handle for the lifecycle of a service.
+
+    Handles getting a result after sending an ServiceRequest to Service
     as holding the various callbacks for sending an ServiceRequest (result, failure)
     """
 
     def __init__(self, service_name: str, logger: Optional[RcutilsLogger] = None, context: Optional[Context] = None):
+        """Constructor
+
+        Args:
+            service_name: The name of the service handle to be used in logging
+            logger: An optional ros logger
+            context: An optional ros context
+        """
         if context is None:
             context = get_default_context()
         self._service_name = service_name
@@ -32,6 +41,7 @@ class ServiceHandle(object):
 
     @property
     def result(self) -> Optional[SrvTypeResponse]:
+        """Returns the result if one has been received from the service"""
         return self._result
 
     def set_result_callback(self, result_callback: Callable) -> None:
@@ -39,8 +49,7 @@ class ServiceHandle(object):
         self._result_callback = result_callback
 
     def set_send_service_future(self, send_service_future: Future) -> None:
-        """Sets the future received from sending the Action.Goal and sets up the callback for when a response is
-        received"""
+        """Sets the future received from sending the Action.Goal"""
         self._send_service_future = send_service_future
         self._send_service_future.add_done_callback(self._service_result_callback)
 

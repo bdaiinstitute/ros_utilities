@@ -13,9 +13,7 @@ from bdai_ros2_wrappers.single_goal_multiple_action_servers import SingleGoalMul
 
 
 def execute_callback(goal_handle: ServerGoalHandle) -> Fibonacci.Result:
-    """
-    Executor callback for a server that does fibonacci
-    """
+    """Executor callback for a server that does fibonacci"""
     sequence = [0, 1]
     for i in range(1, goal_handle.request.order):
         sequence.append(sequence[i] + sequence[i - 1])
@@ -28,9 +26,7 @@ def execute_callback(goal_handle: ServerGoalHandle) -> Fibonacci.Result:
 
 
 def execute_callback_wrong_fib(goal_handle: ServerGoalHandle) -> Fibonacci.Result:
-    """
-    Different executor for another server that does fibonacci wrong
-    """
+    """Different executor for another server that does fibonacci wrong"""
     # time delay to make interrupting easier
     time.sleep(1)
     sequence = [0, 1]
@@ -65,11 +61,9 @@ def action_triplet(
 
 
 def test_actions_in_sequence(
-    action_triplet: Tuple[SingleGoalMultipleActionServers, ActionClientWrapper, ActionClientWrapper]
+    action_triplet: Tuple[SingleGoalMultipleActionServers, ActionClientWrapper, ActionClientWrapper],
 ) -> None:
-    """
-    Tests out normal operation with multiple action servers and clients
-    """
+    """Tests out normal operation with multiple action servers and clients"""
     _, action_client_a, action_client_b = action_triplet
     goal = Fibonacci.Goal()
     goal.order = 5
@@ -86,10 +80,10 @@ def test_actions_in_sequence(
 
 
 def test_action_interruption(
-    ros: ROSAwareScope, action_triplet: Tuple[SingleGoalMultipleActionServers, ActionClientWrapper, ActionClientWrapper]
+    ros: ROSAwareScope,
+    action_triplet: Tuple[SingleGoalMultipleActionServers, ActionClientWrapper, ActionClientWrapper],
 ) -> None:
-    """
-    This test should start a delayed request from another client
+    """This test should start a delayed request from another client
     then make an immediate request to interrupt the last request.
 
     Due to the threading and reliance on sleeps this test might be
