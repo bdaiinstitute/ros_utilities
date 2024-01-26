@@ -344,5 +344,5 @@ def test_messages_with_expanded_any_fields() -> None:
     other_proto_roi = bosdyn.api.geometry_pb2.Polygon()
     other_proto_goal.roi.Unpack(other_proto_roi)
     assert len(other_proto_roi.vertexes) == 4
-    for a, b in zip(proto_roi.vertexes, other_proto_roi.vertexes):
+    for a, b in zip(proto_roi.vertexes, other_proto_roi.vertexes, strict=True):
         assert a.x == b.x and a.y == b.y

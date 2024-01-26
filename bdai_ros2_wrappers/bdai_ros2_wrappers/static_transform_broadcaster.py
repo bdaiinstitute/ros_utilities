@@ -8,16 +8,15 @@ from tf2_msgs.msg import TFMessage
 
 
 class StaticTransformBroadcaster:
-    """
-    A modified :class:`tf2_ros.StaticTransformBroadcaster` that stores transforms
-    sent through it, matching ``rclcpp::StaticTransformBroadcaster`` behavior.
+    """A modified :class:`tf2_ros.StaticTransformBroadcaster` that stores transforms sent through it.
+
+    This matches ``rclcpp::StaticTransformBroadcaster`` behavior.
     """
 
     DEFAULT_QOS = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL, history=HistoryPolicy.KEEP_LAST)
 
     def __init__(self, node: Node, qos: Optional[Union[QoSProfile, int]] = None) -> None:
-        """
-        Constructor.
+        """Constructor.
 
         :param node: The ROS2 node.
         :param qos: A QoSProfile or a history depth to apply to the publisher.
@@ -28,6 +27,11 @@ class StaticTransformBroadcaster:
         self._pub = node.create_publisher(TFMessage, "/tf_static", qos)
 
     def sendTransform(self, transform: Union[TransformStamped, Iterable[TransformStamped]]) -> None:
+        """Send a transform, or a list of transforms, to the Buffer associated with this TransformBroadcaster.
+
+        Args:
+            transform: A transform or list of transforms to send.
+        """
         try:
             transforms = list(transform)
         except TypeError:  # in which case, transform is not iterable

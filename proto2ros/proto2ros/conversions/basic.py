@@ -19,8 +19,7 @@ from proto2ros.conversions import convert
 
 @convert.register(proto2ros.msg.AnyProto, object)
 def convert_proto2ros_any_proto_message_to_some_proto(ros_msg: proto2ros.msg.AnyProto, proto_msg: Any) -> None:
-    """
-    Unpacks a proto2ros/AnyProto ROS message into any Protobuf message.
+    """Unpacks a proto2ros/AnyProto ROS message into any Protobuf message.
 
     Raises:
         ValueError: if the given ROS message cannot be unpacked onto the given Protobuf message.
@@ -50,7 +49,8 @@ def _(proto_msg: proto2ros.msg.AnyProto, ros_msg: proto2ros.msg.AnyProto) -> Non
 
 @convert.register(proto2ros.msg.AnyProto, google.protobuf.any_pb2.Any)
 def convert_proto2ros_any_proto_message_to_google_protobuf_any_proto(
-    ros_msg: proto2ros.msg.AnyProto, proto_msg: google.protobuf.any_pb2.Any
+    ros_msg: proto2ros.msg.AnyProto,
+    proto_msg: google.protobuf.any_pb2.Any,
 ) -> None:
     """Converts from proto2ros/AnyProto ROS message to google.protobuf.Any Protobuf messages."""
     proto_msg.Clear()
@@ -60,7 +60,8 @@ def convert_proto2ros_any_proto_message_to_google_protobuf_any_proto(
 
 @convert.register(google.protobuf.any_pb2.Any, proto2ros.msg.AnyProto)
 def convert_google_protobuf_any_proto_to_proto2ros_any_proto_message(
-    proto_msg: google.protobuf.any_pb2.Any, ros_msg: proto2ros.msg.AnyProto
+    proto_msg: google.protobuf.any_pb2.Any,
+    ros_msg: proto2ros.msg.AnyProto,
 ) -> None:
     """Converts from google.protobuf.Any Protobuf messages to proto2ros/AnyProto ROS messages."""
     ros_msg.type_url = proto_msg.type_url
@@ -69,7 +70,8 @@ def convert_google_protobuf_any_proto_to_proto2ros_any_proto_message(
 
 @convert.register(builtin_interfaces.msg.Duration, google.protobuf.duration_pb2.Duration)
 def convert_builtin_interfaces_duration_message_to_google_protobuf_duration_proto(
-    ros_msg: builtin_interfaces.msg.Duration, proto_msg: google.protobuf.duration_pb2.Duration
+    ros_msg: builtin_interfaces.msg.Duration,
+    proto_msg: google.protobuf.duration_pb2.Duration,
 ) -> None:
     """Converts from google.protobuf.Any Protobuf messages to proto2ros/AnyProto ROS messages."""
     proto_msg.seconds = ros_msg.sec
@@ -83,7 +85,8 @@ convert_builtin_interfaces_duration_to_proto = (
 
 @convert.register(google.protobuf.duration_pb2.Duration, builtin_interfaces.msg.Duration)
 def convert_google_protobuf_duration_proto_to_builtin_interfaces_duration_message(
-    proto_msg: google.protobuf.duration_pb2.Duration, ros_msg: builtin_interfaces.msg.Duration
+    proto_msg: google.protobuf.duration_pb2.Duration,
+    ros_msg: builtin_interfaces.msg.Duration,
 ) -> None:
     """Converts from google.protobuf.Duration Protobuf messages to builtin_interfaces/Duration ROS messages."""
     ros_msg.sec = proto_msg.seconds
@@ -97,7 +100,8 @@ convert_proto_to_builtin_interfaces_duration = (
 
 @convert.register(builtin_interfaces.msg.Time, google.protobuf.timestamp_pb2.Timestamp)
 def convert_builtin_interfaces_time_message_to_google_protobuf_timestamp_proto(
-    ros_msg: builtin_interfaces.msg.Time, proto_msg: google.protobuf.timestamp_pb2.Timestamp
+    ros_msg: builtin_interfaces.msg.Time,
+    proto_msg: google.protobuf.timestamp_pb2.Timestamp,
 ) -> None:
     """Converts from builtin_interfaces/Time ROS messages to google.protobuf.Timestamp Protobuf messages."""
     proto_msg.seconds = ros_msg.sec
@@ -109,7 +113,8 @@ convert_builtin_interfaces_time_to_proto = convert_builtin_interfaces_time_messa
 
 @convert.register(google.protobuf.timestamp_pb2.Timestamp, builtin_interfaces.msg.Time)
 def convert_google_protobuf_timestamp_proto_to_builtin_interfaces_time_message(
-    proto_msg: google.protobuf.timestamp_pb2.Timestamp, ros_msg: builtin_interfaces.msg.Time
+    proto_msg: google.protobuf.timestamp_pb2.Timestamp,
+    ros_msg: builtin_interfaces.msg.Time,
 ) -> None:
     """Converts from google.protobuf.Timestamp Protobuf messages to builtin_interfaces/Time ROS messages."""
     ros_msg.sec = proto_msg.seconds
@@ -121,7 +126,8 @@ convert_proto_to_builtin_interfaces_time = convert_google_protobuf_timestamp_pro
 
 @convert.register(std_msgs.msg.Float64, google.protobuf.wrappers_pb2.DoubleValue)
 def convert_std_msgs_float64_message_to_google_protobuf_double_value_proto(
-    ros_msg: std_msgs.msg.Float64, proto_msg: google.protobuf.wrappers_pb2.DoubleValue
+    ros_msg: std_msgs.msg.Float64,
+    proto_msg: google.protobuf.wrappers_pb2.DoubleValue,
 ) -> None:
     """Converts from std_msgs/Float64 ROS messages to google.protobuf.DoubleValue Protobuf messages."""
     proto_msg.value = ros_msg.data
@@ -132,7 +138,8 @@ convert_std_msgs_float64_to_proto = convert_std_msgs_float64_message_to_google_p
 
 @convert.register(google.protobuf.wrappers_pb2.DoubleValue, std_msgs.msg.Float64)
 def convert_google_protobuf_double_value_proto_to_std_msgs_float64_message(
-    proto_msg: google.protobuf.wrappers_pb2.DoubleValue, ros_msg: std_msgs.msg.Float64
+    proto_msg: google.protobuf.wrappers_pb2.DoubleValue,
+    ros_msg: std_msgs.msg.Float64,
 ) -> None:
     """Converts from google.protobuf.DoubleValue Protobuf messages to std_msgs/Float64 ROS messages."""
     ros_msg.data = proto_msg.value
@@ -143,7 +150,8 @@ convert_proto_to_std_msgs_float64 = convert_google_protobuf_double_value_proto_t
 
 @convert.register(std_msgs.msg.Float32, google.protobuf.wrappers_pb2.FloatValue)
 def convert_std_msgs_float32_message_to_google_protobuf_float_value_proto(
-    ros_msg: std_msgs.msg.Float32, proto_msg: google.protobuf.wrappers_pb2.FloatValue
+    ros_msg: std_msgs.msg.Float32,
+    proto_msg: google.protobuf.wrappers_pb2.FloatValue,
 ) -> None:
     """Converts from std_msgs/Float32 ROS messages to google.protobuf.FloatValue Protobuf messages."""
     proto_msg.value = ros_msg.data
@@ -154,7 +162,8 @@ convert_std_msgs_float32_to_proto = convert_std_msgs_float32_message_to_google_p
 
 @convert.register(google.protobuf.wrappers_pb2.FloatValue, std_msgs.msg.Float32)
 def convert_google_protobuf_float_value_proto_to_std_msgs_float32_message(
-    proto_msg: google.protobuf.wrappers_pb2.FloatValue, ros_msg: std_msgs.msg.Float32
+    proto_msg: google.protobuf.wrappers_pb2.FloatValue,
+    ros_msg: std_msgs.msg.Float32,
 ) -> None:
     """Converts from google.protobuf.FloatValue Protobuf messages to std_msgs/Float32 ROS messages."""
     ros_msg.data = proto_msg.value
@@ -165,7 +174,8 @@ convert_proto_to_std_msgs_float32 = convert_google_protobuf_float_value_proto_to
 
 @convert.register(std_msgs.msg.Int64, google.protobuf.wrappers_pb2.Int64Value)
 def convert_std_msgs_int64_message_to_google_protobuf_int64_value_proto(
-    ros_msg: std_msgs.msg.Int64, proto_msg: google.protobuf.wrappers_pb2.Int64Value
+    ros_msg: std_msgs.msg.Int64,
+    proto_msg: google.protobuf.wrappers_pb2.Int64Value,
 ) -> None:
     """Converts from std_msgs/Int64 ROS messages to google.protobuf.Int64Value Protobuf messages."""
     proto_msg.value = ros_msg.data
@@ -176,7 +186,8 @@ convert_std_msgs_int64_to_proto = convert_std_msgs_int64_message_to_google_proto
 
 @convert.register(google.protobuf.wrappers_pb2.Int64Value, std_msgs.msg.Int64)
 def convert_google_protobuf_int64_value_proto_to_std_msgs_int64_message(
-    proto_msg: google.protobuf.wrappers_pb2.Int64Value, ros_msg: std_msgs.msg.Int64
+    proto_msg: google.protobuf.wrappers_pb2.Int64Value,
+    ros_msg: std_msgs.msg.Int64,
 ) -> None:
     """Converts from google.protobuf.Int64Value Protobuf messages to std_msgs/Int64 ROS messages."""
     ros_msg.data = proto_msg.value
@@ -187,7 +198,8 @@ convert_proto_to_std_msgs_int64 = convert_google_protobuf_int64_value_proto_to_s
 
 @convert.register(std_msgs.msg.Int32, google.protobuf.wrappers_pb2.Int32Value)
 def convert_std_msgs_int32_message_to_google_protobuf_int32_value_proto(
-    ros_msg: std_msgs.msg.Int32, proto_msg: google.protobuf.wrappers_pb2.Int32Value
+    ros_msg: std_msgs.msg.Int32,
+    proto_msg: google.protobuf.wrappers_pb2.Int32Value,
 ) -> None:
     """Converts from std_msgs/Int32 ROS messages to google.protobuf.Int32Value Protobuf messages."""
     proto_msg.value = ros_msg.data
@@ -198,7 +210,8 @@ convert_std_msgs_int32_to_proto = convert_std_msgs_int32_message_to_google_proto
 
 @convert.register(google.protobuf.wrappers_pb2.Int32Value, std_msgs.msg.Int32)
 def convert_google_protobuf_int32_value_proto_to_std_msgs_int32_message(
-    proto_msg: google.protobuf.wrappers_pb2.Int32Value, ros_msg: std_msgs.msg.Int32
+    proto_msg: google.protobuf.wrappers_pb2.Int32Value,
+    ros_msg: std_msgs.msg.Int32,
 ) -> None:
     """Converts from google.protobuf.Int32Value Protobuf messages to std_msgs/Int32 ROS messages."""
     ros_msg.data = proto_msg.value
@@ -209,7 +222,8 @@ convert_proto_to_std_msgs_int32 = convert_google_protobuf_int32_value_proto_to_s
 
 @convert.register(std_msgs.msg.UInt64, google.protobuf.wrappers_pb2.UInt64Value)
 def convert_std_msgs_uint64_message_to_google_protobuf_uint64_value_proto(
-    ros_msg: std_msgs.msg.UInt64, proto_msg: google.protobuf.wrappers_pb2.UInt64Value
+    ros_msg: std_msgs.msg.UInt64,
+    proto_msg: google.protobuf.wrappers_pb2.UInt64Value,
 ) -> None:
     """Converts from std_msgs/UInt64 ROS messages to google.protobuf.UInt64Value Protobuf messages."""
     proto_msg.value = ros_msg.data
@@ -220,7 +234,8 @@ convert_std_msgs_uint64_to_proto = convert_std_msgs_uint64_message_to_google_pro
 
 @convert.register(google.protobuf.wrappers_pb2.UInt64Value, std_msgs.msg.UInt64)
 def convert_google_protobuf_uint64_value_proto_to_std_msgs_uint64_message(
-    proto_msg: google.protobuf.wrappers_pb2.UInt64Value, ros_msg: std_msgs.msg.UInt64
+    proto_msg: google.protobuf.wrappers_pb2.UInt64Value,
+    ros_msg: std_msgs.msg.UInt64,
 ) -> None:
     """Converts from google.protobuf.UInt64Value Protobuf messages to std_msgs/UInt64 ROS messages."""
     ros_msg.data = proto_msg.value
@@ -231,7 +246,8 @@ convert_proto_to_std_msgs_uint64 = convert_google_protobuf_uint64_value_proto_to
 
 @convert.register(std_msgs.msg.UInt32, google.protobuf.wrappers_pb2.UInt32Value)
 def convert_std_msgs_uint32_message_to_google_protobuf_uint32_value_proto(
-    ros_msg: std_msgs.msg.UInt32, proto_msg: google.protobuf.wrappers_pb2.UInt32Value
+    ros_msg: std_msgs.msg.UInt32,
+    proto_msg: google.protobuf.wrappers_pb2.UInt32Value,
 ) -> None:
     """Converts from std_msgs/UInt32 ROS messages to google.protobuf.UInt32Value Protobuf messages."""
     proto_msg.value = ros_msg.data
@@ -242,7 +258,8 @@ convert_std_msgs_uint32_to_proto = convert_std_msgs_uint32_message_to_google_pro
 
 @convert.register(google.protobuf.wrappers_pb2.UInt32Value, std_msgs.msg.UInt32)
 def convert_google_protobuf_uint32_value_proto_to_std_msgs_uint32_message(
-    proto_msg: google.protobuf.wrappers_pb2.UInt32Value, ros_msg: std_msgs.msg.UInt32
+    proto_msg: google.protobuf.wrappers_pb2.UInt32Value,
+    ros_msg: std_msgs.msg.UInt32,
 ) -> None:
     """Converts from google.protobuf.UInt32Value Protobuf messages to std_msgs/UInt32 ROS messages."""
     ros_msg.data = proto_msg.value
@@ -253,7 +270,8 @@ convert_proto_to_std_msgs_uint32 = convert_google_protobuf_uint32_value_proto_to
 
 @convert.register(std_msgs.msg.Bool, google.protobuf.wrappers_pb2.BoolValue)
 def convert_std_msgs_bool_message_to_google_protobuf_bool_value_proto(
-    ros_msg: std_msgs.msg.Bool, proto_msg: google.protobuf.wrappers_pb2.BoolValue
+    ros_msg: std_msgs.msg.Bool,
+    proto_msg: google.protobuf.wrappers_pb2.BoolValue,
 ) -> None:
     """Converts from std_msgs/Bool ROS messages to google.protobuf.BoolValue Protobuf messages."""
     proto_msg.value = ros_msg.data
@@ -264,7 +282,8 @@ convert_std_msgs_bool_to_proto = convert_std_msgs_bool_message_to_google_protobu
 
 @convert.register(google.protobuf.wrappers_pb2.BoolValue, std_msgs.msg.Bool)
 def convert_google_protobuf_bool_value_proto_to_std_msgs_bool_message(
-    proto_msg: google.protobuf.wrappers_pb2.BoolValue, ros_msg: std_msgs.msg.Bool
+    proto_msg: google.protobuf.wrappers_pb2.BoolValue,
+    ros_msg: std_msgs.msg.Bool,
 ) -> None:
     """Converts from google.protobuf.BoolValue Protobuf messages to std_msgs/Bool ROS messages."""
     ros_msg.data = proto_msg.value
@@ -275,7 +294,8 @@ convert_proto_to_std_msgs_bool = convert_google_protobuf_bool_value_proto_to_std
 
 @convert.register(std_msgs.msg.String, google.protobuf.wrappers_pb2.StringValue)
 def convert_std_msgs_string_message_to_google_protobuf_string_value_proto(
-    ros_msg: std_msgs.msg.String, proto_msg: google.protobuf.wrappers_pb2.StringValue
+    ros_msg: std_msgs.msg.String,
+    proto_msg: google.protobuf.wrappers_pb2.StringValue,
 ) -> None:
     """Converts from std_msgs/String ROS messages to google.protobuf.StringValue Protobuf messages."""
     proto_msg.value = ros_msg.data
@@ -286,7 +306,8 @@ convert_std_msgs_string_to_proto = convert_std_msgs_string_message_to_google_pro
 
 @convert.register(google.protobuf.wrappers_pb2.StringValue, std_msgs.msg.String)
 def convert_google_protobuf_string_value_proto_to_std_msgs_string_message(
-    proto_msg: google.protobuf.wrappers_pb2.StringValue, ros_msg: std_msgs.msg.String
+    proto_msg: google.protobuf.wrappers_pb2.StringValue,
+    ros_msg: std_msgs.msg.String,
 ) -> None:
     """Converts from google.protobuf.StringValue Protobuf messages to std_msgs/String ROS messages."""
     ros_msg.data = proto_msg.value
@@ -297,7 +318,8 @@ convert_proto_to_std_msgs_string = convert_google_protobuf_string_value_proto_to
 
 @convert.register(proto2ros.msg.Bytes, google.protobuf.wrappers_pb2.BytesValue)
 def convert_proto2ros_bytes_message_to_google_protobuf_bytes_value_proto(
-    ros_msg: proto2ros.msg.Bytes, proto_msg: google.protobuf.wrappers_pb2.BytesValue
+    ros_msg: proto2ros.msg.Bytes,
+    proto_msg: google.protobuf.wrappers_pb2.BytesValue,
 ) -> None:
     """Converts from proto2ros/Bytes ROS messages to google.protobuf.BytesValue Protobuf messages."""
     proto_msg.value = ros_msg.data.tobytes()
@@ -308,7 +330,8 @@ convert_proto2ros_bytes_to_proto = convert_proto2ros_bytes_message_to_google_pro
 
 @convert.register(google.protobuf.wrappers_pb2.BytesValue, proto2ros.msg.Bytes)
 def convert_google_protobuf_bytes_value_proto_to_proto2ros_bytes_message(
-    proto_msg: google.protobuf.wrappers_pb2.BytesValue, ros_msg: proto2ros.msg.Bytes
+    proto_msg: google.protobuf.wrappers_pb2.BytesValue,
+    ros_msg: proto2ros.msg.Bytes,
 ) -> None:
     """Converts from google.protobuf.BytesValue Protobuf messages to proto2ros/Bytes ROS messages."""
     ros_msg.data = proto_msg.value
@@ -319,7 +342,8 @@ convert_proto_to_proto2ros_bytes = convert_google_protobuf_bytes_value_proto_to_
 
 @convert.register(proto2ros.msg.Value, google.protobuf.struct_pb2.Value)
 def convert_proto2ros_value_message_to_google_protobuf_value_proto(
-    ros_msg: proto2ros.msg.Value, proto_msg: google.protobuf.struct_pb2.Value
+    ros_msg: proto2ros.msg.Value,
+    proto_msg: google.protobuf.struct_pb2.Value,
 ) -> None:
     """Converts from proto2ros/Value ROS messages to google.protobuf.Value Protobuf messages."""
     match ros_msg.kind:
@@ -332,24 +356,28 @@ def convert_proto2ros_value_message_to_google_protobuf_value_proto(
         case proto2ros.msg.Value.STRUCT_VALUE_SET:
             if proto_msg.struct_value.type_name != "proto2ros/Struct":
                 raise ValueError(
-                    f"expected proto2ros/Struct message for struct_value member, got {proto_msg.struct_value.type}"
+                    f"expected proto2ros/Struct message for struct_value member, got {proto_msg.struct_value.type}",
                 )
             typed_field_message = rclpy.serialization.deserialize_message(
-                proto_msg.struct_value.value.tobytes(), proto2ros.msg.Struct
+                proto_msg.struct_value.value.tobytes(),
+                proto2ros.msg.Struct,
             )
             convert_proto2ros_struct_message_to_google_protobuf_struct_proto(
-                typed_field_message, proto_msg.struct_value
+                typed_field_message,
+                proto_msg.struct_value,
             )
         case proto2ros.msg.Value.LIST_VALUE_SET:
             if proto_msg.list_value.type_name != "proto2ros/List":
                 raise ValueError(
-                    f"expected proto2ros/Struct message for list_value member, got {proto_msg.list_value.type}"
+                    f"expected proto2ros/Struct message for list_value member, got {proto_msg.list_value.type}",
                 )
             typed_field_message = rclpy.serialization.deserialize_message(
-                proto_msg.list_value.value.tobytes(), proto2ros.msg.List
+                proto_msg.list_value.value.tobytes(),
+                proto2ros.msg.List,
             )
             convert_proto2ros_list_message_to_google_protobuf_list_value_proto(
-                typed_field_message, proto_msg.list_value
+                typed_field_message,
+                proto_msg.list_value,
             )
         case proto2ros.msg.Value.NO_VALUE_SET:
             proto_msg.null_value = google.protobuf.struct_pb2.NullValue.NULL_VALUE
@@ -362,7 +390,8 @@ convert_proto2ros_value_to_proto = convert_proto2ros_value_message_to_google_pro
 
 @convert.register(google.protobuf.struct_pb2.Value, proto2ros.msg.Value)
 def convert_google_protobuf_value_proto_to_proto2ros_value_message(
-    proto_msg: google.protobuf.struct_pb2.Value, ros_msg: proto2ros.msg.Value
+    proto_msg: google.protobuf.struct_pb2.Value,
+    ros_msg: proto2ros.msg.Value,
 ) -> None:
     """Converts from google.protobuf.Value Protobuf messages to proto2ros/Value ROS messages."""
     match proto_msg.WhichOneOf("kind"):
@@ -380,7 +409,8 @@ def convert_google_protobuf_value_proto_to_proto2ros_value_message(
         case "struct_value":
             typed_struct_message = proto2ros.msg.Struct()
             convert_google_protobuf_struct_proto_to_proto2ros_struct_message(
-                proto_msg.struct_value, typed_struct_message
+                proto_msg.struct_value,
+                typed_struct_message,
             )
             ros_msg.struct_value.value = rclpy.serialization.serialize_message(typed_struct_message)
             ros_msg.struct_value.type_name = "proto2ros/Struct"
@@ -400,7 +430,8 @@ convert_proto_to_proto2ros_value = convert_google_protobuf_value_proto_to_proto2
 
 @convert.register(proto2ros.msg.List, google.protobuf.struct_pb2.ListValue)
 def convert_proto2ros_list_message_to_google_protobuf_list_value_proto(
-    ros_msg: proto2ros.msg.List, proto_msg: google.protobuf.struct_pb2.ListValue
+    ros_msg: proto2ros.msg.List,
+    proto_msg: google.protobuf.struct_pb2.ListValue,
 ) -> None:
     """Converts from proto2ros/List ROS messages to google.protobuf.ListValue Protobuf messages."""
     proto_msg.Clear()
@@ -414,7 +445,8 @@ convert_proto2ros_list_to_proto = convert_proto2ros_list_message_to_google_proto
 
 @convert.register(google.protobuf.struct_pb2.ListValue, proto2ros.msg.List)
 def convert_google_protobuf_list_value_proto_to_proto2ros_list_message(
-    proto_msg: google.protobuf.struct_pb2.ListValue, ros_msg: proto2ros.msg.List
+    proto_msg: google.protobuf.struct_pb2.ListValue,
+    ros_msg: proto2ros.msg.List,
 ) -> None:
     """Converts from google.protobuf.ListValue Protobuf messages to proto2ros/List ROS messages."""
     for input_item in proto_msg.values:
@@ -428,7 +460,8 @@ convert_proto_to_proto2ros_list = convert_google_protobuf_list_value_proto_to_pr
 
 @convert.register(proto2ros.msg.Struct, google.protobuf.struct_pb2.Struct)
 def convert_proto2ros_struct_message_to_google_protobuf_struct_proto(
-    ros_msg: proto2ros.msg.Struct, proto_msg: google.protobuf.struct_pb2.Struct
+    ros_msg: proto2ros.msg.Struct,
+    proto_msg: google.protobuf.struct_pb2.Struct,
 ) -> None:
     """Converts from proto2ros/Struct ROS messages to google.protobuf.Struct Protobuf messages."""
     proto_msg.Clear()
@@ -441,7 +474,8 @@ convert_proto2ros_struct_to_proto = convert_proto2ros_struct_message_to_google_p
 
 @convert.register(google.protobuf.struct_pb2.Struct, proto2ros.msg.Struct)
 def convert_google_protobuf_struct_proto_to_proto2ros_struct_message(
-    proto_msg: google.protobuf.struct_pb2.Struct, ros_msg: proto2ros.msg.Struct
+    proto_msg: google.protobuf.struct_pb2.Struct,
+    ros_msg: proto2ros.msg.Struct,
 ) -> None:
     """Converts from google.protobuf.Struct Protobuf messages to proto2ros/Struct ROS messages."""
     for key, value in proto_msg.fields.items():

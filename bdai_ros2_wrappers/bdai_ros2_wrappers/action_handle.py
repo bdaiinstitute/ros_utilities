@@ -12,8 +12,10 @@ from rclpy.utilities import get_default_context
 from bdai_ros2_wrappers.type_hints import Action
 
 
-class ActionHandle(object):
-    """Handles the two stage process that is getting a result after sending an ActionGoal to an ActionServer as well
+class ActionHandle:
+    """Handle for the lifecycle of an action
+
+    Handles the two stage process that is getting a result after sending an ActionGoal to an ActionServer as well
     as holding the various callbacks for sending an ActionGoal (cancel, failure, feedback, result)
     """
 
@@ -23,6 +25,7 @@ class ActionHandle(object):
         Args:
             action_name (str): The name of the action (for logging purposes)
             logger (Optional[RcutilsLogger]): An optional logger to use. If none is provided, one is created
+            context (Optional[Context]): The ros context
         """
         if context is None:
             context = get_default_context()
@@ -72,8 +75,7 @@ class ActionHandle(object):
         )
 
     def wait_for_acceptance(self, timeout_sec: Optional[float] = None) -> bool:
-        """
-        Waits until goal is accepted or timeout.
+        """Waits until goal is accepted or timeout.
 
         Args:
             timeout_sec (Optional[float]): A timeout in seconds. No timeout is used if None
@@ -86,8 +88,7 @@ class ActionHandle(object):
         )
 
     def set_send_goal_future(self, send_goal_future: Future) -> None:
-        """Sets the future received from sending the Action.Goal and sets up the callback for when a response is
-        received"""
+        """Sets the future received from sending the `Action.Goal`"""
         self._send_goal_future = send_goal_future
         self._send_goal_future.add_done_callback(self._goal_response_callback)
 

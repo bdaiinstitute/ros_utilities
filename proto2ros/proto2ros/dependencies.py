@@ -1,8 +1,6 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute LLC. All rights reserved.
 
-"""
-This module provides APIs to manipulate dependencies between Protobuf <-> ROS message equivalences.
-"""
+"""This module provides APIs to manipulate dependencies between Protobuf <-> ROS message equivalences."""
 
 import warnings
 from typing import List
@@ -14,8 +12,7 @@ from proto2ros.utilities import pairwise, to_ros_base_type
 
 
 def message_dependency_graph(message_specs: List[MessageSpecification]) -> nx.DiGraph:
-    """
-    Returns the dependency graph for the given ROS message specifications.
+    """Returns the dependency graph for the given ROS message specifications.
 
     This dependency graph is a directed multi-graph where message types make up nodes
     and composition relationships (has-a) make up edges. Nodes are annotated with the
@@ -33,8 +30,7 @@ def message_dependency_graph(message_specs: List[MessageSpecification]) -> nx.Di
 
 
 def fix_dependency_cycles(message_specs: List[MessageSpecification], quiet: bool = True) -> None:
-    """
-    Fixes dependency cycles among ROS message specifications.
+    """Fixes dependency cycles among ROS message specifications.
 
     ROS messages do not support recursive definitions, this functions works around this
     limitation by type erasing the thinnest link (least number of offending fields) for
@@ -46,7 +42,7 @@ def fix_dependency_cycles(message_specs: List[MessageSpecification], quiet: bool
         if not quiet:
             message_types = [dependency_graph.nodes[node]["message"].base_type for node in cycle]
             dependency_cycle_depiction = " -> ".join(str(type_) for type_ in message_types)
-            warnings.warn("Dependency cycle found: " + dependency_cycle_depiction)
+            warnings.warn("Dependency cycle found: " + dependency_cycle_depiction, stacklevel=1)
 
         explicit_edges = []
         for parent, child in pairwise(cycle):
@@ -59,5 +55,5 @@ def fix_dependency_cycles(message_specs: List[MessageSpecification], quiet: bool
             field = data["field"]
             if not quiet:
                 message_type = dependency_graph.nodes[parent]["message"].base_type
-                warnings.warn(f"Type erasing {field.name} member in {message_type} to break recursion")
+                warnings.warn(f"Type erasing {field.name} member in {message_type} to break recursion", stacklevel=1)
             field.annotations["type-erased"] = True

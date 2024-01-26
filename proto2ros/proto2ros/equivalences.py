@@ -1,7 +1,6 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute LLC. All rights reserved.
 
-"""
-This module provides APIs to extract Protobuf <-> ROS message equivalences.
+"""This module provides APIs to extract Protobuf <-> ROS message equivalences.
 
 These equivalences are defined in terms of Protobuf composite descriptors
 and ROS message specifications. See Protobuf descriptor messages and ROS 2
@@ -35,8 +34,7 @@ from proto2ros.utilities import to_ros_base_type, to_ros_field_name
 
 @dataclasses.dataclass
 class Equivalence:
-    """
-    An equivalence relation between a Protobuf composite (message or enum) and a ROS message.
+    """An equivalence relation between a Protobuf composite (message or enum) and a ROS message.
 
     More than one ROS message specification may be required to represent a single Protobuf
     composite. Auxiliary message specifications may be listed in that case.
@@ -76,10 +74,12 @@ def extract_leading_comments(location: SourceCodeInfo.Location) -> str:
 
 @functools.singledispatch
 def compute_equivalence(
-    descriptor: Any, source: FileDescriptorProto, location: SourceCodeInfo.Location, config: Configuration
+    descriptor: Any,
+    source: FileDescriptorProto,
+    location: SourceCodeInfo.Location,
+    config: Configuration,
 ) -> Equivalence:
-    """
-    Computes a suitable equivalence relation for some Protobuf composite type.
+    """Computes a suitable equivalence relation for some Protobuf composite type.
 
     Note this function operates as the entrypoint to all corresponding overloads (via single dispatch).
 
@@ -102,8 +102,7 @@ def compute_equivalence_for_enum(
     location: SourceCodeInfo.Location,
     config: Configuration,
 ) -> Equivalence:
-    """
-    Computes a suitable equivalence relation for a Protobuf enum type.
+    """Computes a suitable equivalence relation for a Protobuf enum type.
 
     Args:
         descriptor: the descriptor of the Protobuf enum of interest.
@@ -136,8 +135,7 @@ def compute_equivalence_for_enum(
 
 
 def translate_type_name(name: str, config: Configuration) -> str:
-    """
-    Translates a Protobuf type name to its ROS equivalent.
+    """Translates a Protobuf type name to its ROS equivalent.
 
     Args:
         name: fully qualified Protobuf type name.
@@ -194,8 +192,7 @@ PRIMITIVE_TYPES_MAPPING = {
 
 
 def translate_type(name: str, repeated: bool, config: Configuration) -> Type:
-    """
-    Translates a Protobuf type to its ROS equivalent.
+    """Translates a Protobuf type to its ROS equivalent.
 
     Args:
         name: Protobuf type name.
@@ -218,8 +215,7 @@ def translate_type(name: str, repeated: bool, config: Configuration) -> Type:
 
 
 def translate_any_type(any_expansion: Union[Set[str], str], repeated: bool, config: Configuration) -> Type:
-    """
-    Translates a ``google.protobuf.Any`` type to its ROS equivalent given an any expansion.
+    """Translates a ``google.protobuf.Any`` type to its ROS equivalent given an any expansion.
 
     Args:
         any_expansion: a Protobuf message type set that the given ``google.protobuf.Any``
@@ -248,8 +244,7 @@ def translate_field(
     location: SourceCodeInfo.Location,
     config: Configuration,
 ) -> Field:
-    """
-    Translates a Protobuf field descriptor to its ROS equivalent.
+    """Translates a Protobuf field descriptor to its ROS equivalent.
 
     Args:
         descriptor: a Protobuf field descriptor.
@@ -314,10 +309,12 @@ def translate_field(
 
 @compute_equivalence.register
 def compute_equivalence_for_message(
-    descriptor: DescriptorProto, source: FileDescriptorProto, location: SourceCodeInfo.Location, config: Configuration
+    descriptor: DescriptorProto,
+    source: FileDescriptorProto,
+    location: SourceCodeInfo.Location,
+    config: Configuration,
 ) -> Equivalence:
-    """
-    Computes a suitable equivalence relation for a Protobuf message type.
+    """Computes a suitable equivalence relation for a Protobuf message type.
 
     Currently, this function supports optional, repeated, and oneof fields of primitive, enum,
     map, message, and `google.protobuf.Any` type. Recursive or cyclic type dependencies may ensue
@@ -371,7 +368,11 @@ def compute_equivalence_for_message(
                 constants.append(mask_constant)
             fields.append(field)
 
-        for (oneof_path, oneof_decl), oneof_fields in zip(locate_repeated("oneof_decl", descriptor), oneof_field_sets):
+        for (oneof_path, oneof_decl), oneof_fields in zip(
+            locate_repeated("oneof_decl", descriptor),
+            oneof_field_sets,
+            strict=True,
+        ):
             oneof_name = inflection.underscore(oneof_decl.name)
             oneof_type_name = inflection.camelize(f"{name}_one_of_{oneof_name}")
             oneof_type = Type(f"{ros_package_name}/{oneof_type_name}")
@@ -389,11 +390,14 @@ def compute_equivalence_for_message(
             oneof_fields.append(which_field)
 
             oneof_message_spec = MessageSpecification(
-                oneof_type.pkg_name, oneof_type.type, oneof_fields, oneof_constants
+                oneof_type.pkg_name,
+                oneof_type.type,
+                oneof_fields,
+                oneof_constants,
             )
             oneof_message_spec.annotations["proto-type"] = protofqn(source, location) + f"[one-of {oneof_decl.name}]"
             oneof_message_spec.annotations["proto-class"] = "one-of"
-            oneof_message_spec.annotations["tagged"] = list(zip(oneof_constants[1:], oneof_fields[:-1]))
+            oneof_message_spec.annotations["tagged"] = list(zip(oneof_constants[1:], oneof_fields[:-1], strict=True))
             oneof_message_spec.annotations["tag"] = which_field
             auxiliary_message_specs.append(oneof_message_spec)
 
@@ -411,7 +415,7 @@ def compute_equivalence_for_message(
             field.annotations["optional"] = False  # field presence mask must always be present
             fields.append(field)
     else:
-        for i, (field_path, field_descriptor) in enumerate(locate_repeated("field", descriptor)):
+        for field_path, field_descriptor in locate_repeated("field", descriptor):
             if field_descriptor.options.deprecated and config.drop_deprecated:
                 continue
             field_location = resolve(source, field_path, location)
@@ -432,19 +436,21 @@ def compute_equivalence_for_message(
     if descriptor.options.map_entry:
         message_spec.annotations["map-inplace"] = map_inplace
     return Equivalence(
-        proto_spec=descriptor, message_spec=message_spec, auxiliary_message_specs=auxiliary_message_specs
+        proto_spec=descriptor,
+        message_spec=message_spec,
+        auxiliary_message_specs=auxiliary_message_specs,
     )
 
 
 @functools.singledispatch
 def extract_equivalences(descriptor: Any, *args: Any) -> Iterable[Equivalence]:
-    """
-    Extracts equivalence relations for all Protobuf composite types in some Protobuf descriptor.
+    """Extracts equivalence relations for all Protobuf composite types in some Protobuf descriptor.
 
     Note this function operates as the entrypoint to all corresponding overloads (via single dispatch).
 
     Args:
         descriptor: the descriptor bearing Protobuf composite types.
+        args: place holder for arguments
 
     Returns:
         an iterable over equivalence relations.
@@ -459,8 +465,7 @@ def extract_equivalences_from_message(
     location: SourceCodeInfo.Location,
     config: Configuration,
 ) -> Iterable[Equivalence]:
-    """
-    Extracts equivalence relations for a Protobuf message type and all nested composite types (if any).
+    """Extracts equivalence relations for a Protobuf message type and all nested composite types (if any).
 
     Args:
         message_descriptor: the descriptor of the Protobuf message of interest.
@@ -482,13 +487,13 @@ def extract_equivalences_from_message(
 
 @extract_equivalences.register
 def extract_equivalences_from_source(
-    source_descriptor: FileDescriptorProto, config: Configuration
+    source_descriptor: FileDescriptorProto,
+    config: Configuration,
 ) -> Iterable[Equivalence]:
-    """
-    Extracts all equivalence relations from a Protobuf source descriptor.
+    """Extracts all equivalence relations from a Protobuf source descriptor.
 
     Args:
-        source: the descriptor of the Protobuf source file.
+        source_descriptor: the descriptor of the Protobuf source file.
         config: a suitable configuration for the procedure.
 
     Returns:

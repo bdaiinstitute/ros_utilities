@@ -12,8 +12,7 @@ from rosidl_adapter.parser import MessageSpecification
 
 @dataclasses.dataclass
 class Configuration:
-    """
-    Mutable Protobuf <-> ROS configuration.
+    """Mutable Protobuf <-> ROS configuration.
 
     Attributes:
 

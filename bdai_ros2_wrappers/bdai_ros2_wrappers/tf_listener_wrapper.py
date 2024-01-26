@@ -17,12 +17,16 @@ from bdai_ros2_wrappers.futures import wait_for_future
 
 @runtime_checkable
 class StampLike(Protocol):
+    """A protocol similar to the Time msg"""
+
     sec: int
     nanosec: int
 
 
 @runtime_checkable
 class TimeLike(Protocol):
+    """A protocol similar to to rclpy.time.Time"""
+
     nanoseconds: int
 
 
@@ -36,8 +40,7 @@ def from_time_like(obj: Union[StampLike, TimeLike]) -> Time:
 
 
 class TFListenerWrapper:
-    """
-    A `tf2_ros` lookup device, wrapping both a buffer and a listener.
+    """A `tf2_ros` lookup device, wrapping both a buffer and a listener.
 
     When using process-wide machinery:
 
@@ -62,8 +65,7 @@ class TFListenerWrapper:
     """
 
     def __init__(self, node: Optional[Node] = None, cache_time_s: Optional[float] = None) -> None:
-        """
-        Initializes the wrapper.
+        """Initializes the wrapper.
 
         Args:
             node: optional node for transform listening, defaults to the current scope node.
@@ -83,18 +85,22 @@ class TFListenerWrapper:
 
     @property
     def buffer(self) -> Buffer:
+        """Returns the tf buffer"""
         return self._tf_buffer
 
     def shutdown(self) -> None:
+        """Shutdown the tf listener"""
         self._tf_listener.unregister()
 
     def wait_for_a_tform_b_async(
-        self, frame_a: str, frame_b: str, transform_time: Optional[Union[StampLike, TimeLike]] = None
+        self,
+        frame_a: str,
+        frame_b: str,
+        transform_time: Optional[Union[StampLike, TimeLike]] = None,
     ) -> Future:
-        """
-        Wait asynchronously for the transform from from_frame to to_frame to become available.
+        """Wait asynchronously for the transform from from_frame to to_frame to become available.
 
-        Parameters:
+        Args:
             frame_a: Base frame for transform. The transform returned will be frame_a_t_frame_b
             frame_b: Tip frame for transform. The transform returned will be frame_a_t_frame_b
             transform_time: The time at which to look up the transform. If left at None, the most
@@ -113,12 +119,11 @@ class TFListenerWrapper:
         transform_time: Optional[Union[StampLike, TimeLike]] = None,
         timeout_sec: Optional[float] = None,
     ) -> bool:
-        """
-        Wait for a transform from frame_a to frame_b to become available.
+        """Wait for a transform from frame_a to frame_b to become available.
 
         Note this is a blocking call. If the underlying node is not spinning, an indefinite wait may block forever.
 
-        Parameters:
+        Args:
             frame_a: Base frame for transform. The transform returned will be frame_a_t_frame_b
             frame_b: Tip frame for transform. The transform returned will be frame_a_t_frame_b
             transform_time: The time at which to look up the transform. If left at None, the most
@@ -131,9 +136,9 @@ class TFListenerWrapper:
         """
         if self._node.executor is None:
             if timeout_sec is None:
-                warnings.warn("Node is not spinning yet, wait may block forever")
+                warnings.warn("Node is not spinning yet, wait may block forever", stacklevel=1)
             elif timeout_sec > 0.0:
-                warnings.warn("Node is not spinning yet, wait may be futile")
+                warnings.warn("Node is not spinning yet, wait may be futile", stacklevel=1)
         future = self.wait_for_a_tform_b_async(frame_a, frame_b, transform_time)
         if not wait_for_future(future, timeout_sec, context=self._node.context):
             future.cancel()
@@ -148,10 +153,9 @@ class TFListenerWrapper:
         timeout_sec: Optional[float] = None,
         wait_for_frames: bool = False,
     ) -> TransformStamped:
-        """
-        Looks up the transform from frame_a to frame_b at the specified time.
+        """Looks up the transform from frame_a to frame_b at the specified time.
 
-        Parameters:
+        Args:
             frame_a: Base frame for transform. The transform returned will be frame_a_t_frame_b
             frame_b: Tip frame for transform. The transform returned will be frame_a_t_frame_b
             transform_time: The time at which to look up the transform. If left at None, the most
@@ -190,12 +194,15 @@ class TFListenerWrapper:
         return self._tf_buffer.lookup_transform(frame_a, frame_b, transform_time)
 
     def lookup_latest_timestamp(
-        self, frame_a: str, frame_b: str, timeout_sec: Optional[float] = None, wait_for_frames: bool = False
+        self,
+        frame_a: str,
+        frame_b: str,
+        timeout_sec: Optional[float] = None,
+        wait_for_frames: bool = False,
     ) -> Time:
-        """
-        Looks up the latest time at which a transform from frame_a to frame_b is available.
+        """Looks up the latest time at which a transform from frame_a to frame_b is available.
 
-        Parameters:
+        Args:
             frame_a: Base frame for transform.  The transform returned will be frame_a_t_frame_b
             frame_b: Tip frame for transform.  The transform returned will be frame_a_t_frame_b
             timeout_sec: The time to wait for the transform to become available if the requested time is beyond
