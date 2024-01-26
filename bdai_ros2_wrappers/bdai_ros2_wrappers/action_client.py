@@ -13,8 +13,7 @@ class ActionClientWrapper(rclpy.action.ActionClient):
     """A wrapper for ros2's ActionClient for extra functionality"""
 
     def __init__(self, action_type: Type[Action], action_name: str, node: Optional[Node] = None) -> None:
-        """
-        Constructor
+        """Constructor
 
         Args:
             action_type (Type[Action]): The type of the action
@@ -36,8 +35,7 @@ class ActionClientWrapper(rclpy.action.ActionClient):
         goal: Action.Goal,
         timeout_sec: Optional[float] = None,
     ) -> Optional[Action.Result]:
-        """
-        Sends an action goal and waits for the result
+        """Sends an action goal and waits for the result
 
         Args:
             action_name (str): A representative name of the action for logging
@@ -85,8 +83,7 @@ class ActionClientWrapper(rclpy.action.ActionClient):
         feedback_callback: Optional[Callable[[Action.Feedback], None]] = None,
         on_failure_callback: Optional[Callable[[], None]] = None,
     ) -> ActionHandle:
-        """
-        Sends an action goal asynchronously and create an `ActionHandle`
+        """Sends an action goal asynchronously and create an `ActionHandle`
 
         Args:
             action_name (str): A representative name of the action for logging

@@ -11,16 +11,14 @@ from bdai_ros2_wrappers.type_hints import SrvTypeResponse
 
 
 class ServiceHandle:
-    """
-    A handle for the lifecycle of a service.
+    """A handle for the lifecycle of a service.
 
     Handles getting a result after sending an ServiceRequest to Service
     as holding the various callbacks for sending an ServiceRequest (result, failure)
     """
 
     def __init__(self, service_name: str, logger: Optional[RcutilsLogger] = None, context: Optional[Context] = None):
-        """
-        Constructor
+        """Constructor
 
         Args:
             service_name: The name of the service handle to be used in logging

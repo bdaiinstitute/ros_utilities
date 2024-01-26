@@ -19,8 +19,7 @@ from proto2ros.conversions import convert
 
 @convert.register(proto2ros.msg.AnyProto, object)
 def convert_proto2ros_any_proto_message_to_some_proto(ros_msg: proto2ros.msg.AnyProto, proto_msg: Any) -> None:
-    """
-    Unpacks a proto2ros/AnyProto ROS message into any Protobuf message.
+    """Unpacks a proto2ros/AnyProto ROS message into any Protobuf message.
 
     Raises:
         ValueError: if the given ROS message cannot be unpacked onto the given Protobuf message.

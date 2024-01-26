@@ -29,8 +29,7 @@ MainCallable = typing.Union[MainCallableTakingNoArgs, MainCallableTakingArgv, Ma
 
 
 class ROSAwareProcess:
-    """
-    A ``main``-like function wrapper that binds a ROS 2 aware scope to each function invocation.
+    """A ``main``-like function wrapper that binds a ROS 2 aware scope to each function invocation.
 
     Only one process can be invoked at a time, becoming the ``current`` process.
     This enables global access to the process and, in consequence, to its scope.
@@ -54,8 +53,7 @@ class ROSAwareProcess:
         cli: typing.Optional[argparse.ArgumentParser] = None,
         **init_arguments: typing.Any,
     ):
-        """
-        Initializes the ROS 2 aware process.
+        """Initializes the ROS 2 aware process.
 
         Args:
             func: a ``main``-like function to wrap ie. a callable taking a sequence of strings,
@@ -112,8 +110,7 @@ class ROSAwareProcess:
         functools.update_wrapper(self, self._func)
 
     def __getattr__(self, name: str) -> typing.Any:
-        """
-        Gets missing attributes from the underlying scope.
+        """Gets missing attributes from the underlying scope.
 
         Raises:
             RuntimeError: if the process is not executing.
@@ -124,8 +121,7 @@ class ROSAwareProcess:
             return getattr(self._scope, name)
 
     def __setattr__(self, name: str, value: typing.Any) -> None:
-        """
-        Sets public attributes on the underlying scope when possible.
+        """Sets public attributes on the underlying scope when possible.
 
         Args:
             name: name of the attribute to be set
@@ -137,8 +133,7 @@ class ROSAwareProcess:
         super().__setattr__(name, value)
 
     def __call__(self, argv: typing.Optional[typing.Sequence[str]] = None) -> typing.Optional[int]:
-        """
-        Invokes wrapped process function in a ROS 2 aware scope.
+        """Invokes wrapped process function in a ROS 2 aware scope.
 
         Args:
             argv: optional command line-like arguments.
@@ -188,8 +183,7 @@ class ROSAwareProcess:
             ROSAwareProcess.lock.release()
 
     def wait_for_shutdown(self, *, timeout_sec: typing.Optional[float] = None) -> bool:
-        """
-        Wait for shutdown of the underlying scope context.
+        """Wait for shutdown of the underlying scope context.
 
         Args:
             timeout_sec: optional timeout for wait, wait indefinitely by default.
@@ -240,8 +234,7 @@ def tf_listener() -> typing.Optional[TFListenerWrapper]:
 
 
 def load(factory: AnyEntityFactoryCallable, *args: typing.Any, **kwargs: typing.Any) -> AnyEntity:
-    """
-    Loads a ROS 2 node (or a collection thereof) within the current ROS 2 aware process scope.
+    """Loads a ROS 2 node (or a collection thereof) within the current ROS 2 aware process scope.
 
     See `ROSAwareProcess` and `ROSAwareScope.load` documentation for further
     reference on positional and keyword arguments taken by this function.
@@ -256,8 +249,7 @@ def load(factory: AnyEntityFactoryCallable, *args: typing.Any, **kwargs: typing.
 
 
 def unload(loaded: AnyEntity) -> None:
-    """
-    Unloads a ROS 2 node (or a collection thereof) from the current ROS 2 aware process scope.
+    """Unloads a ROS 2 node (or a collection thereof) from the current ROS 2 aware process scope.
 
     See `ROSAwareProcess` and `ROSAwareScope.unload` documentation for further
     reference on positional and keyword arguments taken by this function.
@@ -276,8 +268,7 @@ def managed(
     *args: typing.Any,
     **kwargs: typing.Any,
 ) -> typing.ContextManager[AnyEntity]:
-    """
-    Manages a ROS 2 node (or a collection thereof) within the current ROS 2 aware process scope.
+    """Manages a ROS 2 node (or a collection thereof) within the current ROS 2 aware process scope.
 
     See `ROSAwareProcess` and `ROSAwareScope.managed` documentation for further
     reference on positional and keyword arguments taken by this function.
@@ -292,8 +283,7 @@ def managed(
 
 
 def spin(factory: typing.Optional[AnyEntityFactoryCallable] = None, *args: typing.Any, **kwargs: typing.Any) -> None:
-    """
-    Spins current ROS 2 aware process executor (and all ROS 2 nodes in it).
+    """Spins current ROS 2 aware process executor (and all ROS 2 nodes in it).
 
     Optionally, manages a ROS 2 node (or a collection thereof) for as long as it spins.
 
@@ -330,8 +320,7 @@ def try_shutdown() -> None:
 
 
 def wait_for_shutdown(*, timeout_sec: typing.Optional[float] = None) -> bool:
-    """
-    Wait for current ROS 2 aware process to shutdown.
+    """Wait for current ROS 2 aware process to shutdown.
 
     See `ROSAwareProcess.wait_for_shutdown` documentation for further reference
     on positional and keyword arguments taken by this function.

@@ -1,6 +1,6 @@
 # See https://docs.astral.sh/ruff/rules/ for ruff rules
 select = ["A", "B", "COM", "D101", "D102", "D103", "D2", "D3", "D402", "D417", "D419", "E", "ERA", "F", "I", "NPY", "RET", "RUF100", "SIM"]
-ignore = ["D203", "D212"]
+ignore = ["D203", "D213"]
 
 # Allow autofix for all enabled rules (when `--fix`) is provided.
 fixable = ["A", "B", "C", "D", "E", "F", "G", "I", "N", "Q", "S", "T", "W", "ANN", "ARG", "BLE", "COM", "DJ", "DTZ", "EM", "ERA", "EXE", "FBT", "ICN", "INP", "ISC", "NPY", "PD", "PGH", "PIE", "PL", "PT", "PTH", "PYI", "RET", "RSE", "RUF", "SIM", "SLF", "TCH", "TID", "TRY", "UP", "YTT"]

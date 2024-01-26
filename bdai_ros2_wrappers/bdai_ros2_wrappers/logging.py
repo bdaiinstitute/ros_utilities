@@ -52,8 +52,7 @@ class RcutilsLogHandler(logging.Handler):
         self.setFormatter(self.default_formatter)
 
     def setLevel(self, level: typing.Union[int, str]) -> None:
-        """
-        Sets the threshold for this handler to level.
+        """Sets the threshold for this handler to level.
 
         Logging messages which are less severe than level will be ignored. When a handler is created, the level is set
         to NOTSET (which causes all messages to be processed).
@@ -82,8 +81,7 @@ class RcutilsLogHandler(logging.Handler):
 
 @contextlib.contextmanager
 def logs_to_ros(node: Node) -> typing.Iterator[None]:
-    """
-    Forwards root `logging.Logger` logs to the ROS 2 logging system.
+    """Forwards root `logging.Logger` logs to the ROS 2 logging system.
 
     Note that logs are subject to severity level thresholds and propagation
     semantics at both the `logging` module and the ROS 2 logging system. For

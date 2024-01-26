@@ -12,8 +12,7 @@ from bdai_ros2_wrappers.type_hints import Action, ActionType
 
 
 class SingleGoalMultipleActionServers:
-    """
-    Wrapper around multiple action servers that only allows a single Action to be executing at one time.
+    """Wrapper around multiple action servers that only allows a single Action to be executing at one time.
 
     If a new Action.Goal is received by any of the action servers, the existing Action (if there is one) is preemptively
     canceled.
