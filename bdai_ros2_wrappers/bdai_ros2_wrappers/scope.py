@@ -483,7 +483,6 @@ def top(
         args: optional command-line arguments for context initialization.
         context: optional context to manage. If none is provided, one will
         be created. For global scopes, the default context will be used.
-        context: An optional ros context.
         global_: Whether to use the global context or a locally constructed one if one is not provided.
         domain_id: A domain id used for initializing rclpy.
         kwargs: keyword arguments to pass to `ROSAwareScope`.

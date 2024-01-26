@@ -397,7 +397,7 @@ def compute_equivalence_for_message(
             )
             oneof_message_spec.annotations["proto-type"] = protofqn(source, location) + f"[one-of {oneof_decl.name}]"
             oneof_message_spec.annotations["proto-class"] = "one-of"
-            oneof_message_spec.annotations["tagged"] = list(zip(oneof_constants[1:], oneof_fields[:-1], strict=True))
+            oneof_message_spec.annotations["tagged"] = list(zip(oneof_constants[1:], oneof_fields[:-2], strict=True))
             oneof_message_spec.annotations["tag"] = which_field
             auxiliary_message_specs.append(oneof_message_spec)
 

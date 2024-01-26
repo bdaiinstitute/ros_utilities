@@ -8,7 +8,7 @@ from rclpy.node import Node
 from bdai_ros2_wrappers.single_goal_multiple_action_servers import SingleGoalMultipleActionServers
 from bdai_ros2_wrappers.type_hints import ActionType
 
-# Note: for this to work correctly you must use a multi-threaded executor when spinning the node!  E.g.:
+# Note: for this to work correctly you must use a multi-threaded executor when spinning the node!
 
 
 class SingleGoalActionServer(SingleGoalMultipleActionServers):
