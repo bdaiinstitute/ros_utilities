@@ -13,7 +13,7 @@ from bdai_ros2_wrappers.type_hints import Action
 
 
 class ActionHandle:
-    """Handle for the lifecycle of an action
+    """Handle for the lifecycle of an action.
 
     Handles the two stage process that is getting a result after sending an ActionGoal to an ActionServer as well
     as holding the various callbacks for sending an ActionGoal (cancel, failure, feedback, result)
@@ -25,7 +25,7 @@ class ActionHandle:
         Args:
             action_name (str): The name of the action (for logging purposes)
             logger (Optional[RcutilsLogger]): An optional logger to use. If none is provided, one is created
-            context (Optional[Context]): The ros context
+            context (Optional[Context]): An optional ros context
         """
         if context is None:
             context = get_default_context()

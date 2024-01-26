@@ -613,6 +613,8 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
                     for task in list(self._wip):
                         if task.done():
                             del self._wip[task]
+
+                            # ignore concurrent entity destruction
                             with contextlib.suppress(rclpy.executors.InvalidHandle):
                                 task.result()
 
