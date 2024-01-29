@@ -1,7 +1,7 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 import array
 
-from action_tutorials_interfaces.action import Fibonacci
+from example_interfaces.action import Fibonacci
 from rclpy.action.server import ServerGoalHandle
 
 from bdai_ros2_wrappers.action_client import ActionClientWrapper

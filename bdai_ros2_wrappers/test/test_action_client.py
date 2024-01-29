@@ -3,7 +3,7 @@ import array
 import time
 from typing import Any
 
-from action_tutorials_interfaces.action import Fibonacci
+from example_interfaces.action import Fibonacci
 from rclpy.action.server import ActionServer, GoalResponse, ServerGoalHandle
 
 from bdai_ros2_wrappers.action_client import ActionClientWrapper

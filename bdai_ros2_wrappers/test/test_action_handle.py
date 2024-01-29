@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Optional, Tuple
 from unittest.mock import Mock
 
-from action_tutorials_interfaces.action import Fibonacci
+from example_interfaces.action import Fibonacci
 from rclpy.action import ActionClient, ActionServer
 from rclpy.action.server import CancelResponse, GoalResponse, ServerGoalHandle
 from rclpy.node import Node
@@ -35,19 +35,19 @@ def _execute_callback_abort(goal_handle: ServerGoalHandle) -> Fibonacci.Result:
 
 def _execute_callback_feedback(goal_handle: ServerGoalHandle) -> Fibonacci.Result:
     feedback = Fibonacci.Feedback()
-    feedback.partial_sequence = [0, 1]
+    feedback.sequence = [0, 1]
     goal_handle.publish_feedback(feedback)
     time.sleep(0.001)
 
     for i in range(1, goal_handle.request.order):
-        feedback.partial_sequence.append(feedback.partial_sequence[i] + feedback.partial_sequence[i - 1])
+        feedback.sequence.append(feedback.sequence[i] + feedback.sequence[i - 1])
         goal_handle.publish_feedback(feedback)
         time.sleep(0.01)
 
     goal_handle.succeed()
 
     result = Fibonacci.Result()
-    result.sequence = feedback.partial_sequence
+    result.sequence = feedback.sequence
     return result
 
 
