@@ -28,7 +28,7 @@ def fibonacci_sequence(order: int) -> Iterable[int]:
         yield 1
     if order > 1:
         sequence: deque = deque([0, 1], maxlen=2)
-        for partial_order in range(2, order + 1):
+        for _partial_order in range(2, order + 1):
             sequence.append(sequence[-1] + sequence[-2])
             yield sequence[-1]
 
@@ -84,14 +84,18 @@ def test_successful_asynchronous_action_invocation(ros: ROSAwareScope) -> None:
 
 
 def test_spin_on_succesful_asynchronous_action_invocation() -> None:
-    with ros_scope.top(global_=True, prebaked=False, namespace="fixture") as ros:
-        with foreground(SingleThreadedExecutor()) as ros.executor:
-            with ros.managed(Node, node_name="test_node") as ros.node:
-                ActionServer(ros.node, Fibonacci, "fibonacci/compute", default_execute_callback)
-                compute_fibonacci = Actionable(Fibonacci, "fibonacci/compute", ros.node)
-                action = compute_fibonacci.asynchronously(Fibonacci.Goal(order=5))
-                ros.executor.spin_until_future_complete(action.as_future(), timeout_sec=10.0)
-                assert action.status == GoalStatus.STATUS_SUCCEEDED
+    # Prevent ruff from switching to parenthesized context
+    # managers or it will break Python 3.8 compatibility.
+    # fmt: off
+    with ros_scope.top(global_=True, prebaked=False, namespace="fixture") as ros, \
+        foreground(SingleThreadedExecutor()) as ros.executor, \
+        ros.managed(Node, node_name="test_node") as ros.node:
+    # fmt: on
+        ActionServer(ros.node, Fibonacci, "fibonacci/compute", default_execute_callback)
+        compute_fibonacci = Actionable(Fibonacci, "fibonacci/compute", ros.node)
+        action = compute_fibonacci.asynchronously(Fibonacci.Goal(order=5))
+        ros.executor.spin_until_future_complete(action.as_future(), timeout_sec=10.0)
+        assert action.status == GoalStatus.STATUS_SUCCEEDED
 
 
 def test_successful_asynchronous_action_invocation_with_feedback(ros: ROSAwareScope) -> None:
@@ -190,7 +194,11 @@ def test_successful_asynchronous_action_invocation_with_ephemeral_feedback(ros: 
 
 def test_rejected_synchronous_action_invocation(ros: ROSAwareScope) -> None:
     ActionServer(
-        ros.node, Fibonacci, "fibonacci/compute", default_execute_callback, goal_callback=lambda _: GoalResponse.REJECT
+        ros.node,
+        Fibonacci,
+        "fibonacci/compute",
+        default_execute_callback,
+        goal_callback=lambda _: GoalResponse.REJECT,
     )
     compute_fibonacci = Actionable(Fibonacci, "fibonacci/compute", ros.node)
     with pytest.raises(ActionRejected):
@@ -199,7 +207,11 @@ def test_rejected_synchronous_action_invocation(ros: ROSAwareScope) -> None:
 
 def test_rejected_asynchronous_action_invocation(ros: ROSAwareScope) -> None:
     ActionServer(
-        ros.node, Fibonacci, "fibonacci/compute", default_execute_callback, goal_callback=lambda _: GoalResponse.REJECT
+        ros.node,
+        Fibonacci,
+        "fibonacci/compute",
+        default_execute_callback,
+        goal_callback=lambda _: GoalResponse.REJECT,
     )
     compute_fibonacci = Actionable(Fibonacci, "fibonacci/compute", ros.node)
     action = compute_fibonacci.asynchronously(Fibonacci.Goal(order=5))
@@ -215,8 +227,7 @@ def test_rejected_asynchronous_action_invocation(ros: ROSAwareScope) -> None:
 def test_aborted_synchronous_action_invocation(ros: ROSAwareScope) -> None:
     def execute_callback(goal_handle: ServerGoalHandle) -> Fibonacci.Result:
         goal_handle.abort()
-        result = Fibonacci.Result()
-        return result
+        return Fibonacci.Result()
 
     ActionServer(ros.node, Fibonacci, "fibonacci/compute", execute_callback)
     compute_fibonacci = Actionable(Fibonacci, "fibonacci/compute", ros.node)
@@ -227,8 +238,7 @@ def test_aborted_synchronous_action_invocation(ros: ROSAwareScope) -> None:
 def test_aborted_asynchronous_action_invocation(ros: ROSAwareScope) -> None:
     def execute_callback(goal_handle: ServerGoalHandle) -> Fibonacci.Result:
         goal_handle.abort()
-        result = Fibonacci.Result()
-        return result
+        return Fibonacci.Result()
 
     ActionServer(ros.node, Fibonacci, "fibonacci/compute", execute_callback)
     compute_fibonacci = Actionable(Fibonacci, "fibonacci/compute", ros.node)
@@ -252,7 +262,11 @@ def test_cancelled_synchronous_action_invocation(ros: ROSAwareScope) -> None:
             time.sleep(0.01)
 
     ActionServer(
-        ros.node, Fibonacci, "fibonacci/compute", execute_callback, cancel_callback=lambda _: CancelResponse.ACCEPT
+        ros.node,
+        Fibonacci,
+        "fibonacci/compute",
+        execute_callback,
+        cancel_callback=lambda _: CancelResponse.ACCEPT,
     )
     compute_fibonacci = Actionable(Fibonacci, "fibonacci/compute", ros.node)
 
@@ -278,7 +292,11 @@ def test_cancelled_asynchronous_action_invocation(ros: ROSAwareScope) -> None:
             time.sleep(0.01)
 
     ActionServer(
-        ros.node, Fibonacci, "fibonacci/compute", execute_callback, cancel_callback=lambda _: CancelResponse.ACCEPT
+        ros.node,
+        Fibonacci,
+        "fibonacci/compute",
+        execute_callback,
+        cancel_callback=lambda _: CancelResponse.ACCEPT,
     )
     compute_fibonacci = Actionable(Fibonacci, "fibonacci/compute", ros.node)
     action = compute_fibonacci.asynchronously(Fibonacci.Goal(order=5))

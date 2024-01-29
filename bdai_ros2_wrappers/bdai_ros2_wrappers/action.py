@@ -1,5 +1,6 @@
 # Copyright (c) 2024 Boston Dynamics AI Institute Inc.  All rights reserved.
 
+import contextlib
 import inspect
 import queue
 import threading
@@ -54,11 +55,11 @@ class Tape:
         """A synchronized data stream."""
 
         def __init__(self, max_size: Optional[int] = None, label: Optional[str] = None) -> None:
-            """
-            Initializes the stream.
+            """Initializes the stream.
 
             Args:
                 max_size: optional maximum stream size. Must be a positive number.
+                label: optional label for the stream (useful in debug and error messages).
             """
             assert max_size is None or max_size > 0
             self._queue: queue.Queue = queue.Queue(max_size or 0)
@@ -66,11 +67,11 @@ class Tape:
 
         @property
         def label(self) -> Optional[str]:
+            """Get stream label."""
             return self._label
 
         def write(self, data: Any) -> bool:
-            """
-            Write data to the stream.
+            """Write data to the stream.
 
             Returns:
                 True if the write operation succeeded, False if the
@@ -84,8 +85,7 @@ class Tape:
             return True
 
         def read(self, timeout_sec: Optional[float] = None) -> Optional[Any]:
-            """
-            Read data from the stream.
+            """Read data from the stream.
 
             Args:
                 timeout_sec: optional read timeout, in seconds.
@@ -102,13 +102,9 @@ class Tape:
             return data
 
         def interrupt(self) -> None:
-            """
-            Interrupt the stream and wake up the reader.
-            """
-            try:
+            """Interrupt the stream and wake up the reader."""
+            with contextlib.suppress(queue.Full):
                 self._queue.put_nowait(None)
-            except queue.Full:
-                pass
 
         @property
         def consumed(self) -> bool:
@@ -116,8 +112,7 @@ class Tape:
             return self._queue.empty()
 
     def __init__(self, max_length: Optional[int] = None) -> None:
-        """
-        Initializes the data tape.
+        """Initializes the data tape.
 
         Args:
             max_length: optional maximum tape length.
@@ -137,7 +132,7 @@ class Tape:
                     message = "Stream is filled up, dropping message"
                     if stream.label:
                         message = f"{stream.label}: {message}"
-                    warnings.warn(message, RuntimeWarning)
+                    warnings.warn(message, RuntimeWarning, stacklevel=1)
             if self._content is not None:
                 self._content.append(data)
 
@@ -150,8 +145,7 @@ class Tape:
         timeout_sec: Optional[float] = None,
         label: Optional[str] = None,
     ) -> Iterator:
-        """
-        Iterate over the data tape.
+        """Iterate over the data tape.
 
         When following the data tape, iteration stops when the given timeout
         expires and when the data tape is closed.
@@ -205,8 +199,7 @@ class Tape:
         return _generator()
 
     def close(self) -> None:
-        """
-        Close the data tape.
+        """Close the data tape.
 
         This will interrupt all following content iterators.
         """
@@ -217,8 +210,7 @@ class Tape:
 
 
 class ActionFuture:
-    """
-    A proxy to a ROS 2 action invocation.
+    """A proxy to a ROS 2 action invocation.
 
     Action futures are to actions what plain futures are to services, with a bit more functionality
     to cover action specific semantics such as feedback and cancellation.
@@ -227,8 +219,7 @@ class ActionFuture:
     """
 
     def __init__(self, goal_handle_future: Future, feedback_tape: Optional[Tape] = None) -> None:
-        """
-        Initializes the action future.
+        """Initializes the action future.
 
         Args:
             goal_handle_future: action goal handle future, as returned by the
@@ -285,8 +276,7 @@ class ActionFuture:
 
     @property
     def goal_handle(self) -> ClientGoalHandle:
-        """
-        Get action goal handle.
+        """Get action goal handle.
 
         Raises:
             RuntimeError: if action has not been accepted or rejected yet.
@@ -297,8 +287,7 @@ class ActionFuture:
 
     @property
     def finalization(self) -> Future:
-        """
-        Get future to wait for action finalization.
+        """Get future to wait for action finalization.
 
         Action rejection also counts as finalization.
         """
@@ -311,8 +300,7 @@ class ActionFuture:
 
     @property
     def result(self) -> Any:
-        """
-        Get action result.
+        """Get action result.
 
         Raises:
             RuntimeError: if action is still executing.
@@ -328,8 +316,7 @@ class ActionFuture:
 
     @property
     def feedback(self) -> Sequence:
-        """
-        Get all buffered action feedback.
+        """Get all buffered action feedback.
 
         Action must have been accepted before any feedback can be fetched.
 
@@ -348,10 +335,13 @@ class ActionFuture:
         return list(self._feedback_tape.content())
 
     def feedback_stream(
-        self, *, forward_only: bool = False, buffer_size: Optional[int] = None, timeout_sec: Optional[float] = None
+        self,
+        *,
+        forward_only: bool = False,
+        buffer_size: Optional[int] = None,
+        timeout_sec: Optional[float] = None,
     ) -> Iterator:
-        """
-        Iterate over action feedback as it comes.
+        """Iterate over action feedback as it comes.
 
         Iteration stops when the given timeout expires or when the action is done executing.
         Note that iterating over action feedback to come is a blocking operation.
@@ -423,8 +413,7 @@ class ActionFuture:
 
     @property
     def status(self) -> Optional[int]:
-        """
-        Get action status code.
+        """Get action status code.
 
         See `action_msgs.msg.GoalStatus` documentation for status codes.
         Rejected actions are conventially assigned `None` for status.
@@ -441,8 +430,7 @@ class ActionFuture:
         return self._result_future.result().status
 
     def as_future(self) -> Future:
-        """
-        Get action future as a plain future.
+        """Get action future as a plain future.
 
         Useful to pass action futures to APIs that expect plain futures.
         """
@@ -477,8 +465,7 @@ class ActionFuture:
         return future
 
     def cancel(self) -> Future:
-        """
-        Cancel action.
+        """Cancel action.
 
         Returns:
             a future for the cancellation status code.
@@ -501,25 +488,22 @@ class ActionFuture:
 
 
 class Actionable:
-    """
-    An ergonomic interface to call actions in ROS 2.
+    """An ergonomic interface to call actions in ROS 2.
 
     Actionables wrap `rclpy.action.ActionClient` instances to allow for synchronous
     and asynchronous action invocation, in a way that resembles remote procedure calls.
     """
 
     def __init__(self, action_type: Type, action_name: str, node: Optional[Node] = None, **kwargs: Any) -> None:
-        """
-        Initializes the actionable.
+        """Initializes the actionable.
 
         Args:
             action_type: Target action type class (as generated by ``rosidl``).
             action_name: Name of the target action in the ROS 2 graph.
             node: optional node for the underlying action client, defaults to
             the current process node.
-
-        All other keyword arguments are forward to the underlying action client.
-        See `rclpy.action.ActionClient` documentation for further reference.
+            kwargs: other keyword arguments are forwarded to the underlying action client.
+            See `rclpy.action.ActionClient` documentation for further reference.
         """
         node = node or scope.node()
         self._action_type = action_type
@@ -546,10 +530,13 @@ class Actionable:
         return self.synchronously(*args, **kwargs)
 
     def synchronously(
-        self, goal: Any, *, feedback_callback: Optional[Callable] = None, timeout_sec: Optional[float] = None
+        self,
+        goal: Any,
+        *,
+        feedback_callback: Optional[Callable] = None,
+        timeout_sec: Optional[float] = None,
     ) -> Any:
-        """
-        Invoke action synchronously.
+        """Invoke action synchronously.
 
         Args:
             goal: goal to invoke action with.
@@ -584,8 +571,7 @@ class Actionable:
         return action.result
 
     def asynchronously(self, goal: Any, *, track_feedback: Union[int, bool] = False) -> ActionFuture:
-        """
-        Invoke action asynchronously.
+        """Invoke action asynchronously.
 
         Args:
             goal: goal to invoke action with.
@@ -603,7 +589,8 @@ class Actionable:
                 feedback_tape_length = track_feedback
             feedback_tape = Tape(feedback_tape_length)
             goal_handle_future = self._action_client.send_goal_async(
-                goal, lambda feedback: feedback_tape.write(feedback.feedback)
+                goal,
+                lambda feedback: feedback_tape.write(feedback.feedback),
             )
         else:
             goal_handle_future = self._action_client.send_goal_async(goal)
