@@ -84,13 +84,9 @@ def test_successful_asynchronous_action_invocation(ros: ROSAwareScope) -> None:
 
 
 def test_spin_on_succesful_asynchronous_action_invocation() -> None:
-    # Prevent ruff from switching to parenthesized context
-    # managers or it will break Python 3.8 compatibility.
-    # fmt: off
-    with ros_scope.top(global_=True, prebaked=False, namespace="fixture") as ros, \
-        foreground(SingleThreadedExecutor()) as ros.executor, \
-        ros.managed(Node, node_name="test_node") as ros.node:
-    # fmt: on
+    with ros_scope.top(global_=True, prebaked=False, namespace="fixture") as ros, foreground(
+        SingleThreadedExecutor(),
+    ) as ros.executor, ros.managed(Node, node_name="test_node") as ros.node:
         ActionServer(ros.node, Fibonacci, "fibonacci/compute", default_execute_callback)
         compute_fibonacci = Actionable(Fibonacci, "fibonacci/compute", ros.node)
         action = compute_fibonacci.asynchronously(Fibonacci.Goal(order=5))

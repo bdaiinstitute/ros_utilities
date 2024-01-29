@@ -346,43 +346,42 @@ def convert_proto2ros_value_message_to_google_protobuf_value_proto(
     proto_msg: google.protobuf.struct_pb2.Value,
 ) -> None:
     """Converts from proto2ros/Value ROS messages to google.protobuf.Value Protobuf messages."""
-    match ros_msg.kind:
-        case proto2ros.msg.Value.NUMBER_VALUE_SET:
-            proto_msg.number_value = ros_msg.number_value
-        case proto2ros.msg.Value.STRING_VALUE_SET:
-            proto_msg.string_value = ros_msg.string_value
-        case proto2ros.msg.Value.BOOL_VALUE_SET:
-            proto_msg.bool_value = ros_msg.bool_value
-        case proto2ros.msg.Value.STRUCT_VALUE_SET:
-            if proto_msg.struct_value.type_name != "proto2ros/Struct":
-                raise ValueError(
-                    f"expected proto2ros/Struct message for struct_value member, got {proto_msg.struct_value.type}",
-                )
-            typed_field_message = rclpy.serialization.deserialize_message(
-                proto_msg.struct_value.value.tobytes(),
-                proto2ros.msg.Struct,
+    if ros_msg.kind == proto2ros.msg.Value.NUMBER_VALUE_SET:
+        proto_msg.number_value = ros_msg.number_value
+    elif ros_msg.kind == proto2ros.msg.Value.STRING_VALUE_SET:
+        proto_msg.string_value = ros_msg.string_value
+    elif ros_msg.kind == proto2ros.msg.Value.BOOL_VALUE_SET:
+        proto_msg.bool_value = ros_msg.bool_value
+    elif ros_msg.kind == proto2ros.msg.Value.STRUCT_VALUE_SET:
+        if proto_msg.struct_value.type_name != "proto2ros/Struct":
+            raise ValueError(
+                f"expected proto2ros/Struct message for struct_value member, got {proto_msg.struct_value.type}",
             )
-            convert_proto2ros_struct_message_to_google_protobuf_struct_proto(
-                typed_field_message,
-                proto_msg.struct_value,
+        typed_field_message = rclpy.serialization.deserialize_message(
+            proto_msg.struct_value.value.tobytes(),
+            proto2ros.msg.Struct,
+        )
+        convert_proto2ros_struct_message_to_google_protobuf_struct_proto(
+            typed_field_message,
+            proto_msg.struct_value,
+        )
+    elif ros_msg.kind == proto2ros.msg.Value.LIST_VALUE_SET:
+        if proto_msg.list_value.type_name != "proto2ros/List":
+            raise ValueError(
+                f"expected proto2ros/Struct message for list_value member, got {proto_msg.list_value.type}",
             )
-        case proto2ros.msg.Value.LIST_VALUE_SET:
-            if proto_msg.list_value.type_name != "proto2ros/List":
-                raise ValueError(
-                    f"expected proto2ros/Struct message for list_value member, got {proto_msg.list_value.type}",
-                )
-            typed_field_message = rclpy.serialization.deserialize_message(
-                proto_msg.list_value.value.tobytes(),
-                proto2ros.msg.List,
-            )
-            convert_proto2ros_list_message_to_google_protobuf_list_value_proto(
-                typed_field_message,
-                proto_msg.list_value,
-            )
-        case proto2ros.msg.Value.NO_VALUE_SET:
-            proto_msg.null_value = google.protobuf.struct_pb2.NullValue.NULL_VALUE
-        case _:
-            raise ValueError(f"unexpected value in kind member: {ros_msg.kind}")
+        typed_field_message = rclpy.serialization.deserialize_message(
+            proto_msg.list_value.value.tobytes(),
+            proto2ros.msg.List,
+        )
+        convert_proto2ros_list_message_to_google_protobuf_list_value_proto(
+            typed_field_message,
+            proto_msg.list_value,
+        )
+    elif ros_msg.kind == proto2ros.msg.Value.NO_VALUE_SET:
+        proto_msg.null_value = google.protobuf.struct_pb2.NullValue.NULL_VALUE
+    else:
+        raise ValueError(f"unexpected value in kind member: {ros_msg.kind}")
 
 
 convert_proto2ros_value_to_proto = convert_proto2ros_value_message_to_google_protobuf_value_proto
@@ -394,35 +393,35 @@ def convert_google_protobuf_value_proto_to_proto2ros_value_message(
     ros_msg: proto2ros.msg.Value,
 ) -> None:
     """Converts from google.protobuf.Value Protobuf messages to proto2ros/Value ROS messages."""
-    match proto_msg.WhichOneOf("kind"):
-        case "null_value":
-            ros_msg.kind = proto2ros.msg.Value.NO_VALUE_SET
-        case "number_value":
-            ros_msg.number_value = proto_msg.number_value
-            ros_msg.kind = proto2ros.msg.Value.NUMBER_VALUE_SET
-        case "string_value":
-            ros_msg.string_value = proto_msg.string_value
-            ros_msg.kind = proto2ros.msg.Value.STRING_VALUE_SET
-        case "bool_value":
-            ros_msg.bool_value = proto_msg.bool_value
-            ros_msg.kind = proto2ros.msg.Value.BOOL_VALUE_SET
-        case "struct_value":
-            typed_struct_message = proto2ros.msg.Struct()
-            convert_google_protobuf_struct_proto_to_proto2ros_struct_message(
-                proto_msg.struct_value,
-                typed_struct_message,
-            )
-            ros_msg.struct_value.value = rclpy.serialization.serialize_message(typed_struct_message)
-            ros_msg.struct_value.type_name = "proto2ros/Struct"
-            ros_msg.kind = proto2ros.msg.Value.STRUCT_VALUE_SET
-        case "list_value":
-            typed_list_message = proto2ros.msg.List()
-            convert_google_protobuf_list_value_proto_to_proto2ros_list_message(proto_msg.list_value, typed_list_message)
-            ros_msg.list_value.value = rclpy.serialization.serialize_message(typed_list_message)
-            ros_msg.list_value.type_name = "proto2ros/List"
-            ros_msg.kind = proto2ros.msg.Value.LIST_VALUE_SET
-        case _:
-            raise ValueError("unexpected one-of field: " + proto_msg.WhichOneOf("kind"))
+    which = proto_msg.WhichOneOf("kind")
+    if which == "null_value":
+        ros_msg.kind = proto2ros.msg.Value.NO_VALUE_SET
+    elif which == "number_value":
+        ros_msg.number_value = proto_msg.number_value
+        ros_msg.kind = proto2ros.msg.Value.NUMBER_VALUE_SET
+    elif which == "string_value":
+        ros_msg.string_value = proto_msg.string_value
+        ros_msg.kind = proto2ros.msg.Value.STRING_VALUE_SET
+    elif which == "bool_value":
+        ros_msg.bool_value = proto_msg.bool_value
+        ros_msg.kind = proto2ros.msg.Value.BOOL_VALUE_SET
+    elif which == "struct_value":
+        typed_struct_message = proto2ros.msg.Struct()
+        convert_google_protobuf_struct_proto_to_proto2ros_struct_message(
+            proto_msg.struct_value,
+            typed_struct_message,
+        )
+        ros_msg.struct_value.value = rclpy.serialization.serialize_message(typed_struct_message)
+        ros_msg.struct_value.type_name = "proto2ros/Struct"
+        ros_msg.kind = proto2ros.msg.Value.STRUCT_VALUE_SET
+    elif which == "list_value":
+        typed_list_message = proto2ros.msg.List()
+        convert_google_protobuf_list_value_proto_to_proto2ros_list_message(proto_msg.list_value, typed_list_message)
+        ros_msg.list_value.value = rclpy.serialization.serialize_message(typed_list_message)
+        ros_msg.list_value.type_name = "proto2ros/List"
+        ros_msg.kind = proto2ros.msg.Value.LIST_VALUE_SET
+    else:
+        raise ValueError("unexpected one-of field: " + proto_msg.WhichOneOf("kind"))
 
 
 convert_proto_to_proto2ros_value = convert_google_protobuf_value_proto_to_proto2ros_value_message
