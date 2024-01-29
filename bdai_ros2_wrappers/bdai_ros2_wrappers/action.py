@@ -567,6 +567,7 @@ class Actionable:
             ActionRejected: if the action was not accepted.
             ActionCancelled: if the action was cancelled.
             ActionAborted: if the action was aborted.
+            RuntimeError: if there is an internal server error.
         """
         action = ActionFuture(self._action_client.send_goal_async(goal, feedback_callback))
         if not wait_for_future(action.finalization, timeout_sec=timeout_sec):
@@ -578,6 +579,8 @@ class Actionable:
             raise ActionCancelled()
         if action.aborted:
             raise ActionAborted()
+        if not action.succeeded:
+            raise RuntimeError("internal server error")
         return action.result
 
     def asynchronously(self, goal: Any, *, track_feedback: Union[int, bool] = False) -> ActionFuture:
