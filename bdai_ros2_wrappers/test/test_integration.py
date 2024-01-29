@@ -88,8 +88,7 @@ def ros_graph(ros: ROSAwareScope) -> None:
 
 
 def test_blocking_sequence(ros: ROSAwareScope) -> None:
-    """
-    Asserts that a blocking call sequence (single-nested if you follow the execution path
+    """Asserts that a blocking call sequence (single-nested if you follow the execution path
     across callbacks) is possible when using a multi-threaded executor and callback isolation.
     """
     assert ros.node is not None
@@ -109,7 +108,8 @@ def test_blocking_sequence(ros: ROSAwareScope) -> None:
         assert action_client.wait_for_server(timeout_sec=5)
         feedback = []
         result = action_client.send_goal(
-            Fibonacci.Goal(order=response.sum), feedback_callback=lambda f: feedback.append(f.feedback)
+            Fibonacci.Goal(order=response.sum),
+            feedback_callback=lambda f: feedback.append(f.feedback),
         ).result
         assert len(feedback) > 0
         partial_sequence = feedback[-1].sequence
@@ -117,14 +117,20 @@ def test_blocking_sequence(ros: ROSAwareScope) -> None:
 
         timeout = Duration(seconds=5)
         assert tf_buffer.can_transform(
-            MinimalTransformPublisher.frame_id, MinimalTransformPublisher.child_frame_id, Time(), timeout
+            MinimalTransformPublisher.frame_id,
+            MinimalTransformPublisher.child_frame_id,
+            Time(),
+            timeout,
         )
 
         assert ros.node is not None
         time = ros.node.get_clock().now()
         time += Duration(seconds=result.sequence[-1] * 10e-3)
         return tf_buffer.lookup_transform(
-            MinimalTransformPublisher.frame_id, MinimalTransformPublisher.child_frame_id, time, timeout
+            MinimalTransformPublisher.frame_id,
+            MinimalTransformPublisher.child_frame_id,
+            time,
+            timeout,
         )
 
     assert ros.executor is not None
@@ -136,15 +142,15 @@ def test_blocking_sequence(ros: ROSAwareScope) -> None:
 
 
 def test_chain_sequence(ros: ROSAwareScope) -> None:
-    """
-    Asserts that a chained call sequence (double-nested if you follow the execution path
+    """Asserts that a chained call sequence (double-nested if you follow the execution path
     across callbacks) is possible when using a multi-threaded executor and callback isolation.
     """
     assert ros.node is not None
     action_client = ActionClient(ros.node, Fibonacci, "compute_fibonacci_sequence")
 
     def add_fibonacci_sequences_server_callback(
-        request: AddTwoInts.Request, response: AddTwoInts.Response
+        request: AddTwoInts.Request,
+        response: AddTwoInts.Response,
     ) -> AddTwoInts.Response:
         if not action_client.wait_for_server(timeout_sec=5):
             response.sum = -1

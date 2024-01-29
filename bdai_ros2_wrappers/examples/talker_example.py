@@ -1,7 +1,6 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 
-"""
-An example of a ROS 2 single node process using process-wide machinery.
+"""An example of a ROS 2 single node process using process-wide machinery.
 
 Run with:
 
@@ -39,8 +38,7 @@ class TalkerNode(Node):
 
 @ros_process.main(prebaked=False)
 def main(args: typing.Sequence[str]) -> None:
-    """
-    Example entrypoint, taking command-line arguments.
+    """Example entrypoint, taking command-line arguments.
 
     It is configured as a regular ROS 2 aware process. That is, no process-wide node,
     no background autoscaling multi-threaded executor, no log forwarding to the ROS 2

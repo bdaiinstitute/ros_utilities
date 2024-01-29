@@ -1,7 +1,6 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 
-"""
-An example of `logging` logs forward to the ROS 2 logging system.
+"""An example of `logging` logs forward to the ROS 2 logging system.
 
 Run with:
 

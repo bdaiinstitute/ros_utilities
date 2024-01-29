@@ -73,14 +73,17 @@ def _cancel_callback_accepted(cancel_request: Any) -> CancelResponse:
 
 
 class FibonacciActionServer(ActionServer):
-    """
-    Action server to used for testing mostly pulled from ROS2 Action Server tutorial
+    """Action server to used for testing mostly pulled from ROS2 Action Server tutorial
 
     Some changes made to allow special testing of timeouts and goal rejections
     """
 
     def __init__(
-        self, node: Node, name: str, execute_callback: Callable = _default_execute_callback, **kwargs: Any
+        self,
+        node: Node,
+        name: str,
+        execute_callback: Callable = _default_execute_callback,
+        **kwargs: Any,
     ) -> None:
         super().__init__(node, Fibonacci, name, execute_callback, **kwargs)
 
@@ -107,7 +110,9 @@ class ActionHandleMocks:
 
 
 def do_send_goal(
-    action_client: ActionClient, goal: Action.Goal, label: Optional[str] = None
+    action_client: ActionClient,
+    goal: Action.Goal,
+    label: Optional[str] = None,
 ) -> Tuple[ActionHandle, ActionHandleMocks]:
     if label is None:
         label = inspect.stack()[1].function

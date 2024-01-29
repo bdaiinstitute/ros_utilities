@@ -1,7 +1,6 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 
-"""
-An example of a ROS 2 aware command using process-wide machinery.
+"""An example of a ROS 2 aware command using process-wide machinery.
 
 Run with:
 
@@ -95,8 +94,7 @@ def run(args: argparse.Namespace) -> None:
 
 @ros_process.main(cli(), prebaked=False)
 def main(args: argparse.Namespace) -> None:
-    """
-    Example entrypoint.
+    """Example entrypoint.
 
     It is first configured as a regular ROS 2 aware process, but process-wide
     (i.e. globally accessible) executor and node are set immediately on start.
@@ -109,10 +107,9 @@ def main(args: argparse.Namespace) -> None:
     and loaded, one of which is assigned as process-wide node. These are used
     indirectly by the actual console application.
     """
-    with background(SingleThreadedExecutor()) as main.executor:
-        with ros_process.managed(graph, args) as (_, main.node):
-            main.tf_listener = TFListenerWrapper(main.node, cache_time_s=args.cache_time)
-            run(args)
+    with background(SingleThreadedExecutor()) as main.executor, ros_process.managed(graph, args) as (_, main.node):
+        main.tf_listener = TFListenerWrapper(main.node, cache_time_s=args.cache_time)
+        run(args)
 
 
 if __name__ == "__main__":

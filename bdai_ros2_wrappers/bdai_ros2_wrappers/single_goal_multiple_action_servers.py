@@ -11,14 +11,19 @@ from rclpy.node import Node
 from bdai_ros2_wrappers.type_hints import Action, ActionType
 
 
-class SingleGoalMultipleActionServers(object):
-    """Wrapper around multiple action servers that only allows a single Action to be executing at one time. If a new
-    Action.Goal is received by any of the action servers, the existing Action (if there is one) is preemptively
-    canceled"""
+class SingleGoalMultipleActionServers:
+    """Wrapper around multiple action servers that only allows a single Action to be executing at one time.
+
+    If a new Action.Goal is received by any of the action servers, the existing Action (if there is one) is preemptively
+    canceled.
+    """
 
     def __init__(
-        self, node: Node, action_server_parameters: List[Tuple[ActionType, str, Callable, Optional[CallbackGroup]]]
+        self,
+        node: Node,
+        action_server_parameters: List[Tuple[ActionType, str, Callable, Optional[CallbackGroup]]],
     ) -> None:
+        """Constructor"""
         self._node = node
         self._goal_handle: Optional[ServerGoalHandle] = None
         self._goal_lock = threading.Lock()
@@ -34,13 +39,15 @@ class SingleGoalMultipleActionServers(object):
                     handle_accepted_callback=self.handle_accepted_callback,
                     cancel_callback=self.cancel_callback,
                     callback_group=callback_group,
-                )
+                ),
             )
 
     def get_logger(self) -> RcutilsLogger:
+        """Returns the ros logger"""
         return self._node.get_logger()
 
     def destroy(self) -> None:
+        """Destroy all of the internal action servers"""
         for action_server in self._action_servers:
             action_server.destroy()
 
@@ -50,6 +57,7 @@ class SingleGoalMultipleActionServers(object):
         return GoalResponse.ACCEPT
 
     def handle_accepted_callback(self, goal_handle: ServerGoalHandle) -> None:
+        """Callback triggered when an action is accepted."""
         with self._goal_lock:
             # This server only allows one goal at a time
             if self._goal_handle is not None and self._goal_handle.is_active:

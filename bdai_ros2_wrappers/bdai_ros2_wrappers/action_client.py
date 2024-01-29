@@ -30,7 +30,10 @@ class ActionClientWrapper(rclpy.action.ActionClient):
         self._node.get_logger().info("Found server")
 
     def send_goal_and_wait(
-        self, action_name: str, goal: Action.Goal, timeout_sec: Optional[float] = None
+        self,
+        action_name: str,
+        goal: Action.Goal,
+        timeout_sec: Optional[float] = None,
     ) -> Optional[Action.Result]:
         """Sends an action goal and waits for the result
 
@@ -80,8 +83,7 @@ class ActionClientWrapper(rclpy.action.ActionClient):
         feedback_callback: Optional[Callable[[Action.Feedback], None]] = None,
         on_failure_callback: Optional[Callable[[], None]] = None,
     ) -> ActionHandle:
-        """Sends an action goal asynchronously and create an ActionHandle for managing the asynchronous lifecycle of
-            the action request
+        """Sends an action goal asynchronously and create an `ActionHandle`
 
         Args:
             action_name (str): A representative name of the action for logging
