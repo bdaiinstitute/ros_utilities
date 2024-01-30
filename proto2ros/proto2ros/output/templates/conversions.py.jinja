@@ -91,28 +91,35 @@ convert_{{ spec.type | as_ros_base_type | as_python_identifier }}_message_to_{{ 
 {{ destination }}.Pack(typed_{{ source | python_identifier_name }}_message)
     {%- elif spec.annotations.get("type-casts") -%}
         {#- ROS message must be deserialized according to type, then converted, then packed for assignment. -#}
-match {{ source }}.type_name:
-    {% for proto_type_name, ros_type_name in spec.annotations["type-casts"] -%}
-    case "{{ ros_type_name }}":
-        typed_{{ ros_type_name | as_python_identifier | python_identifier_name }}_message = rclpy.serialization.deserialize_message({{ source }}.value.tobytes(), {{ ros_type_name | as_ros_python_type }})
-        typed_{{ proto_type_name | as_python_identifier | python_identifier_name }}_message = {{ proto_type_name | as_pb2_python_type }}()
-        convert_{{ ros_type_name | as_python_identifier }}_message_to_{{ proto_type_name | as_python_identifier }}_proto(typed_{{ ros_type_name | as_python_identifier | python_identifier_name }}_message, typed_{{ proto_type_name | as_python_identifier | python_identifier_name }}_message)
-        {{ destination }}.Pack(typed_{{ proto_type_name | as_python_identifier | python_identifier_name }}_message)
-    {% endfor -%}
-    case _:
-        raise ValueError("unexpected %s in {{ spec.name }} member:" % ros_msg.{{ spec.name }}.type)
+        {% for proto_type_name, ros_type_name in spec.annotations["type-casts"] -%}
+            {%- if loop.first -%}
+if {{ source }}.type_name == "{{ ros_type_name }}":
+            {%- else %}
+elif {{ source }}.type_name == "{{ ros_type_name }}":
+            {%- endif %}
+    typed_{{ ros_type_name | as_python_identifier | python_identifier_name }}_message = rclpy.serialization.deserialize_message({{ source }}.value.tobytes(), {{ ros_type_name | as_ros_python_type }})
+    typed_{{ proto_type_name | as_python_identifier | python_identifier_name }}_message = {{ proto_type_name | as_pb2_python_type }}()
+    convert_{{ ros_type_name | as_python_identifier }}_message_to_{{ proto_type_name | as_python_identifier }}_proto(typed_{{ ros_type_name | as_python_identifier | python_identifier_name }}_message, typed_{{ proto_type_name | as_python_identifier | python_identifier_name }}_message)
+    {{ destination }}.Pack(typed_{{ proto_type_name | as_python_identifier | python_identifier_name }}_message)
+       {%- endfor %}
+else:
+    raise ValueError("unexpected %s in {{ spec.name }} member:" % ros_msg.{{ spec.name }}.type)
     {%- elif type_spec and type_spec.annotations.get("tagged") -%}
         {#- Handle one-of field case i.e. determine and convert the ROS message member that is set. -#}
         {%- set tag_field_spec = type_spec.annotations["tag"] -%}
-match {{ source }}.{{ tag_field_spec.name }} or {{ source }}.{{ tag_field_spec.annotations["alias"] }}:
+which = {{ source }}.{{ tag_field_spec.name }} or {{ source }}.{{ tag_field_spec.annotations["alias"] }}
         {%- for tag_spec, member_spec in type_spec.annotations["tagged"] %}
-    case {{ type_spec.base_type | string | as_ros_python_type }}.{{ tag_spec.name }}:
+            {%- if loop.first %}
+if which == {{ type_spec.base_type | string | as_ros_python_type }}.{{ tag_spec.name }}:
+            {%- else %}
+elif which == {{ type_spec.base_type | string | as_ros_python_type }}.{{ tag_spec.name }}:
+            {%- endif %}
             {%- set source_member = source + "." + member_spec.name -%}
             {%- set destination_member = destination.rpartition(".")[0] + "." + member_spec.annotations.get("proto-name", member_spec.name) %}
-        {{ ros_to_proto_field_code(source_member, destination_member, member_spec) | indent(8) }}
+    {{ ros_to_proto_field_code(source_member, destination_member, member_spec) | indent(8) }}
         {%- endfor %}
-    case _:
-        pass
+else:
+    pass
     {%- else -%}
         {#- Handle the generic ROS message case (because it is appropriate or because we do not know any better). -#}
 convert_{{ spec.type | as_ros_base_type | as_python_identifier }}_message_to_{{ spec.annotations["proto-type"] | as_python_identifier }}_proto({{ source }}, {{ destination }})
@@ -214,19 +221,23 @@ else:
     raise ValueError("unknown protobuf message type in {{ spec.name }} member: %s" % {{ source }}.type_url)
     {%- elif type_spec and type_spec.annotations.get("tagged") -%}
         {#- Handle one-of field case i.e. determine and convert the Protobuf message member that is set. -#}
-match {{ source.rpartition(".")[0] }}.WhichOneof("{{ spec.name }}"):
-        {%- set tag_field_spec = type_spec.annotations["tag"] -%}
+which = {{ source.rpartition(".")[0] }}.WhichOneof("{{ spec.name }}")
+        {%- set tag_field_spec = type_spec.annotations["tag"] %}
         {%- for tag_spec, member_spec in type_spec.annotations["tagged"] %}
-    case "{{ member_spec.name }}":
-        {%- set source_member = source.rpartition(".")[0] + "." + member_spec.annotations.get("proto-name", member_spec.name) -%}
-        {%- set destination_member = destination + "." + member_spec.name %}
-        {{ proto_to_ros_field_code(source_member, destination_member, member_spec) | indent(8) }}
-        {{ destination }}.{{ tag_field_spec.name }} = {{ type_spec.base_type | string | as_ros_python_type }}.{{ tag_spec.name }}
-        {{ destination }}.{{ tag_field_spec.annotations["alias"] }} = {{ destination }}.{{ tag_field_spec.name }}
+            {%- if loop.first %}
+if which == "{{ member_spec.name }}":
+            {%- else %}
+elif which == "{{ member_spec.name }}":
+            {%- endif %}
+            {%- set source_member = source.rpartition(".")[0] + "." + member_spec.annotations.get("proto-name", member_spec.name) -%}
+            {%- set destination_member = destination + "." + member_spec.name %}
+    {{ proto_to_ros_field_code(source_member, destination_member, member_spec) | indent(8) }}
+    {{ destination }}.{{ tag_field_spec.name }} = {{ type_spec.base_type | string | as_ros_python_type }}.{{ tag_spec.name }}
+    {{ destination }}.{{ tag_field_spec.annotations["alias"] }} = {{ destination }}.{{ tag_field_spec.name }}
         {%- endfor %}
-    case _:
-        {{ destination }}.{{ tag_field_spec.name }} = 0
-        {{ destination }}.{{ tag_field_spec.annotations["alias"] }} = 0
+else:
+    {{ destination }}.{{ tag_field_spec.name }} = 0
+    {{ destination }}.{{ tag_field_spec.annotations["alias"] }} = 0
     {%- else -%}
         {#- Handle the generic Protobuf message case (because it is appropriate or because we do not know any better). -#}
 convert_{{ spec.annotations["proto-type"] | as_python_identifier }}_proto_to_{{ spec.type | as_ros_base_type | as_python_identifier }}_message({{ source }}, {{ destination }})
