@@ -42,6 +42,24 @@ def test_recursive_messages() -> None:
     assert other_proto_subfragment.payload == proto_subfragment.payload
 
 
+def test_circularly_dependent_messages() -> None:
+    proto_pair = test_pb2.Pair()
+    proto_pair.first.text = "interval"
+    proto_pair.second.pair.first.number = -0.5
+    proto_pair.second.pair.second.number = 0.5
+    ros_pair = proto2ros_tests.msg.Pair()
+    convert(proto_pair, ros_pair)
+    assert ros_pair.first.data.which == ros_pair.first.data.DATA_TEXT_SET
+    assert ros_pair.first.data.text == proto_pair.first.text
+    assert ros_pair.second.data.which == ros_pair.second.data.DATA_PAIR_SET
+    assert ros_pair.second.data.pair.type_name == "proto2ros_tests/Pair"
+    other_proto_pair = test_pb2.Pair()
+    convert(ros_pair, other_proto_pair)
+    assert other_proto_pair.first.text == proto_pair.first.text
+    assert other_proto_pair.second.pair.first.number == proto_pair.second.pair.first.number
+    assert other_proto_pair.second.pair.second.number == proto_pair.second.pair.second.number
+
+
 def test_messages_with_enums() -> None:
     proto_motion_request = test_pb2.MotionRequest()
     proto_motion_request.direction = test_pb2.MotionRequest.Direction.FORWARD
