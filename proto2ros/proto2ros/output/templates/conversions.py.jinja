@@ -116,7 +116,7 @@ elif which == {{ type_spec.base_type | string | as_ros_python_type }}.{{ tag_spe
             {%- endif %}
             {%- set source_member = source + "." + member_spec.name -%}
             {%- set destination_member = destination.rpartition(".")[0] + "." + member_spec.annotations.get("proto-name", member_spec.name) %}
-    {{ ros_to_proto_field_code(source_member, destination_member, member_spec) | indent(8) }}
+    {{ ros_to_proto_field_code(source_member, destination_member, member_spec) | indent(4) }}
         {%- endfor %}
 else:
     pass
@@ -231,7 +231,7 @@ elif which == "{{ member_spec.name }}":
             {%- endif %}
             {%- set source_member = source.rpartition(".")[0] + "." + member_spec.annotations.get("proto-name", member_spec.name) -%}
             {%- set destination_member = destination + "." + member_spec.name %}
-    {{ proto_to_ros_field_code(source_member, destination_member, member_spec) | indent(8) }}
+    {{ proto_to_ros_field_code(source_member, destination_member, member_spec) | indent(4) }}
     {{ destination }}.{{ tag_field_spec.name }} = {{ type_spec.base_type | string | as_ros_python_type }}.{{ tag_spec.name }}
     {{ destination }}.{{ tag_field_spec.annotations["alias"] }} = {{ destination }}.{{ tag_field_spec.name }}
         {%- endfor %}
