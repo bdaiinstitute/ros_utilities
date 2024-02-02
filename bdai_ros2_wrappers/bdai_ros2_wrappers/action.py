@@ -525,6 +525,14 @@ class Actionable:
         """Get the underlying action client."""
         return self._action_client
 
+    def wait_for_server(self, *args: Any, **kwargs: Any) -> bool:
+        """Wait for action server to become available.
+
+        See `rclpy.action.ActionClient.wait_for_server()`
+        documentation for further reference.
+        """
+        return self._action_client.wait_for_server(*args, **kwargs)
+
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         """Forward invocation to `Actionable.synchronously`."""
         return self.synchronously(*args, **kwargs)
