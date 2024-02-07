@@ -21,6 +21,7 @@ class ActionClientWrapper(rclpy.action.ActionClient):
             action_type (Type[Action]): The type of the action
             action_name (str): The name of the action (for logging purposes)
             node (Optional[Node]): optional node for action client, defaults to the current process node
+            wait_for_server (bool): Whether to wait for the server
         """
         node = node or scope.node()
         if node is None:
