@@ -12,7 +12,9 @@ from bdai_ros2_wrappers.type_hints import Action
 class ActionClientWrapper(rclpy.action.ActionClient):
     """A wrapper for ros2's ActionClient for extra functionality"""
 
-    def __init__(self, action_type: Type[Action], action_name: str, node: Optional[Node] = None) -> None:
+    def __init__(
+        self, action_type: Type[Action], action_name: str, node: Optional[Node] = None, wait_for_server: bool = True
+    ) -> None:
         """Constructor
 
         Args:
@@ -25,9 +27,10 @@ class ActionClientWrapper(rclpy.action.ActionClient):
             raise ValueError("no ROS 2 node available (did you use bdai_ros2_wrapper.process.main?)")
         self._node = node
         super().__init__(self._node, action_type, action_name)
-        self._node.get_logger().info(f"Waiting for action server for {action_name}")
-        self.wait_for_server()
-        self._node.get_logger().info("Found server")
+        if wait_for_server:
+            self._node.get_logger().info(f"Waiting for action server for {action_name}")
+            self.wait_for_server()
+            self._node.get_logger().info("Found server")
 
     def send_goal_and_wait(
         self, action_name: str, goal: Action.Goal, timeout_sec: Optional[float] = None
