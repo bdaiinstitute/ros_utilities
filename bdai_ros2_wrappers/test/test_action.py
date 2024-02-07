@@ -206,8 +206,9 @@ def test_rejected_synchronous_action_invocation(ros: ROSAwareScope) -> None:
     )
     compute_fibonacci = Actionable(Fibonacci, "fibonacci/compute", ros.node)
     assert compute_fibonacci.wait_for_server(timeout_sec=2.0)
-    with pytest.raises(ActionRejected):
+    with pytest.raises(ActionRejected) as exc_info:
         compute_fibonacci(Fibonacci.Goal(order=5), timeout_sec=10.0)
+    assert not exc_info.value.action.accepted
 
 
 def test_rejected_asynchronous_action_invocation(ros: ROSAwareScope) -> None:
@@ -238,8 +239,11 @@ def test_aborted_synchronous_action_invocation(ros: ROSAwareScope) -> None:
     ActionServer(ros.node, Fibonacci, "fibonacci/compute", execute_callback)
     compute_fibonacci = Actionable(Fibonacci, "fibonacci/compute", ros.node)
     assert compute_fibonacci.wait_for_server(timeout_sec=2.0)
-    with pytest.raises(ActionAborted):
+    with pytest.raises(ActionAborted) as exc_info:
         compute_fibonacci(Fibonacci.Goal(order=5), timeout_sec=10.0)
+    assert exc_info.value.action.aborted
+    result = exc_info.value.action.result
+    assert len(result.sequence) == 0
 
 
 def test_aborted_asynchronous_action_invocation(ros: ROSAwareScope) -> None:
@@ -288,8 +292,11 @@ def test_cancelled_synchronous_action_invocation(ros: ROSAwareScope) -> None:
 
     assert ros.executor is not None
     ros.executor.create_task(deferred_cancel)
-    with pytest.raises(ActionCancelled):
+    with pytest.raises(ActionCancelled) as exc_info:
         compute_fibonacci(Fibonacci.Goal(order=5), timeout_sec=10.0)
+    assert exc_info.value.action.cancelled
+    result = exc_info.value.action.result
+    assert len(result.sequence) == 0
 
 
 def test_cancelled_asynchronous_action_invocation(ros: ROSAwareScope) -> None:

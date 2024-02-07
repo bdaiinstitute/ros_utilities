@@ -21,7 +21,9 @@ from bdai_ros2_wrappers.futures import wait_for_future
 class ActionException(Exception):
     """Base action exception."""
 
-    pass
+    def __init__(self, action: "ActionFuture") -> None:
+        super().__init__(action)
+        self.action = action
 
 
 class ActionTimeout(ActionException):
@@ -446,13 +448,13 @@ class ActionFuture:
         def _bridge_callback(finalization_future: Future) -> None:
             nonlocal future
             if not self.accepted:
-                future.set_exception(ActionRejected())
+                future.set_exception(ActionRejected(self))
                 return
             if self.aborted:
-                future.set_exception(ActionRejected())
+                future.set_exception(ActionRejected(self))
                 return
             if self.cancelled:
-                future.set_exception(ActionCancelled())
+                future.set_exception(ActionCancelled(self))
                 return
             exception = finalization_future.exception()
             if exception:
@@ -567,13 +569,13 @@ class Actionable:
         action = ActionFuture(self._action_client.send_goal_async(goal, feedback_callback))
         if not wait_for_future(action.finalization, timeout_sec=timeout_sec):
             action.cancel()  # proactively cancel
-            raise ActionTimeout()
+            raise ActionTimeout(action)
         if not action.accepted:
-            raise ActionRejected()
+            raise ActionRejected(action)
         if action.cancelled:
-            raise ActionCancelled()
+            raise ActionCancelled(action)
         if action.aborted:
-            raise ActionAborted()
+            raise ActionAborted(action)
         if not action.succeeded:
             raise RuntimeError("internal server error")
         return action.result
