@@ -26,6 +26,26 @@ message Fragment {
     repeated Fragment nested = 2;
 }
 
+// Heterogeneous pair.
+message Pair {
+    // Sequence first values.
+    Value first = 1;
+    // Sequence second values.
+    Value second = 2;
+}
+
+// Heterogeneous value.
+message Value {
+    oneof data {
+        // Numeric value.
+        float number = 1;
+        // Text value.
+        string text = 2;
+        // Pair value.
+        Pair pair = 3;
+    }
+}
+
 // Discrete motion request.
 message MotionRequest  {
     // Valid directions for motion.

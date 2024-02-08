@@ -11,7 +11,9 @@ from bdai_ros2_wrappers.type_hints import SrvTypeRequest, SrvTypeResponse
 
 
 def do_request(
-    client: Client, request: SrvTypeRequest, label: Optional[str] = None
+    client: Client,
+    request: SrvTypeRequest,
+    label: Optional[str] = None,
 ) -> Tuple[bool, Optional[SrvTypeResponse]]:
     if label is None:
         label = inspect.stack()[1].function

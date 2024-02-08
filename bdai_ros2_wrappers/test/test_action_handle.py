@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Optional, Tuple
 from unittest.mock import Mock
 
-from action_tutorials_interfaces.action import Fibonacci
+from example_interfaces.action import Fibonacci
 from rclpy.action import ActionClient, ActionServer
 from rclpy.action.server import CancelResponse, GoalResponse, ServerGoalHandle
 from rclpy.node import Node
@@ -35,19 +35,19 @@ def _execute_callback_abort(goal_handle: ServerGoalHandle) -> Fibonacci.Result:
 
 def _execute_callback_feedback(goal_handle: ServerGoalHandle) -> Fibonacci.Result:
     feedback = Fibonacci.Feedback()
-    feedback.partial_sequence = [0, 1]
+    feedback.sequence = [0, 1]
     goal_handle.publish_feedback(feedback)
     time.sleep(0.001)
 
     for i in range(1, goal_handle.request.order):
-        feedback.partial_sequence.append(feedback.partial_sequence[i] + feedback.partial_sequence[i - 1])
+        feedback.sequence.append(feedback.sequence[i] + feedback.sequence[i - 1])
         goal_handle.publish_feedback(feedback)
         time.sleep(0.01)
 
     goal_handle.succeed()
 
     result = Fibonacci.Result()
-    result.sequence = feedback.partial_sequence
+    result.sequence = feedback.sequence
     return result
 
 
@@ -73,14 +73,17 @@ def _cancel_callback_accepted(cancel_request: Any) -> CancelResponse:
 
 
 class FibonacciActionServer(ActionServer):
-    """
-    Action server to used for testing mostly pulled from ROS2 Action Server tutorial
+    """Action server to used for testing mostly pulled from ROS2 Action Server tutorial
 
     Some changes made to allow special testing of timeouts and goal rejections
     """
 
     def __init__(
-        self, node: Node, name: str, execute_callback: Callable = _default_execute_callback, **kwargs: Any
+        self,
+        node: Node,
+        name: str,
+        execute_callback: Callable = _default_execute_callback,
+        **kwargs: Any,
     ) -> None:
         super().__init__(node, Fibonacci, name, execute_callback, **kwargs)
 
@@ -107,7 +110,9 @@ class ActionHandleMocks:
 
 
 def do_send_goal(
-    action_client: ActionClient, goal: Action.Goal, label: Optional[str] = None
+    action_client: ActionClient,
+    goal: Action.Goal,
+    label: Optional[str] = None,
 ) -> Tuple[ActionHandle, ActionHandleMocks]:
     if label is None:
         label = inspect.stack()[1].function

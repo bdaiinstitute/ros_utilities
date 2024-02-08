@@ -1,7 +1,7 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 import array
 
-from action_tutorials_interfaces.action import Fibonacci
+from example_interfaces.action import Fibonacci
 from rclpy.action.server import ServerGoalHandle
 
 from bdai_ros2_wrappers.action_client import ActionClientWrapper
@@ -10,14 +10,10 @@ from bdai_ros2_wrappers.single_goal_action_server import SingleGoalActionServer
 
 
 def test_single_goal_action_server(ros: ROSAwareScope) -> None:
-    """
-    Tests normal operation of a single action server
-    """
+    """Tests normal operation of a single action server"""
 
     def execute_callback(goal_handle: ServerGoalHandle) -> Fibonacci.Result:
-        """
-        Executor for normal fibonacci sequence
-        """
+        """Executor for normal fibonacci sequence"""
         sequence = [0, 1]
         for i in range(1, goal_handle.request.order):
             sequence.append(sequence[i] + sequence[i - 1])

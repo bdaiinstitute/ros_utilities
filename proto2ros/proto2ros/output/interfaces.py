@@ -48,10 +48,10 @@ def dump_message_specification(message_spec: MessageSpecification) -> str:
 
 
 def which_message_specification(
-    message_spec: MessageSpecification, root: Optional[Union[str, os.PathLike[str]]] = None
+    message_spec: MessageSpecification,
+    root: Optional[Union[str, os.PathLike[str]]] = None,
 ) -> pathlib.Path:
-    """
-    Returns an .msg file path for a given ROS message specification.
+    """Returns an .msg file path for a given ROS message specification.
 
     ROS .msg file name conversions are observed in the process.
 
