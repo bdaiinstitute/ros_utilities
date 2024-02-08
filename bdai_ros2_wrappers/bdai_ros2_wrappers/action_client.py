@@ -13,7 +13,11 @@ class ActionClientWrapper(rclpy.action.ActionClient):
     """A wrapper for ros2's ActionClient for extra functionality"""
 
     def __init__(
-        self, action_type: Type[Action], action_name: str, node: Optional[Node] = None, wait_for_server: bool = True
+        self,
+        action_type: Type[Action],
+        action_name: str,
+        node: Optional[Node] = None,
+        wait_for_server: bool = True,
     ) -> None:
         """Constructor
 
