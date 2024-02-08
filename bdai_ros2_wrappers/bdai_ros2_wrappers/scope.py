@@ -8,6 +8,7 @@ import rclpy
 import rclpy.executors
 import rclpy.logging
 import rclpy.node
+import rclpy.utilities
 
 from bdai_ros2_wrappers.executors import AutoScalingMultiThreadedExecutor, background, foreground
 from bdai_ros2_wrappers.logging import logs_to_ros
@@ -87,9 +88,9 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
         self._parent: typing.Optional[ROSAwareScope] = None
 
     @property
-    def context(self) -> typing.Optional[rclpy.context.Context]:
-        """Gets scope context (may be ``None`` if default)."""
-        return self._context
+    def context(self) -> rclpy.context.Context:
+        """Gets scope context."""
+        return rclpy.utilities.get_default_context() if self._context is None else self._context
 
     def __enter__(self) -> "ROSAwareScope":
         """Enters scope.
