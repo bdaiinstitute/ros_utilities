@@ -50,10 +50,10 @@ message Value {
 message MotionRequest  {
     // Valid directions for motion.
     enum Direction {
-        LEFT = 0;
-        RIGHT = 1;
-        FORWARD = 2;
-        BACKWARD = 3;
+        Left = 0;
+        Right = 1;
+        Forward = 2;
+        Backward = 3;
     }
     // Direction of motion.
     Direction direction = 1;

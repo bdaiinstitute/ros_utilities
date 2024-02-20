@@ -115,7 +115,7 @@ def compute_equivalence_for_enum(
     """
     constants: List[Constant] = []
     for value_path, value_descriptor in locate_repeated("value", descriptor):
-        constant = Constant("int32", value_descriptor.name, value_descriptor.number)
+        constant = Constant("int32", value_descriptor.name.upper(), value_descriptor.number)
         value_location = resolve(source, value_path, location)
         leading_comments = extract_leading_comments(value_location)
         if leading_comments:

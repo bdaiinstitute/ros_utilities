@@ -62,7 +62,7 @@ def test_circularly_dependent_messages() -> None:
 
 def test_messages_with_enums() -> None:
     proto_motion_request = test_pb2.MotionRequest()
-    proto_motion_request.direction = test_pb2.MotionRequest.Direction.FORWARD
+    proto_motion_request.direction = test_pb2.MotionRequest.Direction.Forward
     proto_motion_request.speed = 1.0
     ros_motion_request = proto2ros_tests.msg.MotionRequest()
     convert(proto_motion_request, ros_motion_request)
