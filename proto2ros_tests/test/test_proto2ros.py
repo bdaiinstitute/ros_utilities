@@ -24,6 +24,23 @@ def test_message_generation() -> None:
     assert not errors, errors
 
 
+def test_message_mapping() -> None:
+    assert not hasattr(proto2ros_tests.msg, "Temperature")
+    assert not hasattr(proto2ros_tests.msg, "TemperatureScale")
+    proto_request = test_pb2.HVACControlRequest()
+    proto_request.air_flow_rate = 1000.0
+    proto_request.temperature_setpoint.value = 77.0
+    proto_request.temperature_setpoint.scale = test_pb2.Temperature.Scale.FAHRENHEIT
+    ros_request = proto2ros_tests.msg.HVACControlRequest()
+    convert(proto_request, ros_request)
+    other_proto_request = test_pb2.HVACControlRequest()
+    convert(ros_request, other_proto_request)
+    assert proto_request.air_flow_rate == other_proto_request.air_flow_rate
+    # sensor_msgs/Temperature messages are in the Celsius temperature scale
+    assert other_proto_request.temperature_setpoint.value == 25.0
+    assert other_proto_request.temperature_setpoint.scale == test_pb2.Temperature.Scale.CELSIUS
+
+
 def test_recursive_messages() -> None:
     proto_fragment = test_pb2.Fragment()
     proto_fragment.payload = b"important data"

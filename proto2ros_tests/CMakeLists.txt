@@ -5,6 +5,7 @@ project(proto2ros_tests)
 find_package(ament_cmake REQUIRED)
 find_package(builtin_interfaces REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 
 find_package(rosidl_default_generators REQUIRED)
 
@@ -26,7 +27,7 @@ add_dependencies(
 
 rosidl_generate_interfaces(
   ${PROJECT_NAME} ${ros_messages}
-  DEPENDENCIES geometry_msgs builtin_interfaces proto2ros
+  DEPENDENCIES geometry_msgs sensor_msgs builtin_interfaces proto2ros
   SKIP_INSTALL
 )
 add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_messages_gen)
