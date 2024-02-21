@@ -10,6 +10,7 @@ message_mapping:
   bosdyn.api.SE3Pose: geometry_msgs/Pose
   bosdyn.api.SE3Velocity: geometry_msgs/Twist
   bosdyn.api.Wrench: geometry_msgs/Wrench
+  proto2ros_tests.Temperature: sensor_msgs/Temperature
 python_imports:
   - bosdyn.api.geometry_pb2
   - geometry_msgs.msg

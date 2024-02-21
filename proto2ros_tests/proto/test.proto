@@ -11,11 +11,30 @@ import "google/protobuf/type.proto";
 
 import "bosdyn/api/geometry.proto";
 
+// Body relative directions for motion.
 enum Direction {
     LEFT = 0;
     RIGHT = 1;
     FORWARD = 2;
     BACKWARD = 3;
+}
+
+// Temperature measurement.
+message Temperature {
+    // Measurement temperature scale.
+    enum Scale {
+        CELSIUS = 0;
+        KELVIN = 1;
+        FAHRENHEIT = 2;
+    }
+    float value = 1;
+    Scale scale = 2;
+}
+
+// A control request for an HVAC system.
+message HVACControlRequest {
+    double air_flow_rate = 1;
+    Temperature temperature_setpoint = 2;
 }
 
 // Binary recursive fragment.

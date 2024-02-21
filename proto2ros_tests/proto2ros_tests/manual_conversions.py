@@ -2,6 +2,8 @@ import math
 
 import bosdyn.api.geometry_pb2
 import geometry_msgs.msg
+import sensor_msgs.msg
+import test_pb2
 
 from proto2ros.conversions import convert
 
@@ -155,9 +157,31 @@ def convert_geometry_msgs_wrench_message_to_bosdyn_api_wrench_proto(
 
 
 @convert.register(bosdyn.api.geometry_pb2.Wrench, geometry_msgs.msg.Wrench)
-def convert_bosdyn_api_wrench_proto_to_geometry_msgs_wrench_messagey(
+def convert_bosdyn_api_wrench_proto_to_geometry_msgs_wrench_message(
     proto_msg: bosdyn.api.geometry_pb2.Wrench,
     ros_msg: geometry_msgs.msg.Wrench,
 ) -> None:
     convert_bosdyn_api_vec3_proto_to_geometry_msgs_vector3_message(proto_msg.force, ros_msg.force)
     convert_bosdyn_api_vec3_proto_to_geometry_msgs_vector3_message(proto_msg.torque, ros_msg.torque)
+
+
+@convert.register(sensor_msgs.msg.Temperature, test_pb2.Temperature)
+def convert_sensor_msgs_temperature_message_to_proto2ros_tests_temperature_proto(
+    ros_msg: sensor_msgs.msg.Temperature,
+    proto_msg: test_pb2.Temperature,
+) -> None:
+    proto_msg.scale = test_pb2.Temperature.Scale.CELSIUS
+    proto_msg.value = ros_msg.temperature
+
+
+@convert.register(test_pb2.Temperature, sensor_msgs.msg.Temperature)
+def convert_proto2ros_tests_temperature_proto_to_sensor_msgs_temperature_message(
+    proto_msg: test_pb2.Temperature,
+    ros_msg: sensor_msgs.msg.Temperature,
+) -> None:
+    if proto_msg.scale == test_pb2.Temperature.Scale.KELVIN:
+        ros_msg.temperature = proto_msg.value + 273
+    elif proto_msg.scale == test_pb2.Temperature.Scale.FAHRENHEIT:
+        ros_msg.temperature = (proto_msg.value - 32) * 5 / 9
+    else:  # proto_msg.scale == test_pb2.Temperature.Scale.CELSIUS
+        ros_msg.temperature = proto_msg.value
