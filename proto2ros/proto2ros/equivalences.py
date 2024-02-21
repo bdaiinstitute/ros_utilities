@@ -482,6 +482,8 @@ def extract_equivalences_from_message(
         yield compute_equivalence_for_enum(enum_descriptor, source_descriptor, enum_location, config)
     for nested_path, nested_descriptor in locate_repeated("nested_type", message_descriptor):
         nested_location = resolve(source_descriptor, nested_path, location)
+        if protofqn(source_descriptor, nested_location) in config.message_mapping:
+            continue  # skip mapped messages
         yield from extract_equivalences_from_message(nested_descriptor, source_descriptor, nested_location, config)
 
 
@@ -504,4 +506,6 @@ def extract_equivalences_from_source(
         yield compute_equivalence_for_enum(enum_type, source_descriptor, enum_location, config)
     for message_path, message_type in locate_repeated("message_type", source_descriptor):
         message_location = resolve(source_descriptor, message_path)
+        if protofqn(source_descriptor, message_location) in config.message_mapping:
+            continue  # skip mapped messages
         yield from extract_equivalences_from_message(message_type, source_descriptor, message_location, config)
