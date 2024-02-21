@@ -179,11 +179,19 @@ def test_successful_asynchronous_action_invocation_with_limited_feedback(ros: RO
 
 
 def test_successful_asynchronous_action_invocation_with_ephemeral_feedback(ros: ROSAwareScope) -> None:
-    ActionServer(ros.node, Fibonacci, "fibonacci/compute", default_execute_callback)
+    semaphore = threading.Semaphore(0)
+
+    def synchronized_execute_callback(goal_handle: ServerGoalHandle) -> Fibonacci.Result:
+        nonlocal semaphore
+        semaphore.acquire()
+        return default_execute_callback(goal_handle)
+
+    ActionServer(ros.node, Fibonacci, "fibonacci/compute", synchronized_execute_callback)
     compute_fibonacci = Actionable(Fibonacci, "fibonacci/compute", ros.node)
     assert compute_fibonacci.wait_for_server(timeout_sec=2.0)
     action = compute_fibonacci.asynchronously(Fibonacci.Goal(order=5), track_feedback=0)
     assert wait_for_future(action.acknowledgement, timeout_sec=10.0)
+    semaphore.release()
     *_, last_feedback = action.feedback_stream(buffer_size=10, timeout_sec=2.0)
     assert action.finalized
     assert action.succeeded
