@@ -506,7 +506,7 @@ def top(
 
 def current() -> typing.Optional[ROSAwareScope]:
     """Gets the current ROS 2 aware scope, if any."""
-    return getattr(ROSAwareScope.local, "top", ROSAwareScope.global_)
+    return ROSAwareScope.local.top or ROSAwareScope.global_
 
 
 def node() -> typing.Optional[rclpy.node.Node]:
