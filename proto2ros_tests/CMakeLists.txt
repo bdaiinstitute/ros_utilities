@@ -1,15 +1,17 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute LLC. All rights reserved.
 cmake_minimum_required(VERSION 3.12)
+if(POLICY CMP0148)
+  cmake_policy(SET CMP0148 OLD)  # to accommodate rosidl pipeline
+endif()
 project(proto2ros_tests)
 
 find_package(ament_cmake REQUIRED)
 find_package(builtin_interfaces REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(proto2ros REQUIRED)
 
 find_package(rosidl_default_generators REQUIRED)
-
-find_package(proto2ros REQUIRED)
 
 add_subdirectory(proto)
 

@@ -1,5 +1,8 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute LLC. All rights reserved.
 cmake_minimum_required(VERSION 3.8)
+if(POLICY CMP0148)
+  cmake_policy(SET CMP0148 OLD)  # to accommodate rosidl pipeline
+endif()
 project(proto2ros)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
