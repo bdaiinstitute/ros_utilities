@@ -84,7 +84,7 @@ def test_cli_configuration() -> None:  # type: ignore
         parser.set_defaults(process_args=lambda args: dict(forward_logging=not args.quiet))
         return parser
 
-    @process.main(cli(), namespace="{robot}")
+    @process.main(cli(), namespace="/{robot}")
     def main(args: argparse.Namespace) -> int:
         assert main.node is not None
         assert main.node.get_fully_qualified_name() == "/spot/test_command"

@@ -82,17 +82,9 @@ class ROSAwareProcess:
         program_name = os.path.basename(sys.argv[0]) if cli is None else cli.prog
         name, _ = os.path.splitext(program_name)
         if prebaked is True:
-            try:
-                validate_node_name(name)
-                prebaked = name
-            except InvalidNodeNameException:
-                warnings.warn(f"'{name}' cannot be used as node name, using scope default", stacklevel=1)
+            prebaked = name
         if namespace is True:
-            try:
-                validate_namespace(name)
-                namespace = name
-            except InvalidNamespaceException:
-                warnings.warn(f"'{name}' cannot be used as namespace, using scope default", stacklevel=1)
+            namespace = name
         if forward_logging is None:
             forward_logging = bool(prebaked)
         self._func = func
@@ -153,12 +145,26 @@ class ROSAwareProcess:
             if self._cli is not None:
                 args = self._cli.parse_args(rclpy.utilities.remove_ros_args(argv)[1:])
                 scope_kwargs.update(either_or(args, "process_args", {}))
-                prebaked = scope_kwargs.get("prebaked")
-                if isinstance(prebaked, str):
-                    scope_kwargs["prebaked"] = prebaked.format(**vars(args))
-                namespace = scope_kwargs.get("namespace")
-                if isinstance(namespace, str):
-                    scope_kwargs["namespace"] = namespace.format(**vars(args))
+            prebaked = scope_kwargs.get("prebaked")
+            if isinstance(prebaked, str):
+                if args is not None:
+                    prebaked = prebaked.format(**vars(args))
+                try:
+                    validate_node_name(prebaked)
+                except InvalidNodeNameException:
+                    warnings.warn(f"'{prebaked}' cannot be used as node name, using scope default", stacklevel=1)
+                    prebaked = True
+                scope_kwargs["prebaked"] = prebaked
+            namespace = scope_kwargs.get("namespace")
+            if isinstance(namespace, str):
+                if args is not None:
+                    namespace = namespace.format(**vars(args))
+                try:
+                    validate_namespace(namespace)
+                except InvalidNamespaceException:
+                    warnings.warn(f"'{namespace}' cannot be used as namespace, using scope default", stacklevel=1)
+                    namespace = True
+                scope_kwargs["namespace"] = namespace
             with scope.top(argv, global_=True, **scope_kwargs) as self._scope:
                 ROSAwareProcess.current = self
                 self._lock.release()
