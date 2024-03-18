@@ -54,3 +54,25 @@ def bind_to_thread(callable_: typing.Callable, thread: threading.Thread) -> typi
         return callable_(*args, **kwargs)
 
     return _wrapper
+
+
+def synchronized(
+    func: typing.Optional[typing.Callable] = None,
+    lock: typing.Optional[threading.Lock] = None,
+) -> typing.Callable:
+    """Wraps `func` to synchronize invocations, optionally taking a user defined `lock`."""
+    if lock is None:
+        lock = threading.Lock()
+    assert lock is not None
+
+    def _decorator(func: typing.Callable) -> typing.Callable:
+        @functools.wraps(func)
+        def __wrapper(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
+            with lock:  # type: ignore
+                return func(*args, **kwargs)
+
+        return __wrapper
+
+    if func is None:
+        return _decorator
+    return _decorator(func)

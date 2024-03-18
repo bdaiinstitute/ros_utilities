@@ -3,12 +3,13 @@ import threading
 from typing import Any, Callable, List, Optional, Tuple
 
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
-from rclpy.action.server import ServerGoalHandle
+from rclpy.action.server import GoalEvent, RCLError, ServerGoalHandle
 from rclpy.callback_groups import CallbackGroup
 from rclpy.impl.rcutils_logger import RcutilsLogger
 from rclpy.node import Node
 
 from bdai_ros2_wrappers.type_hints import Action, ActionType
+from bdai_ros2_wrappers.utilities import synchronized
 
 
 class SingleGoalMultipleActionServers:
@@ -25,22 +26,22 @@ class SingleGoalMultipleActionServers:
     ) -> None:
         """Constructor"""
         self._node = node
+        self._goal_handle_lock = threading.Lock()
         self._goal_handle: Optional[ServerGoalHandle] = None
-        self._goal_lock = threading.Lock()
-        self._action_servers = []
-        for action_type, action_topic, execute_callback, callback_group in action_server_parameters:
-            self._action_servers.append(
-                ActionServer(
-                    node,
-                    action_type,
-                    action_topic,
-                    execute_callback=execute_callback,
-                    goal_callback=self.goal_callback,
-                    handle_accepted_callback=self.handle_accepted_callback,
-                    cancel_callback=self.cancel_callback,
-                    callback_group=callback_group,
-                ),
+        self._execution_lock = threading.Lock()
+        self._action_servers = [
+            ActionServer(
+                node,
+                action_type,
+                action_topic,
+                execute_callback=synchronized(execute_callback, self._execution_lock),
+                goal_callback=self.goal_callback,
+                handle_accepted_callback=self.handle_accepted_callback,
+                cancel_callback=self.cancel_callback,
+                callback_group=callback_group,
             )
+            for action_type, action_topic, execute_callback, callback_group in action_server_parameters
+        ]
 
     def get_logger(self) -> RcutilsLogger:
         """Returns the ros logger"""
@@ -58,12 +59,14 @@ class SingleGoalMultipleActionServers:
 
     def handle_accepted_callback(self, goal_handle: ServerGoalHandle) -> None:
         """Callback triggered when an action is accepted."""
-        with self._goal_lock:
+        with self._goal_handle_lock:
             # This server only allows one goal at a time
-            if self._goal_handle is not None and self._goal_handle.is_active:
-                self.get_logger().info("Aborting previous goal")
-                # Abort the existing goal
-                self._goal_handle.abort()
+            if self._goal_handle is not None:
+                self.get_logger().info("Canceling previous goal")
+                try:
+                    self._goal_handle._update_state(GoalEvent.CANCEL_GOAL)
+                except RCLError as ex:
+                    self.get_logger().debug(f"Failed to cancel goal in cancel callback: {ex}")
             self._goal_handle = goal_handle
 
         goal_handle.execute()
