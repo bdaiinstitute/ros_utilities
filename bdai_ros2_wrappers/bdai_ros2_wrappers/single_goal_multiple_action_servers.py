@@ -66,7 +66,7 @@ class SingleGoalMultipleActionServers:
                 try:
                     self._goal_handle._update_state(GoalEvent.CANCEL_GOAL)
                 except RCLError as ex:
-                    self.get_logger().debug(f"Failed to cancel goal in cancel callback: {ex}")
+                    self.get_logger().debug(f"Failed to cancel goal: {ex}")
             self._goal_handle = goal_handle
 
         goal_handle.execute()
