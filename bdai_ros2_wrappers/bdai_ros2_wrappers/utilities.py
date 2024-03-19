@@ -60,7 +60,20 @@ def synchronized(
     func: typing.Optional[typing.Callable] = None,
     lock: typing.Optional[threading.Lock] = None,
 ) -> typing.Callable:
-    """Wraps `func` to synchronize invocations, optionally taking a user defined `lock`."""
+    """Wraps `func` to synchronize invocations, optionally taking a user defined `lock`.
+
+    This function can be used as a decorator, like:
+
+    @synchronized
+    def my_function(...):
+        ...
+
+    or
+
+    @synchronized(lock=my_lock)
+    def my_function(...):
+        ...
+    """
     if lock is None:
         lock = threading.Lock()
     assert lock is not None
