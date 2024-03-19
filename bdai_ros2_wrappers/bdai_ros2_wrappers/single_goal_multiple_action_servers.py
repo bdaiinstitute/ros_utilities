@@ -23,18 +23,24 @@ class SingleGoalMultipleActionServers:
         self,
         node: Node,
         action_server_parameters: List[Tuple[ActionType, str, Callable, Optional[CallbackGroup]]],
+        nosync: bool = False,
     ) -> None:
         """Constructor"""
         self._node = node
         self._goal_handle_lock = threading.Lock()
         self._goal_handle: Optional[ServerGoalHandle] = None
-        self._execution_lock = threading.Lock()
+        if not nosync:
+            execution_lock = threading.Lock()
+            action_server_parameters = [
+                (action_type, action_topic, synchronized(execute_callback, execution_lock), callback_group)
+                for action_type, action_topic, execute_callback, callback_group in action_server_parameters
+            ]
         self._action_servers = [
             ActionServer(
                 node,
                 action_type,
                 action_topic,
-                execute_callback=synchronized(execute_callback, self._execution_lock),
+                execute_callback=execute_callback,
                 goal_callback=self.goal_callback,
                 handle_accepted_callback=self.handle_accepted_callback,
                 cancel_callback=self.cancel_callback,
