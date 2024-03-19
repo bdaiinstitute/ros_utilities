@@ -25,7 +25,15 @@ class SingleGoalMultipleActionServers:
         action_server_parameters: List[Tuple[ActionType, str, Callable, Optional[CallbackGroup]]],
         nosync: bool = False,
     ) -> None:
-        """Constructor"""
+        """Constructor.
+
+        Args:
+            node: ROS 2 node to use for action servers.
+            action_server_parameters: tuples per action server, listing action type, action name,
+            action execution callback, and action callback group (which may be None).
+            nosync: whether to synchronize action execution callbacks using locks or not.
+            Set to True when action execution callback already enforce mutual exclusion.
+        """
         self._node = node
         self._goal_handle_lock = threading.Lock()
         self._goal_handle: Optional[ServerGoalHandle] = None
