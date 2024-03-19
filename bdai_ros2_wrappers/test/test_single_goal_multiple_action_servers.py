@@ -104,6 +104,7 @@ def test_same_action_interruption(
     action_a = compute_fibonacci.asynchronously(goal)
     barrier.wait(timeout=5.0)  # let action A start
     action_b = compute_fibonacci.asynchronously(goal)
+    # Actions B and A will allow each other to start and finish, respectively
     assert wait_for_future(action_a.finalization, timeout_sec=5.0)
     assert action_a.cancelled
     barrier.wait(timeout=5.0)  # let action B finish
@@ -123,6 +124,7 @@ def test_different_action_interruption(
     action_a = compute_fibonacci.asynchronously(goal)
     barrier.wait(timeout=5.0)  # let action A start
     action_b = compute_fibonacci_reversed.asynchronously(goal)
+    # Actions B and A will allow each other to start and finish, respectively
     assert wait_for_future(action_a.finalization, timeout_sec=5.0)
     assert action_a.cancelled
     barrier.wait(timeout=5.0)  # let action B finish
