@@ -510,17 +510,29 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
     class Task:
         """A bundle of an executable task and its associated entity."""
 
-        def __init__(self, task: rclpy.task.Task, entity: typing.Optional[rclpy.executors.WaitableEntityType]) -> None:
+        def __init__(
+            self,
+            task: rclpy.task.Task,
+            entity: typing.Optional[rclpy.executors.WaitableEntityType],
+            node: typing.Optional[rclpy.node.Node],
+        ) -> None:
             self.task = task
             self.entity = entity
+            if node is not None and hasattr(node, "destruction_requested"):
+                self.valid = lambda: not node.destruction_requested  # type: ignore
+            else:
+                self.valid = lambda: True
             self.callback_group = entity.callback_group if entity is not None else None
 
         def __call__(self) -> None:
-            """Run or resume a task
+            """Run or resume a task.
 
             See rclpy.task.Task documentation for further reference.
             """
-            self.task.__call__()
+            if not self.valid():
+                self.cancel()
+                return
+            self.task()
 
         def __getattr__(self, name: str) -> typing.Any:
             return getattr(self.task, name)
@@ -591,7 +603,7 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
         with self._spin_lock:
             try:
                 task, entity, node = self.wait_for_ready_callbacks(*args, **kwargs)
-                task = AutoScalingMultiThreadedExecutor.Task(task, entity)
+                task = AutoScalingMultiThreadedExecutor.Task(task, entity, node)
                 with self._shutdown_lock:
                     if self._is_shutdown:
                         # Ignore task, let shutdown clean it up.
@@ -665,8 +677,8 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
             with self._spin_lock:
                 # rclpy.executors.Executor base implementation leaves tasks
                 # unawaited upon shutdown. Do the housekeepng.
-                for task, entity, _ in self._tasks:
-                    task = AutoScalingMultiThreadedExecutor.Task(task, entity)
+                for task, entity, node in self._tasks:
+                    task = AutoScalingMultiThreadedExecutor.Task(task, entity, node)
                     task.cancel()
         return done
 

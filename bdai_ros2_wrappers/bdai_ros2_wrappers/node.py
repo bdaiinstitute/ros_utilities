@@ -28,6 +28,7 @@ class Node(BaseNode):
         if default_callback_group is None:
             default_callback_group = NonReentrantCallbackGroup()
         self._default_callback_group_override = default_callback_group
+        self._destruction_requested = False
         super().__init__(*args, **kwargs)
 
     @property
@@ -35,3 +36,13 @@ class Node(BaseNode):
         """Get the default callback group."""
         # NOTE(hidmic): this overrides the hardcoded default group in rclpy.node.Node implementation
         return self._default_callback_group_override
+
+    @property
+    def destruction_requested(self) -> bool:
+        """Checks whether destruction was requested or not."""
+        return self._destruction_requested
+
+    def destroy_node(self) -> None:
+        """Overrides node destruction API."""
+        self._destruction_requested = True
+        super().destroy_node()
