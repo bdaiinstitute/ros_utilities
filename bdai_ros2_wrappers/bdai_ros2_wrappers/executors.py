@@ -518,7 +518,6 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
         ) -> None:
             self.task = task
             self.entity = entity
-            self.valid = lambda: True
             if node is not None and hasattr(node, "destruction_requested"):
                 self.valid = lambda: not node.destruction_requested  # type: ignore
             else:
@@ -679,8 +678,7 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
                 # rclpy.executors.Executor base implementation leaves tasks
                 # unawaited upon shutdown. Do the housekeepng.
                 for task, entity, node in self._tasks:
-                    Task = AutoScalingMultiThreadedExecutor.Task
-                    task = Task(task, entity, node)
+                    task = AutoScalingMultiThreadedExecutor.Task(task, entity, node)
                     task.cancel()
         return done
 
