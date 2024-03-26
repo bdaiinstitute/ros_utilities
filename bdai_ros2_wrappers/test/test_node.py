@@ -1,14 +1,17 @@
 # Copyright (c) 2024 Boston Dynamics AI Institute Inc.  All rights reserved.
 
 import threading
-from typing import Generator
+from typing import Any, Generator
 
 import pytest
 import rclpy
 from rclpy.context import Context
+from rcl_interfaces.srv import GetParameters
 from std_srvs.srv import Trigger
 
 from bdai_ros2_wrappers.executors import AutoScalingMultiThreadedExecutor
+from bdai_ros2_wrappers.scope import ROSAwareScope
+
 from bdai_ros2_wrappers.node import Node
 
 
@@ -67,3 +70,26 @@ def test_node_destruction_during_execution(ros_context: Context) -> None:
         barrier.reset()
         executor.remove_node(node)
         executor.shutdown()
+
+
+def test_node_post_initialization(ros: ROSAwareScope) -> None:
+    """Asserts that Node post initialization is honored and that it affords blocking calls."""
+
+    class ComplexProxyNode(Node):
+        def __init__(self, *args: Any, remote_node_name: str, **kwargs: Any) -> None:
+            super().__init__(f"proxy_node_for_{remote_node_name}", *args, **kwargs)
+            self._get_remote_node_parameters_client = self.create_client(
+                GetParameters,
+                f"{remote_node_name}/get_parameters",
+            )
+
+        def __post_init__(self) -> None:
+            response = self._get_remote_node_parameters_client.call(
+                GetParameters.Request(names=["verbose"]),
+            )
+            self.verbose = response.values[0].bool_value
+
+    assert ros.node is not None
+    ros.node.declare_parameter("verbose", True)
+    with ros.managed(ComplexProxyNode, remote_node_name=ros.node.get_name()) as node:
+        assert node.verbose

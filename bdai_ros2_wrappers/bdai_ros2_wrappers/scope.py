@@ -366,10 +366,14 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
                 graph = list(node_or_graph)
                 for node in graph:
                     self._executor.add_node(node)
+                    if hasattr(node, "__post_init__"):
+                        node.__post_init__()
                 self._graph.extend(graph)
                 return graph
             node = node_or_graph
             self._executor.add_node(node)
+            if hasattr(node, "__post_init__"):
+                node.__post_init__()
             self._graph.append(node)
             return node
 
