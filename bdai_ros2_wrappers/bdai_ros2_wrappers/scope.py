@@ -309,6 +309,10 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
     def load(self, factory: NodeFactoryCallable, *args: typing.Any, **kwargs: typing.Any) -> rclpy.node.Node:
         """Instantiates and loads a ROS 2 node.
 
+        If a __post_init__ method is defined by the instantiated ROS 2 node, it will be invoked
+        after the node is added to the scope executor. This allows for blocking calls during
+        initialization, provided the scope executor can serve them in the background.
+
         Args:
             factory: callable to instantiate a ROS 2 node.
             It is expected to accept `rclpy.node.Node` arguments.
@@ -332,6 +336,10 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
         **kwargs: typing.Any,
     ) -> typing.List[rclpy.node.Node]:
         """Instantiates and loads a collection (or graph) of ROS 2 nodes.
+
+        For each ROS 2 node instantiated, if a __post_init__ method is defined it will be invoked
+        after the corresponding node has been added to the scope executor. This allows for blocking
+        calls during initialization, provided the scope executor can serve them in the background.
 
         Args:
             factory: callable to instantiate a collection of ROS 2 nodes.
