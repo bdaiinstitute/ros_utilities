@@ -5,14 +5,13 @@ from typing import Any, Generator
 
 import pytest
 import rclpy
-from rclpy.context import Context
 from rcl_interfaces.srv import GetParameters
+from rclpy.context import Context
 from std_srvs.srv import Trigger
 
 from bdai_ros2_wrappers.executors import AutoScalingMultiThreadedExecutor
-from bdai_ros2_wrappers.scope import ROSAwareScope
-
 from bdai_ros2_wrappers.node import Node
+from bdai_ros2_wrappers.scope import ROSAwareScope
 
 
 @pytest.fixture
