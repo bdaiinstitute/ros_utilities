@@ -182,3 +182,123 @@ def wait_for_message(
         future.cancel()
         return None
     return future.result()
+
+def wait_for_messages(node: Node, topics: List, mtypes: List, **kwargs: Any) -> Any:
+    """Waits for messages to arrive at multiple topics within a given
+    time window. Uses message_filters.ApproximateTimeSynchronizer.
+    This function blocks until receiving the messages or when a given
+    timeout expires. Assumes the given node is spinning by
+    some external executor.
+
+    Requires the user to pass in a node, since
+    message_filters.Subscriber requires a node upon construction.
+
+    Args:
+        node (Node): the node being attached
+        topics (list) List of topics
+        mtypes (list) List of message types, one for each topic.
+        delay  (float) The delay in seconds for which the messages
+            could be synchronized.
+        allow_headerless (bool): Whether it's ok for there to be
+            no header in the messages.
+        sleep (float) the amount of time to wait before checking
+            whether messages are received
+        timeout (float or None): Time in seconds to wait. None if forever.
+            If exceeded timeout, self.messages will contain None for
+            each topic.
+        latched_topics (set): a set of topics for which the publisher latches (i.e.
+            sets QoS durability to transient_local).
+    """
+    return _WaitForMessages(node, topics, mtypes, **kwargs).messages
+
+
+class _WaitForMessages:
+    def __init__(
+        self,
+        node: Node,
+        topics: List,
+        mtypes: List,
+        queue_size: int = 10,
+        delay: float = 0.2,
+        allow_headerless: bool = False,
+        sleep: float = 0.5,
+        timeout: Optional[float] = None,
+        verbose: bool = False,
+        exception_on_timeout: bool = False,
+        latched_topics: Optional[Set] = None,
+        callback_group: Optional[CallbackGroup] = None,
+    ) -> None:
+        self.node = node
+        self.messages: Optional[Tuple] = None
+        self.verbose = verbose
+        self.topics = topics
+        self.timeout = timeout
+        self.exception_on_timeout = exception_on_timeout
+        self.has_timed_out = False
+        if latched_topics is None:
+            latched_topics = set()
+        self.latched_topics = latched_topics
+
+        if self.verbose:
+            log_info("initializing message filter ApproximateTimeSynchronizer")
+        self.subs: Optional[List] = [
+            self._message_filters_subscriber(mtype, topic, callback_group=callback_group)
+            for topic, mtype in zip(topics, mtypes, strict=True)
+        ]
+        self.ts = message_filters.ApproximateTimeSynchronizer(
+            self.subs, queue_size, delay, allow_headerless=allow_headerless
+        )
+        self.ts.registerCallback(self._cb)
+
+        try:
+            self._start_time = self.node.get_clock().now()
+            rate = self.node.create_rate(1.0 / sleep)
+            while self.messages is None and not self.has_timed_out:
+                if self.check_messages_received():
+                    break
+                rate.sleep()
+        finally:
+            self.destroy_subs()
+
+    def _message_filters_subscriber(
+        self, mtype: Any, topic: str, callback_group: Optional[CallbackGroup] = None
+    ) -> message_filters.Subscriber:
+        if topic in self.latched_topics:
+            return message_filters.Subscriber(
+                self.node,
+                mtype,
+                topic,
+                qos_profile=QoSProfile(depth=10, durability=QoSDurabilityPolicy.TRANSIENT_LOCAL),
+                callback_group=callback_group,
+            )
+        else:
+            return message_filters.Subscriber(self.node, mtype, topic, callback_group=callback_group)
+
+    def check_messages_received(self) -> bool:
+        if self.messages is not None:
+            log_info("WaitForMessages: Received messages! Done!")
+            return True
+        if self.verbose:
+            log_info("WaitForMessages: waiting for messages from {}".format(self.topics))
+        _dt = self.node.get_clock().now() - self._start_time
+        if self.timeout is not None and _dt.nanoseconds * 1e-9 > self.timeout:
+            log_error("WaitForMessages: timeout waiting for messages")
+            self.messages = (None,) * len(self.topics)
+            self.has_timed_out = True
+            if self.exception_on_timeout:
+                raise TimeoutError("WaitForMessages: timeout waiting for messages")
+        return False
+
+    def _cb(self, *messages: Any) -> None:
+        if self.messages is not None:
+            return
+        if self.verbose:
+            log_info("WaitForMessages: callback got messages!")
+        self.messages = messages
+
+    def destroy_subs(self) -> None:
+        """destroy all message filter subscribers"""
+        if self.subs is not None:
+            for mf_sub in self.subs:
+                self.node.destroy_subscription(mf_sub.sub)
+            self.subs = None
