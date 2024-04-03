@@ -192,32 +192,37 @@ def wait_for_message(
 
 
 def wait_for_messages(
-    node: rclpy.node.Node, topics: typing.List, mtypes: typing.List, **kwargs: typing.Any
+    node: rclpy.node.Node,
+    topics: typing.List,
+    mtypes: typing.List,
+    **kwargs: typing.Any,
 ) -> typing.Any:
-    """Waits for messages to arrive at multiple topics within a given
-    time window. Uses message_filters.ApproximateTimeSynchronizer.
-    This function blocks until receiving the messages or when a given
-    timeout expires. Assumes the given node is spinning by
-    some external executor.
+    """Waits for messages to arrive at multiple topics within a given time window.
+
+    Uses message_filters.ApproximateTimeSynchronizer. This function blocks
+    until receiving the messages or when a given timeout expires. Assumes the
+    given node is spinning by some external executor.
 
     Requires the user to pass in a node, since
     message_filters.Subscriber requires a node upon construction.
 
     Args:
         node (Node): the node being attached
-        topics (list) List of topics
-        mtypes (list) List of message types, one for each topic.
-        delay  (float) The delay in seconds for which the messages
-            could be synchronized.
-        allow_headerless (bool): Whether it's ok for there to be
-            no header in the messages.
-        sleep (float) the amount of time to wait before checking
-            whether messages are received
-        timeout (float or None): Time in seconds to wait. None if forever.
-            If exceeded timeout, self.messages will contain None for
-            each topic.
-        latched_topics (set): a set of topics for which the publisher latches (i.e.
-            sets QoS durability to transient_local).
+        topics (list): List of topics
+        mtypes (list): List of message types, one for each topic.
+        kwargs: additional arguments, including
+            delay  (float) The delay in seconds for which the messages
+                could be synchronized.
+            allow_headerless (bool): Whether it's ok for there to be
+                no header in the messages.
+            sleep (float) the amount of time to wait before checking
+                whether messages are received
+            timeout (float or None): Time in seconds to wait. None if forever.
+                If exceeded timeout, self.messages will contain None for
+                each topic.
+            latched_topics (set): a set of topics for which the publisher latches (i.e.
+                sets QoS durability to transient_local).
+
     """
     return _WaitForMessages(node, topics, mtypes, **kwargs).messages
 
@@ -254,7 +259,7 @@ class _WaitForMessages:
             self.logger.info("initializing message filter ApproximateTimeSynchronizer")
         self.subs: typing.Optional[typing.List] = [
             self._message_filters_subscriber(mtype, topic, callback_group=callback_group)
-            for topic, mtype in zip(topics, mtypes, strict=True)
+            for topic, mtype in zip(topics, mtypes, strict=True)  # type: ignore
         ]
         self.ts = message_filters.ApproximateTimeSynchronizer(
             self.subs,
@@ -288,8 +293,7 @@ class _WaitForMessages:
                 qos_profile=rclpy.qos.QoSProfile(depth=10, durability=rclpy.qos.QoSDurabilityPolicy.TRANSIENT_LOCAL),
                 callback_group=callback_group,
             )
-        else:
-            return message_filters.Subscriber(self.node, mtype, topic, callback_group=callback_group)
+        return message_filters.Subscriber(self.node, mtype, topic, callback_group=callback_group)
 
     def check_messages_received(self) -> bool:
         if self.messages is not None:
