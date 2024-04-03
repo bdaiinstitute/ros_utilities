@@ -1,15 +1,18 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute LLC. All rights reserved.
+from enum import EnumMeta
 from typing import Any
 
 import std_msgs.msg
-from enum import EnumMeta
 from rclpy.qos import QoSDurabilityPolicy, QoSProfile
+
 from bdai_ros2_wrappers.node import Node
 from bdai_ros2_wrappers.scope import ROSAwareScope
 from bdai_ros2_wrappers.subscription import wait_for_messages
 
+
 def latch(depth: int = 1, durability: EnumMeta = QoSDurabilityPolicy.TRANSIENT_LOCAL) -> QoSProfile:
     return QoSProfile(depth=depth, durability=durability)
+
 
 class NodeFoo(Node):
     def __init__(self, **kwargs: Any) -> None:
@@ -42,7 +45,7 @@ def test_wait_for_messages(ros: ROSAwareScope) -> None:
         verbose=True,
         delay=0.5,
         timeout=20,
-        latched_topics={"/test1"}
+        latched_topics={"/test1"},
     )
     assert messages == (None, None) or messages == (
         std_msgs.msg.String(data="hello from foo"),
@@ -57,7 +60,7 @@ def test_wait_for_messages(ros: ROSAwareScope) -> None:
         verbose=True,
         delay=0.5,
         timeout=20,
-        latched_topics={"/test1"}
+        latched_topics={"/test1"},
     )
     assert messages == (None, None) or messages == (
         std_msgs.msg.String(data="hello from bar"),

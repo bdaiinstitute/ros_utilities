@@ -7,12 +7,12 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile
 from rclpy.task import Future
 
-import rclpy.node
-import rclpy.task
+import message_filters
 import rclpy.callback_groups
 import rclpy.impl
+import rclpy.node
 import rclpy.qos
-import message_filters
+import rclpy.task
 
 import bdai_ros2_wrappers.scope as scope
 from bdai_ros2_wrappers.futures import wait_for_future
@@ -191,7 +191,9 @@ def wait_for_message(
     return future.result()
 
 
-def wait_for_messages(node: rclpy.node.Node, topics: typing.List, mtypes: typing.List, **kwargs: typing.Any) -> typing.Any:
+def wait_for_messages(
+    node: rclpy.node.Node, topics: typing.List, mtypes: typing.List, **kwargs: typing.Any
+) -> typing.Any:
     """Waits for messages to arrive at multiple topics within a given
     time window. Uses message_filters.ApproximateTimeSynchronizer.
     This function blocks until receiving the messages or when a given
@@ -255,7 +257,10 @@ class _WaitForMessages:
             for topic, mtype in zip(topics, mtypes, strict=True)
         ]
         self.ts = message_filters.ApproximateTimeSynchronizer(
-            self.subs, queue_size, delay, allow_headerless=allow_headerless
+            self.subs,
+            queue_size,
+            delay,
+            allow_headerless=allow_headerless,
         )
         self.ts.registerCallback(self._cb)
 
@@ -270,7 +275,10 @@ class _WaitForMessages:
             self.destroy_subs()
 
     def _message_filters_subscriber(
-        self, mtype: typing.Any, topic: str, callback_group: typing.Optional[rclpy.callback_groups.CallbackGroup] = None
+        self,
+        mtype: typing.Any,
+        topic: str,
+        callback_group: typing.Optional[rclpy.callback_groups.CallbackGroup] = None,
     ) -> message_filters.Subscriber:
         if topic in self.latched_topics:
             return message_filters.Subscriber(
