@@ -7,6 +7,14 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile
 from rclpy.task import Future
 
+import rclpy.node
+import rclpy.qos
+import rclpy.task
+import rclpy.callback_groups
+import rclpy.impl
+import rclpy.qos
+import message_filters
+
 import bdai_ros2_wrappers.scope as scope
 from bdai_ros2_wrappers.futures import wait_for_future
 from bdai_ros2_wrappers.utilities import Tape
@@ -183,7 +191,7 @@ def wait_for_message(
         return None
     return future.result()
 
-def wait_for_messages(node: Node, topics: List, mtypes: List, **kwargs: Any) -> Any:
+def wait_for_messages(node: rclpy.node.Node, topics: typing.List, mtypes: typing.List, **kwargs: typing.Any) -> typing.Any:
     """Waits for messages to arrive at multiple topics within a given
     time window. Uses message_filters.ApproximateTimeSynchronizer.
     This function blocks until receiving the messages or when a given
@@ -215,21 +223,21 @@ def wait_for_messages(node: Node, topics: List, mtypes: List, **kwargs: Any) -> 
 class _WaitForMessages:
     def __init__(
         self,
-        node: Node,
-        topics: List,
-        mtypes: List,
+        node: rclpy.node.Node,
+        topics: typing.List,
+        mtypes: typing.List,
         queue_size: int = 10,
         delay: float = 0.2,
         allow_headerless: bool = False,
         sleep: float = 0.5,
-        timeout: Optional[float] = None,
+        timeout: typing.Optional[float] = None,
         verbose: bool = False,
         exception_on_timeout: bool = False,
-        latched_topics: Optional[Set] = None,
-        callback_group: Optional[CallbackGroup] = None,
+        latched_topics: typing.Optional[typing.Set] = None,
+        callback_group: typing.Optional[rclpy.callback_groups.CallbackGroup] = None,
     ) -> None:
         self.node = node
-        self.messages: Optional[Tuple] = None
+        self.messages: typing.Optional[typing.Tuple] = None
         self.verbose = verbose
         self.topics = topics
         self.timeout = timeout
@@ -238,10 +246,11 @@ class _WaitForMessages:
         if latched_topics is None:
             latched_topics = set()
         self.latched_topics = latched_topics
+        self.logger = rclpy.impl.rcutils_logger.RcutilsLogger(name="wait_for_messages")
 
         if self.verbose:
-            log_info("initializing message filter ApproximateTimeSynchronizer")
-        self.subs: Optional[List] = [
+            self.logger.info("initializing message filter ApproximateTimeSynchronizer")
+        self.subs: typing.Optional[typing.List] = [
             self._message_filters_subscriber(mtype, topic, callback_group=callback_group)
             for topic, mtype in zip(topics, mtypes, strict=True)
         ]
@@ -261,14 +270,14 @@ class _WaitForMessages:
             self.destroy_subs()
 
     def _message_filters_subscriber(
-        self, mtype: Any, topic: str, callback_group: Optional[CallbackGroup] = None
+        self, mtype: typing.Any, topic: str, callback_group: typing.Optional[rclpy.callback_groups.CallbackGroup] = None
     ) -> message_filters.Subscriber:
         if topic in self.latched_topics:
             return message_filters.Subscriber(
                 self.node,
                 mtype,
                 topic,
-                qos_profile=QoSProfile(depth=10, durability=QoSDurabilityPolicy.TRANSIENT_LOCAL),
+                qos_profile=rclpy.qos.QoSProfile(depth=10, durability=rclpy.qpos.QoSDurabilityPolicy.TRANSIENT_LOCAL),
                 callback_group=callback_group,
             )
         else:
@@ -276,24 +285,24 @@ class _WaitForMessages:
 
     def check_messages_received(self) -> bool:
         if self.messages is not None:
-            log_info("WaitForMessages: Received messages! Done!")
+            self.logger.info("WaitForMessages: Received messages! Done!")
             return True
         if self.verbose:
-            log_info("WaitForMessages: waiting for messages from {}".format(self.topics))
+            self.logger.info("WaitForMessages: waiting for messages from {}".format(self.topics))
         _dt = self.node.get_clock().now() - self._start_time
         if self.timeout is not None and _dt.nanoseconds * 1e-9 > self.timeout:
-            log_error("WaitForMessages: timeout waiting for messages")
+            self.logger.error("WaitForMessages: timeout waiting for messages")
             self.messages = (None,) * len(self.topics)
             self.has_timed_out = True
             if self.exception_on_timeout:
                 raise TimeoutError("WaitForMessages: timeout waiting for messages")
         return False
 
-    def _cb(self, *messages: Any) -> None:
+    def _cb(self, *messages: typing.Any) -> None:
         if self.messages is not None:
             return
         if self.verbose:
-            log_info("WaitForMessages: callback got messages!")
+            self.logger.info("WaitForMessages: callback got messages!")
         self.messages = messages
 
     def destroy_subs(self) -> None:
