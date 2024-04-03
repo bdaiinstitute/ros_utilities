@@ -8,7 +8,6 @@ from rclpy.qos import QoSProfile
 from rclpy.task import Future
 
 import rclpy.node
-import rclpy.qos
 import rclpy.task
 import rclpy.callback_groups
 import rclpy.impl
@@ -191,6 +190,7 @@ def wait_for_message(
         return None
     return future.result()
 
+
 def wait_for_messages(node: rclpy.node.Node, topics: typing.List, mtypes: typing.List, **kwargs: typing.Any) -> typing.Any:
     """Waits for messages to arrive at multiple topics within a given
     time window. Uses message_filters.ApproximateTimeSynchronizer.
@@ -277,7 +277,7 @@ class _WaitForMessages:
                 self.node,
                 mtype,
                 topic,
-                qos_profile=rclpy.qos.QoSProfile(depth=10, durability=rclpy.qpos.QoSDurabilityPolicy.TRANSIENT_LOCAL),
+                qos_profile=rclpy.qos.QoSProfile(depth=10, durability=rclpy.qos.QoSDurabilityPolicy.TRANSIENT_LOCAL),
                 callback_group=callback_group,
             )
         else:
