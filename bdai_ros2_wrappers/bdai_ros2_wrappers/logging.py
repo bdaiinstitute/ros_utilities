@@ -1,30 +1,37 @@
-# Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
+# Copyright (c) 2023-2024 Boston Dynamics AI Institute Inc.  All rights reserved.
 
 import contextlib
+import functools
+import inspect
 import logging
 import typing
+import warnings
 
-import rclpy.logging
+from rclpy.clock import Clock
+from rclpy.duration import Duration
 
 # NOTE(hidmic): tinkering with implementation details is not ideal,
 # but there is not a lot of room for alternatives. This inconvenience
 # will go away when and if this module is contributed upstream.
 from rclpy.impl.implementation_singleton import rclpy_implementation as impl
+from rclpy.impl.rcutils_logger import RcutilsLogger
+from rclpy.logging import LoggingSeverity
 from rclpy.node import Node
 
+from bdai_ros2_wrappers.utilities import cap, skip, throttle
+
 SEVERITY_MAP = {
-    logging.NOTSET: rclpy.logging.LoggingSeverity.UNSET,
-    logging.DEBUG: rclpy.logging.LoggingSeverity.DEBUG,
-    logging.INFO: rclpy.logging.LoggingSeverity.INFO,
-    logging.WARN: rclpy.logging.LoggingSeverity.WARN,
-    logging.ERROR: rclpy.logging.LoggingSeverity.ERROR,
-    logging.CRITICAL: rclpy.logging.LoggingSeverity.FATAL,
+    logging.NOTSET: LoggingSeverity.UNSET,
+    logging.DEBUG: LoggingSeverity.DEBUG,
+    logging.INFO: LoggingSeverity.INFO,
+    logging.WARN: LoggingSeverity.WARN,
+    logging.ERROR: LoggingSeverity.ERROR,
+    logging.CRITICAL: LoggingSeverity.FATAL,
 }
 
 
 if not typing.TYPE_CHECKING:
     import os.path
-    import warnings
     import xml.etree.ElementTree as ET
 
     import ament_index_python
@@ -35,6 +42,229 @@ if not typing.TYPE_CHECKING:
     version = tree.getroot().find("version")
     if packaging.version.parse(version.text) >= packaging.version.parse("3.9.0"):
         warnings.warn("TODO: use subloggers in RcutilsLogHandler implementation", stacklevel=1)
+
+
+@functools.lru_cache(maxsize=1024)
+def make_logging_function(
+    name: str,
+    level: LoggingSeverity,
+    origin: inspect.Traceback,
+    throttle_duration_sec: typing.Optional[float] = None,
+    throttle_time_source: typing.Optional[Clock] = None,
+    skip_first: typing.Optional[bool] = None,
+    once: typing.Optional[bool] = None,
+) -> typing.Callable[[str], bool]:
+    """Make a fast rclpy logging function.
+
+    A logging function takes a log message and returns True if the message was logged, False otherwise.
+    A message will not be logged if:
+
+    * the logger is not enabled for the logging function's severity level (i.e. it is less than
+      the severity level of the logger), or
+    * some logging filter (throttling, once, skip) causes the message to be skipped.
+
+    Logging filters will only be evaluated if the logger is enabled for the logging function's severity level.
+
+    Args:
+        name: logger name.
+        level: log severity level.
+        origin: log call site.
+        throttle_duration_sec: optional period for throttling, in seconds.
+        throttle_time_source: optional time source for throttling, defaults to system time.
+        skip_first: if True, skip the first log.
+        once: if True, only log once.
+
+    Returns:
+        a logging function.
+    """
+
+    def log(message: str) -> bool:
+        impl.rclpy_logging_rcutils_log(
+            level,
+            name,
+            message,
+            origin.function,
+            origin.filename,
+            origin.lineno,
+        )
+        return True
+
+    if throttle_duration_sec is not None:
+        throttle_period = Duration(
+            seconds=throttle_duration_sec,
+        )
+        log = throttle(
+            log,
+            min_period=throttle_period,
+            time_source=throttle_time_source,
+            fill_value=False,
+        )
+    if skip_first:
+        log = skip(log, num_times=1, fill_value=False)
+    if once:
+        log = cap(log, num_times=1, fill_value=False)
+    return log
+
+
+class MemoizingRcutilsLogger:
+    """An alternative, more efficient implementation of RcutilsLogger.
+
+    MemoizingRcutilsLogger caches logging call configuration to speed up
+    subsequent invocations.
+    """
+
+    def __init__(self, name: str = "") -> None:
+        """Initializes the logger with the given `name`, or the root logger if none is provided."""
+        self.name = name
+
+    def get_child(self, name: str) -> "MemoizingRcutilsLogger":
+        """Gets a child logger with the given `name`."""
+        if not name:
+            raise ValueError("Need name for child logger.")
+        if self.name:
+            name = self.name + "." + name
+        return MemoizingRcutilsLogger(name)
+
+    def set_level(self, level: typing.Union[int, LoggingSeverity]) -> None:
+        """Sets logger severity `level`."""
+        impl.rclpy_logging_set_logger_level(self.name, LoggingSeverity(level))
+
+    def get_effective_level(self) -> LoggingSeverity:
+        """Gets the effective logger severity level.
+
+        The effective severity level of a logger is the first severity level set in the logger
+        genealogy (ie. its own or that of its parent or that of its grandparent and so on), or
+        the default severity level when no severity level is.
+        """
+        return LoggingSeverity(impl.rclpy_logging_get_logger_effective_level(self.name))
+
+    def is_enabled_for(self, level: typing.Union[int, LoggingSeverity]) -> bool:
+        """Checks whether the logger is enabled for logs at the given severity `level`."""
+        return impl.rclpy_logging_logger_is_enabled_for(self.name, LoggingSeverity(level))
+
+    def log(
+        self,
+        message: str,
+        level: typing.Union[int, LoggingSeverity],
+        origin: typing.Optional[inspect.Traceback] = None,
+        throttle_duration_sec: typing.Optional[float] = None,
+        throttle_time_source_type: typing.Optional[Clock] = None,
+        skip_first: typing.Optional[bool] = None,
+        once: typing.Optional[bool] = None,
+    ) -> bool:
+        """Log a message with the specified severity `level`.
+
+        A message will not be logged if:
+
+        * the logger is not enabled for the logging function's severity level (i.e. it is less than
+          the severity level of the logger), or
+        * some logging filter (throttling, once, skip) causes the message to be skipped.
+
+        Logging filters will only be evaluated if the logger is enabled for the logging function's severity level.
+
+        Args:
+            message: message to be logged.
+            level: severity level of the message.
+            origin: optional log call site, defaults to the caller one level up the call stack.
+            throttle_duration_sec: optional period for throttling, in seconds.
+            throttle_time_source_type: optional time source for throttling, defaults to system time.
+            skip_first: if True, skip the first log.
+            once: if True, only log once.
+
+        Returns:
+            whether the message was logged or not.
+        """
+        if not self.is_enabled_for(level):
+            return False
+        if origin is None:
+            current_frame = inspect.currentframe()
+            assert current_frame is not None
+            outer_frame = current_frame.f_back
+            assert outer_frame is not None
+            origin = inspect.getframeinfo(outer_frame, context=0)
+        do_log = make_logging_function(
+            self.name,
+            LoggingSeverity(level),
+            origin,
+            throttle_duration_sec,
+            throttle_time_source_type,
+            skip_first,
+            once,
+        )
+        return do_log(message)
+
+    def debug(self, message: str, origin: typing.Optional[inspect.Traceback] = None, **kwargs: typing.Any) -> bool:
+        """Log a message with `DEBUG` severity via :py:method:MemoizingRcutilsLogger.log:."""
+        if origin is None:
+            current_frame = inspect.currentframe()
+            assert current_frame is not None
+            outer_frame = current_frame.f_back
+            assert outer_frame is not None
+            origin = inspect.getframeinfo(outer_frame, context=0)
+        return self.log(message, LoggingSeverity.DEBUG, origin, **kwargs)
+
+    def info(self, message: str, origin: typing.Optional[inspect.Traceback] = None, **kwargs: typing.Any) -> bool:
+        """Log a message with `INFO` severity via :py:method:MemoizingRcutilsLogger.log:."""
+        if origin is None:
+            current_frame = inspect.currentframe()
+            assert current_frame is not None
+            outer_frame = current_frame.f_back
+            assert outer_frame is not None
+            origin = inspect.getframeinfo(outer_frame, context=0)
+        return self.log(message, LoggingSeverity.INFO, origin, **kwargs)
+
+    def warning(self, message: str, origin: typing.Optional[inspect.Traceback] = None, **kwargs: typing.Any) -> bool:
+        """Log a message with `WARN` severity via :py:method:MemoizingRcutilsLogger.log:."""
+        if origin is None:
+            current_frame = inspect.currentframe()
+            assert current_frame is not None
+            outer_frame = current_frame.f_back
+            assert outer_frame is not None
+            origin = inspect.getframeinfo(outer_frame, context=0)
+        return self.log(message, LoggingSeverity.WARN, origin, **kwargs)
+
+    def warn(self, message: str, origin: typing.Optional[inspect.Traceback] = None, **kwargs: typing.Any) -> bool:
+        """Log a message with `WARN` severity via :py:method:MemoizingRcutilsLogger.log:.
+
+        Deprecated in favor of :py:classmethod:RcutilsLogger.warning:.
+        """
+        warnings.warn(
+            "MemoizingRcutilsLogger.warn() is deprecated in favor of MemoizingRcutilsLogger.warning()",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        if origin is None:
+            current_frame = inspect.currentframe()
+            assert current_frame is not None
+            outer_frame = current_frame.f_back
+            assert outer_frame is not None
+            origin = inspect.getframeinfo(outer_frame, context=0)
+        return self.warning(message, origin, **kwargs)
+
+    def error(self, message: str, origin: typing.Optional[inspect.Traceback] = None, **kwargs: typing.Any) -> bool:
+        """Log a message with `ERROR` severity via :py:method:MemoizingRcutilsLogger.log:."""
+        if origin is None:
+            current_frame = inspect.currentframe()
+            assert current_frame is not None
+            outer_frame = current_frame.f_back
+            assert outer_frame is not None
+            origin = inspect.getframeinfo(outer_frame, context=0)
+        return self.log(message, LoggingSeverity.ERROR, origin, **kwargs)
+
+    def fatal(self, message: str, origin: typing.Optional[inspect.Traceback] = None, **kwargs: typing.Any) -> bool:
+        """Log a message with `FATAL` severity via :py:method:MemoizingRcutilsLogger.log:."""
+        if origin is None:
+            current_frame = inspect.currentframe()
+            assert current_frame is not None
+            outer_frame = current_frame.f_back
+            assert outer_frame is not None
+            origin = inspect.getframeinfo(outer_frame, context=0)
+        return self.log(message, LoggingSeverity.FATAL, origin, **kwargs)
+
+
+def as_memoizing_logger(logger: RcutilsLogger) -> MemoizingRcutilsLogger:
+    """Turns a regular `rclpy` logger into a memoizing one."""
+    return MemoizingRcutilsLogger(logger.name)
 
 
 class RcutilsLogHandler(logging.Handler):
