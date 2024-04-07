@@ -288,16 +288,6 @@ def wait_for_messages_async(
     return future
 
 
-def _message_filters_subscriber(
-    node: rclpy.node.Node,
-    mtype: typing.Any,
-    topic: str,
-    qos_profile: typing.Union[rclpy.qos.QoSProfile, int] = 1,
-    **kwargs: typing.Any,
-) -> message_filters.Subscriber:
-    return message_filters.Subscriber(node, mtype, topic, qos_profile=qos_profile, **kwargs)
-
-
 def _destroy_subs(node: rclpy.node.Node, subs: typing.List[message_filters.Subscriber]) -> None:
     """destroy all message filter subscribers"""
     for mf_sub in subs:
