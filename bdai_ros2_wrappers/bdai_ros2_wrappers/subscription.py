@@ -209,22 +209,17 @@ def wait_for_messages(
     message_filters.Subscriber requires a node upon construction.
 
     Args:
-        node (Node): the node being attached
-        topics (list): List of topics
-        mtypes (list): List of message types, one for each topic.
-        timeout_sec (float or None): Time in seconds to wait. None if forever.
+        topics: List of topics
+        mtypes: List of message types, one for each topic.
+        timeout_sec: Time in seconds to wait. None if forever.
             If exceeded timeout, self.messages will contain None for
             each topic.
-        kwargs: additional arguments, including
-            delay  (float) The delay in seconds for which the messages
-                could be synchronized (i.e. the time window).
-            allow_headerless (bool): Whether it's ok for there to be
-                no header in the messages.
-            sleep (float) the amount of time to wait before checking
-                whether messages are received
+        node: optional node for temporary topic subscription, defaults to
+            queue_size
+        kwargs: additional arguments passed into `wait_for_messages_async`.
 
-            qos_profiles (Dict): maps from topic name to QoSProfile
-
+    See `wait_for_messages_async` documentation for a reference on
+    additional keyword arguments.
     """
     node = node or scope.node()
     if node is None:
@@ -244,13 +239,27 @@ def wait_for_messages_async(
     delay: float = 0.2,
     allow_headerless: bool = False,
     sleep: float = 0.5,
-    verbose: bool = False,
-    exception_on_timeout: bool = False,
     qos_profiles: typing.Optional[typing.Dict[str, rclpy.qos.QoSProfile]] = None,
     node: typing.Optional[rclpy.node.Node] = None,
     callback_group: typing.Optional[rclpy.callback_groups.CallbackGroup] = None,
 ) -> rclpy.task.Future:
-    """Asynchronous version of wait_for_messages"""
+    """Asynchronous version of wait_for_messages
+
+    Args:
+        topics: List of topics
+        mtypes: List of message types, one for each topic.
+        queue_size: synchronizer message queue size
+        delay: The delay in seconds for which the messages
+            could be synchronized (i.e. the time window).
+        allow_headerless: Whether it's ok for there to be
+            no header in the messages.
+        sleep: the amount of time to wait before checking
+            whether messages are received
+        qos_profiles: maps from topic name to QoSProfile
+        node: optional node for temporary topic subscription, defaults to
+            the current process-wide node (if any).
+        callback_group: callback group for the message filter subscribers
+    """
     node = node or scope.node()
     if node is None:
         raise ValueError("no ROS 2 node available (did you use bdai_ros2_wrapper.process.main?)")
