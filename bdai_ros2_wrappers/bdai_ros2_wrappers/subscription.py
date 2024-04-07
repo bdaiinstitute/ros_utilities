@@ -220,8 +220,7 @@ def wait_for_messages(
             timeout (float or None): Time in seconds to wait. None if forever.
                 If exceeded timeout, self.messages will contain None for
                 each topic.
-            latched_topics (set): a set of topics for which the publisher latches (i.e.
-                sets QoS durability to transient_local).
+            qos_profiles (Dict): maps from topic name to QoSProfile
 
     """
     return _WaitForMessages(node, topics, mtypes, **kwargs).messages
@@ -240,7 +239,7 @@ class _WaitForMessages:
         timeout: typing.Optional[float] = None,
         verbose: bool = False,
         exception_on_timeout: bool = False,
-        latched_topics: typing.Optional[typing.Set] = None,
+        qos_profiles: typing.Optional[typing.Dict[str, rclpy.qos.QoSProfile]] = None,
         callback_group: typing.Optional[rclpy.callback_groups.CallbackGroup] = None,
     ) -> None:
         self.node = node
@@ -250,9 +249,9 @@ class _WaitForMessages:
         self.timeout = timeout
         self.exception_on_timeout = exception_on_timeout
         self.has_timed_out = False
-        if latched_topics is None:
-            latched_topics = set()
-        self.latched_topics = latched_topics
+        if qos_profiles is None:
+            qos_profiles = {}
+        self.qos_profiles = qos_profiles
         self.logger = rclpy.impl.rcutils_logger.RcutilsLogger(name="wait_for_messages")
 
         if self.verbose:
@@ -285,12 +284,12 @@ class _WaitForMessages:
         topic: str,
         callback_group: typing.Optional[rclpy.callback_groups.CallbackGroup] = None,
     ) -> message_filters.Subscriber:
-        if topic in self.latched_topics:
+        if topic in self.qos_profiles:
             return message_filters.Subscriber(
                 self.node,
                 mtype,
                 topic,
-                qos_profile=rclpy.qos.QoSProfile(depth=10, durability=rclpy.qos.QoSDurabilityPolicy.TRANSIENT_LOCAL),
+                qos_profile=self.qos_profiles[topic],
                 callback_group=callback_group,
             )
         return message_filters.Subscriber(self.node, mtype, topic, callback_group=callback_group)

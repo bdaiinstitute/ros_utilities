@@ -10,14 +10,13 @@ from bdai_ros2_wrappers.scope import ROSAwareScope
 from bdai_ros2_wrappers.subscription import wait_for_messages
 
 
-def latch(depth: int = 1, durability: EnumMeta = QoSDurabilityPolicy.TRANSIENT_LOCAL) -> QoSProfile:
-    return QoSProfile(depth=depth, durability=durability)
-
+TRANSIENT_LOCAL = QoSProfile(depth=10, durability=QoSDurabilityPolicy.TRANSIENT_LOCAL)
 
 class NodeFoo(Node):
+
     def __init__(self, **kwargs: Any) -> None:
         super().__init__("foo", **kwargs)
-        self.pub = self.create_publisher(std_msgs.msg.String, "/test1", latch(depth=10))
+        self.pub = self.create_publisher(std_msgs.msg.String, "/test1", TRANSIENT_LOCAL)
         self.pub.publish(std_msgs.msg.String(data="hello from foo"))
 
 
@@ -45,7 +44,7 @@ def test_wait_for_messages(ros: ROSAwareScope) -> None:
         verbose=True,
         delay=0.5,
         timeout=20,
-        latched_topics={"/test1"},
+        qos_profiles={"/test1": TRANSIENT_LOCAL},
     )
     assert messages == (None, None) or messages == (
         std_msgs.msg.String(data="hello from foo"),
@@ -60,7 +59,7 @@ def test_wait_for_messages(ros: ROSAwareScope) -> None:
         verbose=True,
         delay=0.5,
         timeout=20,
-        latched_topics={"/test1"},
+        qos_profiles={"/test1": TRANSIENT_LOCAL}
     )
     assert messages == (None, None) or messages == (
         std_msgs.msg.String(data="hello from bar"),
