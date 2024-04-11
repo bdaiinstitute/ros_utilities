@@ -8,11 +8,10 @@ import threading
 import warnings
 from typing import Any, Callable, Iterator, List, Optional
 
-from rclpy.task import Future
-
 import rclpy.clock
 import rclpy.duration
 import rclpy.time
+from rclpy.task import Future
 
 
 def namespace_with(*args: Optional[str]) -> str:
@@ -282,7 +281,7 @@ def synchronized(
     return _decorator(func)
 
 
-def functional_decorator(base_decorator: typing.Callable) -> typing.Callable:
+def functional_decorator(base_decorator: Callable) -> Callable:
     """Wraps a decorating callable to be usable as a Python decorator for functions.
 
     As an example, consider the following decorator example:
@@ -305,8 +304,8 @@ def functional_decorator(base_decorator: typing.Callable) -> typing.Callable:
     """
 
     @functools.wraps(base_decorator)
-    def _wrapper(func: typing.Optional[typing.Callable] = None, **kwargs: typing.Any) -> typing.Callable:
-        def _bound_decorator(func: typing.Callable) -> typing.Callable:
+    def _wrapper(func: Optional[Callable] = None, **kwargs: Any) -> Callable:
+        def _bound_decorator(func: Callable) -> Callable:
             return base_decorator(func, **kwargs)
 
         if func is None:
@@ -318,11 +317,11 @@ def functional_decorator(base_decorator: typing.Callable) -> typing.Callable:
 
 @functional_decorator
 def throttle(
-    func: typing.Callable,
+    func: Callable,
     min_period: rclpy.duration.Duration,
-    time_source: typing.Optional[rclpy.clock.Clock] = None,
-    fill_value: typing.Any = None,
-) -> typing.Callable:
+    time_source: Optional[rclpy.clock.Clock] = None,
+    fill_value: Any = None,
+) -> Callable:
     """Decorates a callable to throttle invocations.
 
     Args:
@@ -336,10 +335,10 @@ def throttle(
         decorated callable.
     """
     safe_time_source = rclpy.clock.Clock() if time_source is None else time_source
-    time_of_last_call: typing.Optional[rclpy.time.Time] = None
+    time_of_last_call: Optional[rclpy.time.Time] = None
 
     @functools.wraps(func)
-    def _wrapper(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
+    def _wrapper(*args: Any, **kwargs: Any) -> Any:
         nonlocal time_of_last_call
         return_value = fill_value
         current_time = safe_time_source.now()
@@ -352,7 +351,7 @@ def throttle(
 
 
 @functional_decorator
-def skip(func: typing.Callable, num_times: int, fill_value: typing.Any = None) -> typing.Callable:
+def skip(func: Callable, num_times: int, fill_value: Any = None) -> Callable:
     """Decorates a callable to skip the first few invocations a prescribed number of times.
 
     Args:
@@ -366,7 +365,7 @@ def skip(func: typing.Callable, num_times: int, fill_value: typing.Any = None) -
     num_skipped_calls = 0
 
     @functools.wraps(func)
-    def _wrapper(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
+    def _wrapper(*args: Any, **kwargs: Any) -> Any:
         nonlocal num_skipped_calls
         if num_skipped_calls < num_times:
             num_skipped_calls += 1
@@ -377,7 +376,7 @@ def skip(func: typing.Callable, num_times: int, fill_value: typing.Any = None) -
 
 
 @functional_decorator
-def cap(func: typing.Callable, num_times: int, fill_value: typing.Any = None) -> typing.Callable:
+def cap(func: Callable, num_times: int, fill_value: Any = None) -> Callable:
     """Decorates a callable to cap invocations to a prescribed number of times.
 
     Args:
@@ -391,7 +390,7 @@ def cap(func: typing.Callable, num_times: int, fill_value: typing.Any = None) ->
     num_calls = 0
 
     @functools.wraps(func)
-    def _wrapper(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
+    def _wrapper(*args: Any, **kwargs: Any) -> Any:
         nonlocal num_calls
         if num_calls < num_times:
             num_calls += 1
