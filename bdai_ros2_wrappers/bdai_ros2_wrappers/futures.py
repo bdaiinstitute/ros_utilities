@@ -23,5 +23,7 @@ def wait_for_future(future: Future, timeout_sec: Optional[float] = None, *, cont
     event = Event()
     context.on_shutdown(event.set)
     future.add_done_callback(lambda _: event.set())
+    if future.cancelled():
+        event.set()
     event.wait(timeout=timeout_sec)
     return future.done()
