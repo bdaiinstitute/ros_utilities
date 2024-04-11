@@ -1,15 +1,21 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 
+import collections
+import contextlib
 import functools
+import queue
 import threading
-import typing
+import warnings
+from typing import Any, Callable, Iterator, List, Optional
+
+from rclpy.task import Future
 
 import rclpy.clock
 import rclpy.duration
 import rclpy.time
 
 
-def namespace_with(*args: typing.Optional[str]) -> str:
+def namespace_with(*args: Optional[str]) -> str:
     """Puts together a ROS 2 like namespace from its constitutive parts."""
     sanitized_args = list(filter(None, args))
     if not sanitized_args:
@@ -24,7 +30,7 @@ def namespace_with(*args: typing.Optional[str]) -> str:
     return namespace
 
 
-def either_or(obj: typing.Any, name: str, default: typing.Any) -> typing.Any:
+def either_or(obj: Any, name: str, default: Any) -> Any:
     """Gets either an object attribute's value or a default value.
 
     Unlike `getattr`, callable attributes are applied as getters on `obj`.
@@ -37,7 +43,7 @@ def either_or(obj: typing.Any, name: str, default: typing.Any) -> typing.Any:
     return value_or_getter
 
 
-def fqn(obj: typing.Any) -> typing.Optional[str]:
+def fqn(obj: Any) -> Optional[str]:
     """Computes the fully qualified name of a given object, if any."""
     if not hasattr(obj, "__qualname__"):
         return None
@@ -48,11 +54,11 @@ def fqn(obj: typing.Any) -> typing.Optional[str]:
     return f"{module}.{name}"
 
 
-def bind_to_thread(callable_: typing.Callable, thread: threading.Thread) -> typing.Callable:
+def bind_to_thread(callable_: Callable, thread: threading.Thread) -> Callable:
     """Binds a callable to a thread, so it can only be invoked from that thread."""
 
     @functools.wraps(callable_)
-    def _wrapper(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
+    def _wrapper(*args: Any, **kwargs: Any) -> Any:
         if threading.current_thread() is not thread:
             raise RuntimeError(f"{fqn(callable_)}() is bound to a different thread")
         return callable_(*args, **kwargs)
@@ -60,10 +66,191 @@ def bind_to_thread(callable_: typing.Callable, thread: threading.Thread) -> typi
     return _wrapper
 
 
+class Tape:
+    """A thread-safe data tape that can be written and iterated safely."""
+
+    class Stream:
+        """A synchronized data stream."""
+
+        def __init__(self, max_size: Optional[int] = None, label: Optional[str] = None) -> None:
+            """Initializes the stream.
+
+            Args:
+                max_size: optional maximum stream size. Must be a positive number.
+                label: optional label for the stream (useful in debug and error messages).
+            """
+            assert max_size is None or max_size > 0
+            self._queue: queue.Queue = queue.Queue(max_size or 0)
+            self._label = label
+
+        @property
+        def label(self) -> Optional[str]:
+            """Get stream label."""
+            return self._label
+
+        def write(self, data: Any) -> bool:
+            """Write data to the stream.
+
+            Returns:
+                True if the write operation succeeded, False if the
+                stream has grown to its specified maximum size and
+                the write operation cannot be carried out.
+            """
+            try:
+                self._queue.put_nowait(data)
+            except queue.Full:
+                return False
+            return True
+
+        def read(self, timeout_sec: Optional[float] = None) -> Optional[Any]:
+            """Read data from the stream.
+
+            Args:
+                timeout_sec: optional read timeout, in seconds.
+
+            Returns:
+                data if the read is successful and ``None``
+                if the read times out or is interrupted.
+            """
+            try:
+                data = self._queue.get(timeout=timeout_sec)
+            except queue.Empty:
+                return None
+            self._queue.task_done()
+            return data
+
+        def interrupt(self) -> None:
+            """Interrupt the stream and wake up the reader."""
+            with contextlib.suppress(queue.Full):
+                self._queue.put_nowait(None)
+
+        @property
+        def consumed(self) -> bool:
+            """Check if all stream data has been consumed."""
+            return self._queue.empty()
+
+    def __init__(self, max_length: Optional[int] = None) -> None:
+        """Initializes the data tape.
+
+        Args:
+            max_length: optional maximum tape length.
+        """
+        self._lock = threading.Lock()
+        self._streams: List[Tape.Stream] = []
+        self._content: Optional[collections.deque] = None
+        if max_length is None or max_length > 0:
+            self._content = collections.deque(maxlen=max_length)
+        self._future_write: Optional[Future] = None
+        self._closed = False
+
+    @property
+    def future_write(self) -> Future:
+        """Gets the a future to the next data yet to be written."""
+        with self._lock:
+            if self._future_write is None:
+                self._future_write = Future()
+                if self._closed:
+                    self._future_write.cancel()
+            return self._future_write
+
+    def write(self, data: Any) -> bool:
+        """Write the data tape."""
+        with self._lock:
+            if self._closed:
+                return False
+            for stream in self._streams:
+                if not stream.write(data):
+                    message = "Stream is filled up, dropping message"
+                    if stream.label:
+                        message = f"{stream.label}: {message}"
+                    warnings.warn(message, RuntimeWarning, stacklevel=1)
+            if self._content is not None:
+                self._content.append(data)
+            if self._future_write is not None:
+                self._future_write.set_result(data)
+                self._future_write = None
+            return True
+
+    def content(
+        self,
+        *,
+        follow: bool = False,
+        forward_only: bool = False,
+        buffer_size: Optional[int] = None,
+        timeout_sec: Optional[float] = None,
+        label: Optional[str] = None,
+    ) -> Iterator:
+        """Iterate over the data tape.
+
+        When following the data tape, iteration stops when the given timeout
+        expires and when the data tape is closed.
+
+        Args:
+            follow: whether to follow the data tape as it gets written or not.
+            forward_only: if true, ignore existing content and only look ahead
+            when following the data tape.
+            buffer_size: optional buffer size when following the data tape.
+            If none is provided, the buffer will grow as necessary.
+            timeout_sec: optional timeout, in seconds, when following the data tape.
+            label: optional label to qualify logs and warnings.
+
+        Returns:
+            a lazy iterator over the data tape.
+        """
+        # Here we split the generator in two, so that setup code is executed eagerly.
+        with self._lock:
+            content: Optional[collections.deque] = None
+            if not forward_only and self._content is not None:
+                content = self._content.copy()
+            stream: Optional[Tape.Stream] = None
+            if follow and not self._closed:
+                stream = Tape.Stream(buffer_size, label)
+                self._streams.append(stream)
+
+        def _generator() -> Iterator:
+            nonlocal content, stream
+            try:
+                if content is not None:
+                    yield from content
+                if stream is not None:
+                    while not self._closed:
+                        feedback = stream.read(timeout_sec)
+                        if feedback is None:
+                            break
+                        yield feedback
+                    while not stream.consumed:
+                        # This is safe as long as there is
+                        # a single reader for the stream,
+                        # which is currently the case.
+                        feedback = stream.read(timeout_sec)
+                        if feedback is None:
+                            continue
+                        yield feedback
+            finally:
+                if stream is not None:
+                    with self._lock:
+                        self._streams.remove(stream)
+
+        return _generator()
+
+    def close(self) -> None:
+        """Close the data tape.
+
+        This will interrupt all following content iterators.
+        """
+        with self._lock:
+            if not self._closed:
+                self._closed = True
+                for stream in self._streams:
+                    stream.interrupt()
+                if self._future_write is not None:
+                    self._future_write.cancel()
+
+
 def synchronized(
-    func: typing.Optional[typing.Callable] = None,
-    lock: typing.Optional[threading.Lock] = None,
-) -> typing.Callable:
+    func: Optional[Callable] = None,
+    lock: Optional[threading.Lock] = None,
+) -> Callable:
     """Wraps `func` to synchronize invocations, optionally taking a user defined `lock`.
 
     This function can be used as a decorator, like:
@@ -82,9 +269,9 @@ def synchronized(
         lock = threading.Lock()
     assert lock is not None
 
-    def _decorator(func: typing.Callable) -> typing.Callable:
+    def _decorator(func: Callable) -> Callable:
         @functools.wraps(func)
-        def __wrapper(*args: typing.Any, **kwargs: typing.Any) -> typing.Any:
+        def __wrapper(*args: Any, **kwargs: Any) -> Any:
             with lock:  # type: ignore
                 return func(*args, **kwargs)
 

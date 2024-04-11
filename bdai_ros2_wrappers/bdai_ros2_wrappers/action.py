@@ -1,13 +1,8 @@
 # Copyright (c) 2024 Boston Dynamics AI Institute Inc.  All rights reserved.
 
-import contextlib
 import inspect
-import queue
-import threading
-import warnings
-from collections import deque
 from collections.abc import Sequence
-from typing import Any, Callable, Iterator, List, Optional, Type, Union
+from typing import Any, Callable, Iterator, Optional, Type, Union
 
 import action_msgs.msg
 from rclpy.action.client import ActionClient, ClientGoalHandle
@@ -16,6 +11,7 @@ from rclpy.task import Future
 
 import bdai_ros2_wrappers.scope as scope
 from bdai_ros2_wrappers.futures import wait_for_future
+from bdai_ros2_wrappers.utilities import Tape
 
 
 class ActionException(Exception):
@@ -48,167 +44,6 @@ class ActionCancelled(ActionException):
     """Exception raised when the action is cancelled."""
 
     pass
-
-
-class Tape:
-    """A thread-safe data tape that can be written and iterated safely."""
-
-    class Stream:
-        """A synchronized data stream."""
-
-        def __init__(self, max_size: Optional[int] = None, label: Optional[str] = None) -> None:
-            """Initializes the stream.
-
-            Args:
-                max_size: optional maximum stream size. Must be a positive number.
-                label: optional label for the stream (useful in debug and error messages).
-            """
-            assert max_size is None or max_size > 0
-            self._queue: queue.Queue = queue.Queue(max_size or 0)
-            self._label = label
-
-        @property
-        def label(self) -> Optional[str]:
-            """Get stream label."""
-            return self._label
-
-        def write(self, data: Any) -> bool:
-            """Write data to the stream.
-
-            Returns:
-                True if the write operation succeeded, False if the
-                stream has grown to its specified maximum size and
-                the write operation cannot be carried out.
-            """
-            try:
-                self._queue.put_nowait(data)
-            except queue.Full:
-                return False
-            return True
-
-        def read(self, timeout_sec: Optional[float] = None) -> Optional[Any]:
-            """Read data from the stream.
-
-            Args:
-                timeout_sec: optional read timeout, in seconds.
-
-            Returns:
-                data if the read is successful and ``None``
-                if the read times out or is interrupted.
-            """
-            try:
-                data = self._queue.get(timeout=timeout_sec)
-            except queue.Empty:
-                return None
-            self._queue.task_done()
-            return data
-
-        def interrupt(self) -> None:
-            """Interrupt the stream and wake up the reader."""
-            with contextlib.suppress(queue.Full):
-                self._queue.put_nowait(None)
-
-        @property
-        def consumed(self) -> bool:
-            """Check if all stream data has been consumed."""
-            return self._queue.empty()
-
-    def __init__(self, max_length: Optional[int] = None) -> None:
-        """Initializes the data tape.
-
-        Args:
-            max_length: optional maximum tape length.
-        """
-        self._lock = threading.Lock()
-        self._streams: List[Tape.Stream] = []
-        self._content: Optional[deque] = None
-        if max_length is None or max_length > 0:
-            self._content = deque(maxlen=max_length)
-        self._closed = False
-
-    def write(self, data: Any) -> None:
-        """Write the data tape."""
-        with self._lock:
-            for stream in self._streams:
-                if not stream.write(data):
-                    message = "Stream is filled up, dropping message"
-                    if stream.label:
-                        message = f"{stream.label}: {message}"
-                    warnings.warn(message, RuntimeWarning, stacklevel=1)
-            if self._content is not None:
-                self._content.append(data)
-
-    def content(
-        self,
-        *,
-        follow: bool = False,
-        forward_only: bool = False,
-        buffer_size: Optional[int] = None,
-        timeout_sec: Optional[float] = None,
-        label: Optional[str] = None,
-    ) -> Iterator:
-        """Iterate over the data tape.
-
-        When following the data tape, iteration stops when the given timeout
-        expires and when the data tape is closed.
-
-        Args:
-            follow: whether to follow the data tape as it gets written or not.
-            forward_only: if true, ignore existing content and only look ahead
-            when following the data tape.
-            buffer_size: optional buffer size when following the data tape.
-            If none is provided, the buffer will grow as necessary.
-            timeout_sec: optional timeout, in seconds, when following the data tape.
-            label: optional label to qualify logs and warnings.
-
-        Returns:
-            a lazy iterator over the data tape.
-        """
-        # Here we split the generator in two, so that setup code is executed eagerly.
-        with self._lock:
-            content: Optional[deque] = None
-            if not forward_only and self._content is not None:
-                content = self._content.copy()
-            stream: Optional[Tape.Stream] = None
-            if follow and not self._closed:
-                stream = Tape.Stream(buffer_size, label)
-                self._streams.append(stream)
-
-        def _generator() -> Iterator:
-            nonlocal content, stream
-            try:
-                if content is not None:
-                    yield from content
-                if stream is not None:
-                    while not self._closed:
-                        feedback = stream.read(timeout_sec)
-                        if feedback is None:
-                            break
-                        yield feedback
-                    while not stream.consumed:
-                        # This is safe as long as there is
-                        # a single reader for the stream,
-                        # which is currently the case.
-                        feedback = stream.read(timeout_sec)
-                        if feedback is None:
-                            continue
-                        yield feedback
-            finally:
-                if stream is not None:
-                    with self._lock:
-                        self._streams.remove(stream)
-
-        return _generator()
-
-    def close(self) -> None:
-        """Close the data tape.
-
-        This will interrupt all following content iterators.
-        """
-        self._closed = True
-        with self._lock:
-            for stream in self._streams:
-                stream.interrupt()
 
 
 class ActionFuture:
@@ -353,8 +188,7 @@ class ActionFuture:
         Args:
             forward_only: whether to ignore buffered action feedback or not.
             buffer_size: optional maximum size for the incoming feedback buffer.
-            If none is provided, the configured feedback tracking buffer size will
-            be used.
+            If none is provided, the buffer will grow unbounded.
             timeout_sec: optional timeout, in seconds, for new action feedback.
 
         Returns:
