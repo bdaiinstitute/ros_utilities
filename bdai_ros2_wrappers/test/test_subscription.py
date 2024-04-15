@@ -1,11 +1,10 @@
 # Copyright (c) 2024 Boston Dynamics AI Institute Inc.  All rights reserved.
 import itertools
 import time
-
 from typing import Any, Iterator, cast
 
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile
-from std_msgs.msg import Int8
+from std_msgs.msg import Int8, String
 
 from bdai_ros2_wrappers.futures import wait_for_future
 from bdai_ros2_wrappers.node import Node
@@ -117,61 +116,52 @@ def test_subscription_cancelation(ros: ROSAwareScope) -> None:
 
 
 def test_wait_for_messages(ros: ROSAwareScope) -> None:
-    class NodeFoo(Node):
-        def __init__(self, **kwargs: Any) -> None:
-            super().__init__("foo", **kwargs)
-            self.pub = self.create_publisher(std_msgs.msg.String, "/test1", 10)
-            self.timer = self.create_timer(0.5, self.publish_msg)
+    """Asserts that waiting for multiple synchronized messages works as expected."""
 
-        def publish_msg(self) -> None:
-            self.pub.publish(std_msgs.msg.String(data="hello from foo"))
+    class TestNode(Node):
+        def __init__(self, name: str, **kwargs: Any) -> None:
+            super().__init__(name, **kwargs)
+            self.pub = self.create_publisher(String, "~/test", 10)
+            self.timer = self.create_timer(0.5, self.do_publish)
 
-    class NodeBar(Node):
-        def __init__(self, **kwargs: Any) -> None:
-            super().__init__("bar", **kwargs)
-            self.pub = self.create_publisher(std_msgs.msg.String, "/test2", 10)
-            self.timer = self.create_timer(0.5, self.publish_msg)
+        def do_publish(self) -> None:
+            self.pub.publish(String(data=f"hello from {self.get_name()}"))
 
-        def publish_msg(self) -> None:
-            self.pub.publish(std_msgs.msg.String(data="hello from bar"))
-
-    ros.load(NodeFoo)
-    ros.load(NodeBar)
-
-    node_wfm = ros.node
+    ros.load(TestNode, "foo")
+    ros.load(TestNode, "bar")
 
     messages = wait_for_messages(
-        ["/test1", "/test2"],
-        [std_msgs.msg.String, std_msgs.msg.String],
+        ["foo/test", "bar/test"],
+        [String, String],
+        timeout_sec=10.0,
         allow_headerless=True,
         delay=0.5,
-        timeout_sec=20,
-        node=node_wfm,
+        node=ros.node,
     )
     assert messages is None or messages == (
-        std_msgs.msg.String(data="hello from foo"),
-        std_msgs.msg.String(data="hello from bar"),
+        String(data="hello from foo"),
+        String(data="hello from bar"),
     )
 
     messages = wait_for_messages(
-        ["/test2", "/test1"],
-        [std_msgs.msg.String, std_msgs.msg.String],
+        ["bar/test", "foo/test"],
+        [String, String],
         allow_headerless=True,
         delay=0.5,
-        timeout_sec=20,
-        node=node_wfm,
+        timeout_sec=10.0,
+        node=ros.node,
     )
     assert messages is None or messages == (
-        std_msgs.msg.String(data="hello from bar"),
-        std_msgs.msg.String(data="hello from foo"),
+        String(data="hello from bar"),
+        String(data="hello from foo"),
     )
 
     # Test the case where the topic doesn't exist - timeout expected
     messages = wait_for_messages(
-        ["/test3", "/test1"],
-        [std_msgs.msg.String, std_msgs.msg.String],
+        ["/test", "foo/test"],
+        [String, String],
         allow_headerless=True,
-        timeout_sec=1,
-        node=node_wfm,
+        timeout_sec=1.0,
+        node=ros.node,
     )
     assert messages is None

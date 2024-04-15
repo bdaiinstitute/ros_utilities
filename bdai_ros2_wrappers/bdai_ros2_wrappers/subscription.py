@@ -3,16 +3,11 @@
 from collections.abc import Sequence
 from typing import Any, Iterator, Optional, TypeVar, Union
 
+import message_filters
+from rclpy.callback_groups import CallbackGroup
 from rclpy.node import Node
 from rclpy.qos import QoSProfile
 from rclpy.task import Future
-
-import message_filters
-import rclpy.callback_groups
-import rclpy.impl
-import rclpy.node
-import rclpy.qos
-import rclpy.task
 
 import bdai_ros2_wrappers.scope as scope
 from bdai_ros2_wrappers.futures import wait_for_future
@@ -192,13 +187,13 @@ def wait_for_message(
 
 
 def wait_for_messages(
-    topics: typing.List,
-    mtypes: typing.List,
+    topic_names: Sequence[str],
+    message_types: Sequence[MessageT],
     *,
-    node: typing.Optional[rclpy.node.Node] = None,
-    timeout_sec: typing.Optional[float] = None,
-    **kwargs: typing.Any,
-) -> typing.Union[None, typing.List[MessageT]]:
+    timeout_sec: Optional[float] = None,
+    node: Optional[Node] = None,
+    **kwargs: Any,
+) -> Optional[Sequence[Any]]:
     """Waits for messages to arrive at multiple topics within a given time window.
 
     Uses message_filters.ApproximateTimeSynchronizer. This function blocks
@@ -209,13 +204,10 @@ def wait_for_messages(
     message_filters.Subscriber requires a node upon construction.
 
     Args:
-        topics: List of topics
-        mtypes: List of message types, one for each topic.
-        timeout_sec: Time in seconds to wait. None if forever.
-            If exceeded timeout, self.messages will contain None for
-            each topic.
-        node: optional node for temporary topic subscription, defaults to
-            queue_size
+        topic_names: list of topic names
+        message_types: list of message types, one for each topic.
+        timeout_sec: optional time in seconds to wait. None if forever.
+        node: optional node for temporary topic subscription
         kwargs: additional arguments passed into `wait_for_messages_async`.
 
     See `wait_for_messages_async` documentation for a reference on
@@ -224,7 +216,7 @@ def wait_for_messages(
     node = node or scope.node()
     if node is None:
         raise ValueError("no ROS 2 node available (did you use bdai_ros2_wrapper.process.main?)")
-    future = wait_for_messages_async(topics, mtypes, node=node, **kwargs)
+    future = wait_for_messages_async(topic_names, message_types, node=node, **kwargs)
     if not wait_for_future(future, timeout_sec, context=node.context):
         future.cancel()
         return None
@@ -232,63 +224,70 @@ def wait_for_messages(
 
 
 def wait_for_messages_async(
-    topics: typing.List,
-    mtypes: typing.List,
+    topic_names: Sequence[str],
+    message_types: Sequence[MessageT],
     *,
     queue_size: int = 10,
     delay: float = 0.2,
     allow_headerless: bool = False,
-    sleep: float = 0.5,
-    qos_profiles: typing.Optional[typing.Dict[str, rclpy.qos.QoSProfile]] = None,
-    node: typing.Optional[rclpy.node.Node] = None,
-    callback_group: typing.Optional[rclpy.callback_groups.CallbackGroup] = None,
-) -> rclpy.task.Future:
+    node: Optional[Node] = None,
+    qos_profiles: Optional[Sequence[Optional[QoSProfile]]] = None,
+    callback_group: Optional[CallbackGroup] = None,
+) -> Future:
     """Asynchronous version of wait_for_messages
 
     Args:
-        topics: List of topics
-        mtypes: List of message types, one for each topic.
+        topic_names: list of topic names
+        message_types: List of message types, one for each topic.
         queue_size: synchronizer message queue size
-        delay: The delay in seconds for which the messages
-            could be synchronized (i.e. the time window).
-        allow_headerless: Whether it's ok for there to be
-            no header in the messages.
-        sleep: the amount of time to wait before checking
-            whether messages are received
-        qos_profiles: maps from topic name to QoSProfile
-        node: optional node for temporary topic subscription, defaults to
-            the current process-wide node (if any).
-        callback_group: callback group for the message filter subscribers
+        delay: the delay in seconds for which the messages could be
+        synchronized (i.e. the time window).
+        allow_headerless: whether it's ok for there to be no header in the messages.
+        qos_profiles: optional list of QoS profiles, one for each topic.
+        If no QoS profile is specified for a given topic, the default profile with
+        a history depth of 10 will be used.
+        node: optional node for temporary topic subscription, defaults to the current
+        process-wide node (if any).
+        callback_group: optional callback group for the message filter subscribers.
     """
     node = node or scope.node()
     if node is None:
         raise ValueError("no ROS 2 node available (did you use bdai_ros2_wrapper.process.main?)")
-    if qos_profiles is None:
-        qos_profiles = {}
-    subs: typing.List[message_filters.Subscriber] = []
-    for topic, mtype in zip(topics, mtypes):
-        qos_profile = qos_profiles.get(topic, 10)
-        subs.append(
-            message_filters.Subscriber(node, mtype, topic, qos_profile=qos_profile, callback_group=callback_group),
-        )
-    future = rclpy.task.Future()
 
-    def callback(*messages: typing.List[MessageT]) -> None:
+    if qos_profiles is None:
+        qos_profiles = [None] * len(topic_names)
+
+    subscribers = [
+        message_filters.Subscriber(
+            node,
+            message_type,
+            topic_name,
+            qos_profile=qos_profile or 10,
+            callback_group=callback_group,
+        )
+        for topic_name, message_type, qos_profile in zip(topic_names, message_types, qos_profiles)
+    ]
+
+    future = Future()
+
+    def callback(*messages: Sequence[Any]) -> None:
+        nonlocal future
         if not future.done():
             future.set_result(messages)
 
-    ts = message_filters.ApproximateTimeSynchronizer(
-        subs,
+    sync = message_filters.ApproximateTimeSynchronizer(
+        subscribers,
         queue_size,
         delay,
-        allow_headerless=allow_headerless,
+        allow_headerless,
     )
-    ts.registerCallback(callback)
-    future.add_done_callback(lambda future: _destroy_subs(node, subs))
+    sync.registerCallback(callback)
+
+    def cleanup_subscribers(_: Future) -> None:
+        nonlocal node, subscribers
+        assert node is not None
+        for sub in subscribers:
+            node.destroy_subscription(sub.sub)
+
+    future.add_done_callback(cleanup_subscribers)
     return future
-
-
-def _destroy_subs(node: rclpy.node.Node, subs: typing.List[message_filters.Subscriber]) -> None:
-    """destroy all message filter subscribers"""
-    for mf_sub in subs:
-        node.destroy_subscription(mf_sub.sub)
