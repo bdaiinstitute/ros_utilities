@@ -3,6 +3,8 @@
 from collections.abc import Sequence
 from typing import Any, Iterator, Optional, TypeVar, Union
 
+import message_filters
+from rclpy.callback_groups import CallbackGroup
 from rclpy.node import Node
 from rclpy.qos import QoSProfile
 from rclpy.task import Future
@@ -182,3 +184,110 @@ def wait_for_message(
         future.cancel()
         return None
     return future.result()
+
+
+def wait_for_messages(
+    topic_names: Sequence[str],
+    message_types: Sequence[MessageT],
+    *,
+    timeout_sec: Optional[float] = None,
+    node: Optional[Node] = None,
+    **kwargs: Any,
+) -> Optional[Sequence[Any]]:
+    """Waits for messages to arrive at multiple topics within a given time window.
+
+    Uses message_filters.ApproximateTimeSynchronizer. This function blocks
+    until receiving the messages or when a given timeout expires. Assumes the
+    given node is spinning by some external executor.
+
+    Requires the user to pass in a node, since
+    message_filters.Subscriber requires a node upon construction.
+
+    Args:
+        topic_names: list of topic names
+        message_types: list of message types, one for each topic.
+        timeout_sec: optional time in seconds to wait. None if forever.
+        node: optional node for temporary topic subscription
+        kwargs: additional arguments passed into `wait_for_messages_async`.
+
+    See `wait_for_messages_async` documentation for a reference on
+    additional keyword arguments.
+    """
+    node = node or scope.node()
+    if node is None:
+        raise ValueError("no ROS 2 node available (did you use bdai_ros2_wrapper.process.main?)")
+    future = wait_for_messages_async(topic_names, message_types, node=node, **kwargs)
+    if not wait_for_future(future, timeout_sec, context=node.context):
+        future.cancel()
+        return None
+    return future.result()
+
+
+def wait_for_messages_async(
+    topic_names: Sequence[str],
+    message_types: Sequence[MessageT],
+    *,
+    queue_size: int = 10,
+    delay: float = 0.2,
+    allow_headerless: bool = False,
+    node: Optional[Node] = None,
+    qos_profiles: Optional[Sequence[Optional[QoSProfile]]] = None,
+    callback_group: Optional[CallbackGroup] = None,
+) -> Future:
+    """Asynchronous version of wait_for_messages
+
+    Args:
+        topic_names: list of topic names
+        message_types: List of message types, one for each topic.
+        queue_size: synchronizer message queue size
+        delay: the delay in seconds for which the messages could be
+        synchronized (i.e. the time window).
+        allow_headerless: whether it's ok for there to be no header in the messages.
+        qos_profiles: optional list of QoS profiles, one for each topic.
+        If no QoS profile is specified for a given topic, the default profile with
+        a history depth of 10 will be used.
+        node: optional node for temporary topic subscription, defaults to the current
+        process-wide node (if any).
+        callback_group: optional callback group for the message filter subscribers.
+    """
+    node = node or scope.node()
+    if node is None:
+        raise ValueError("no ROS 2 node available (did you use bdai_ros2_wrapper.process.main?)")
+
+    if qos_profiles is None:
+        qos_profiles = [None] * len(topic_names)
+
+    subscribers = [
+        message_filters.Subscriber(
+            node,
+            message_type,
+            topic_name,
+            qos_profile=qos_profile or 10,
+            callback_group=callback_group,
+        )
+        for topic_name, message_type, qos_profile in zip(topic_names, message_types, qos_profiles)
+    ]
+
+    future = Future()
+
+    def callback(*messages: Sequence[Any]) -> None:
+        nonlocal future
+        if not future.done():
+            future.set_result(messages)
+
+    sync = message_filters.ApproximateTimeSynchronizer(
+        subscribers,
+        queue_size,
+        delay,
+        allow_headerless,
+    )
+    sync.registerCallback(callback)
+
+    def cleanup_subscribers(_: Future) -> None:
+        nonlocal node, subscribers
+        assert node is not None
+        for sub in subscribers:
+            node.destroy_subscription(sub.sub)
+
+    future.add_done_callback(cleanup_subscribers)
+    return future

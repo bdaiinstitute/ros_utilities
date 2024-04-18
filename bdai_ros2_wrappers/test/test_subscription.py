@@ -1,14 +1,15 @@
 # Copyright (c) 2024 Boston Dynamics AI Institute Inc.  All rights reserved.
 import itertools
 import time
-from typing import Iterator, cast
+from typing import Any, Iterator, cast
 
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile
-from std_msgs.msg import Int8
+from std_msgs.msg import Int8, String
 
 from bdai_ros2_wrappers.futures import wait_for_future
+from bdai_ros2_wrappers.node import Node
 from bdai_ros2_wrappers.scope import ROSAwareScope
-from bdai_ros2_wrappers.subscription import Subscription, wait_for_message
+from bdai_ros2_wrappers.subscription import Subscription, wait_for_message, wait_for_messages
 
 DEFAULT_QOS_PROFILE = QoSProfile(
     durability=DurabilityPolicy.TRANSIENT_LOCAL,
@@ -112,3 +113,55 @@ def test_subscription_cancelation(ros: ROSAwareScope) -> None:
     assert historic_numbers[0] == 1
 
     assert cast(Int8, sequence.latest).data == 1
+
+
+def test_wait_for_messages(ros: ROSAwareScope) -> None:
+    """Asserts that waiting for multiple synchronized messages works as expected."""
+
+    class TestNode(Node):
+        def __init__(self, name: str, **kwargs: Any) -> None:
+            super().__init__(name, **kwargs)
+            self.pub = self.create_publisher(String, "~/test", 10)
+            self.timer = self.create_timer(0.5, self.do_publish)
+
+        def do_publish(self) -> None:
+            self.pub.publish(String(data=f"hello from {self.get_name()}"))
+
+    ros.load(TestNode, "foo")
+    ros.load(TestNode, "bar")
+
+    messages = wait_for_messages(
+        ["foo/test", "bar/test"],
+        [String, String],
+        timeout_sec=10.0,
+        allow_headerless=True,
+        delay=0.5,
+        node=ros.node,
+    )
+    assert messages is None or messages == (
+        String(data="hello from foo"),
+        String(data="hello from bar"),
+    )
+
+    messages = wait_for_messages(
+        ["bar/test", "foo/test"],
+        [String, String],
+        allow_headerless=True,
+        delay=0.5,
+        timeout_sec=10.0,
+        node=ros.node,
+    )
+    assert messages is None or messages == (
+        String(data="hello from bar"),
+        String(data="hello from foo"),
+    )
+
+    # Test the case where the topic doesn't exist - timeout expected
+    messages = wait_for_messages(
+        ["/test", "foo/test"],
+        [String, String],
+        allow_headerless=True,
+        timeout_sec=1.0,
+        node=ros.node,
+    )
+    assert messages is None
