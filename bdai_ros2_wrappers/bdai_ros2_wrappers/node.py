@@ -5,12 +5,14 @@ from rclpy.callback_groups import CallbackGroup
 from rclpy.node import Node as BaseNode
 
 from bdai_ros2_wrappers.callback_groups import NonReentrantCallbackGroup
+from bdai_ros2_wrappers.logging import MemoizingRcutilsLogger, as_memoizing_logger
 
 
 class Node(BaseNode):
     """An rclpy.node.Node subclass that:
 
-    * changes the default callback group to be non-reentrant.
+    * changes the default callback group to be non-reentrant
+    * wraps its logger with a memoizing one for improved efficiency
     """
 
     def __init__(self, *args: Any, default_callback_group: Optional[CallbackGroup] = None, **kwargs: Any) -> None:
@@ -30,6 +32,7 @@ class Node(BaseNode):
         self._default_callback_group_override = default_callback_group
         self._destruction_requested = False
         super().__init__(*args, **kwargs)
+        self._logger: MemoizingRcutilsLogger = as_memoizing_logger(self._logger)
 
     @property
     def default_callback_group(self) -> CallbackGroup:
