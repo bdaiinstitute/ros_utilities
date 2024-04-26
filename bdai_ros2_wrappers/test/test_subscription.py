@@ -47,6 +47,26 @@ def test_subscription_future_wait(ros: ROSAwareScope) -> None:
     assert cast(Int8, sequence.latest).data == 1
 
 
+def test_subscription_matching_future_wait(ros: ROSAwareScope) -> None:
+    """Asserts that waiting for a matching subscription update works as expected."""
+    assert ros.node is not None
+    pub = ros.node.create_publisher(Int8, "sequence", DEFAULT_QOS_PROFILE)
+    sequence = Subscription(Int8, "sequence", DEFAULT_QOS_PROFILE, node=ros.node)
+
+    def deferred_publish() -> None:
+        time.sleep(0.5)
+        for num in range(5):
+            pub.publish(Int8(data=num))
+
+    assert ros.executor is not None
+    ros.executor.create_task(deferred_publish)
+
+    future = sequence.matching_update(lambda message: message.data == 3)
+    assert wait_for_future(future, timeout_sec=5.0)
+    message = future.result()
+    assert message.data == 3
+
+
 def test_subscription_iteration(ros: ROSAwareScope) -> None:
     """Asserts that iterating over subscription messages works as expected."""
     assert ros.node is not None
