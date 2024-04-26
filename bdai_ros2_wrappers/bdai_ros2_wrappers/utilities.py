@@ -6,7 +6,7 @@ import functools
 import queue
 import threading
 import warnings
-from typing import Any, Callable, Iterator, List, Optional
+from typing import Any, Callable, Iterator, List, Optional, Tuple
 
 import rclpy.clock
 import rclpy.duration
@@ -140,17 +140,40 @@ class Tape:
         if max_length is None or max_length > 0:
             self._content = collections.deque(maxlen=max_length)
         self._future_write: Optional[Future] = None
+        self._future_matching_writes: List[Tuple[Callable[[Any], bool], Future]] = []
         self._closed = False
 
     @property
     def future_write(self) -> Future:
-        """Gets the a future to the next data yet to be written."""
+        """Gets the future to the next data yet to be written."""
         with self._lock:
             if self._future_write is None:
                 self._future_write = Future()
                 if self._closed:
                     self._future_write.cancel()
             return self._future_write
+
+    def future_matching_write(self, matching_predicate: Callable[[Any], bool]) -> Future:
+        """Gets a future to the next matching data yet to be written.
+
+        Args:
+            matching_predicate: a boolean predicate to match written data.
+
+        Returns:
+            a future.
+        """
+        with self._lock:
+            future_write = Future()
+            if not self._closed:
+                self._future_matching_writes.append(
+                    (
+                        matching_predicate,
+                        future_write,
+                    ),
+                )
+            else:
+                future_write.cancel()
+            return future_write
 
     def write(self, data: Any) -> bool:
         """Write the data tape."""
@@ -168,6 +191,11 @@ class Tape:
             if self._future_write is not None:
                 self._future_write.set_result(data)
                 self._future_write = None
+            for item in list(self._future_matching_writes):
+                matching_predicate, future_write = item
+                if matching_predicate(data):
+                    future_write.set_result(data)
+                    self._future_matching_writes.remove(item)
             return True
 
     def content(
@@ -244,6 +272,8 @@ class Tape:
                     stream.interrupt()
                 if self._future_write is not None:
                     self._future_write.cancel()
+                for _, future_write in self._future_matching_writes:
+                    future_write.cancel()
 
 
 def synchronized(

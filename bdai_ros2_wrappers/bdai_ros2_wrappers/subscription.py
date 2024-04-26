@@ -1,7 +1,7 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 
 from collections.abc import Sequence
-from typing import Any, Iterator, Optional, TypeVar, Union
+from typing import Any, Callable, Iterator, Optional, TypeVar, Union
 
 import message_filters
 from rclpy.callback_groups import CallbackGroup
@@ -77,8 +77,19 @@ class Subscription:
 
     @property
     def update(self) -> Future:
-        """Gets the a future to the next message yet to be received."""
+        """Gets the future to the next message yet to be received."""
         return self._message_tape.future_write
+
+    def matching_update(self, matching_predicate: Callable[[Any], bool]) -> Future:
+        """Gets a future to the next matching message yet to be received.
+
+        Args:
+            matching_predicate: a boolean predicate to match incoming messages.
+
+        Returns:
+            a future.
+        """
+        return self._message_tape.future_matching_write(matching_predicate)
 
     def stream(
         self,
