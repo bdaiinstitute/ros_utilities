@@ -142,6 +142,10 @@ class ActionFuture:
         Raises:
             RuntimeError: if action is still executing.
         """
+        if not self.acknowledged:
+            raise RuntimeError("Action not acknowledged")
+        if not self.accepted:
+            raise RuntimeError("Action not accepted")
         if self._result_future is None or not self._result_future.done():
             raise RuntimeError("Action still executing")
         return self._result_future.result().result
@@ -379,6 +383,7 @@ class Actionable:
         *,
         feedback_callback: Optional[Callable] = None,
         timeout_sec: Optional[float] = None,
+        nothrow: bool = False,
     ) -> Any:
         """Invoke action synchronously.
 
@@ -389,29 +394,35 @@ class Actionable:
             expires, the action will be cancelled and the call will raise. Note this timeout is
             local to the caller. It may take some time for the action to be cancelled, that is
             if cancellation is not rejected by the action server.
+            nothrow: if set to true, errors will not raise exceptions.
 
         Returns:
-            the action result.
+            the action result or None on error if `nothrow` was set and no result is available.
 
         Raises:
-            ActionTimeout: if the action timed out.
-            ActionRejected: if the action was not accepted.
-            ActionCancelled: if the action was cancelled.
-            ActionAborted: if the action was aborted.
-            RuntimeError: if there is an internal server error.
+            ActionTimeout: if the action timed out and `nothrow` was not set.
+            ActionRejected: if the action was not accepted and `nothrow` was not set.
+            ActionCancelled: if the action was cancelled and `nothrow` was not set.
+            ActionAborted: if the action was aborted and `nothrow` was not set.
+            RuntimeError: if there is an internal server error and `nothrow` was not set.
         """
         action = ActionFuture(self._action_client.send_goal_async(goal, feedback_callback))
         if not wait_for_future(action.finalization, timeout_sec=timeout_sec):
             action.cancel()  # proactively cancel
+            if nothrow:
+                return None
             raise ActionTimeout(action)
         if not action.accepted:
+            if nothrow:
+                return None
             raise ActionRejected(action)
-        if action.cancelled:
-            raise ActionCancelled(action)
-        if action.aborted:
-            raise ActionAborted(action)
-        if not action.succeeded:
-            raise RuntimeError("internal server error")
+        if not nothrow:
+            if action.cancelled:
+                raise ActionCancelled(action)
+            if action.aborted:
+                raise ActionAborted(action)
+            if not action.succeeded:
+                raise RuntimeError("internal server error")
         return action.result
 
     def asynchronously(self, goal: Any, *, track_feedback: Union[int, bool] = False) -> ActionFuture:

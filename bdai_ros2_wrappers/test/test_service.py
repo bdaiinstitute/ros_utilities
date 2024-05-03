@@ -56,6 +56,8 @@ def test_failing_synchronous_service_invocation(ros: ROSAwareScope) -> None:
     assert ros.node is not None
     ros.node.create_service(Trigger, "trigger_something", failing_callback)
     trigger_something = Serviced(Trigger, "trigger_something")
+    response = trigger_something(nothrow=True, timeout_sec=5.0)
+    assert not response.success
     with pytest.raises(ServiceError) as exc:
         trigger_something(timeout_sec=5.0)
     response = exc.value.service.result()
