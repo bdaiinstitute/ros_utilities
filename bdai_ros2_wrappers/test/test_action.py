@@ -214,8 +214,10 @@ def test_rejected_synchronous_action_invocation(ros: ROSAwareScope) -> None:
     )
     compute_fibonacci = Actionable(Fibonacci, "fibonacci/compute", ros.node)
     assert compute_fibonacci.wait_for_server(timeout_sec=2.0)
+    goal = Fibonacci.Goal(order=5)
+    assert compute_fibonacci(goal, nothrow=True, timeout_sec=10.0) is None
     with pytest.raises(ActionRejected) as exc_info:
-        compute_fibonacci(Fibonacci.Goal(order=5), timeout_sec=10.0)
+        compute_fibonacci(goal, timeout_sec=10.0)
     assert not exc_info.value.action.accepted
 
 
@@ -247,8 +249,12 @@ def test_aborted_synchronous_action_invocation(ros: ROSAwareScope) -> None:
     ActionServer(ros.node, Fibonacci, "fibonacci/compute", execute_callback)
     compute_fibonacci = Actionable(Fibonacci, "fibonacci/compute", ros.node)
     assert compute_fibonacci.wait_for_server(timeout_sec=2.0)
+    goal = Fibonacci.Goal(order=5)
+    result = compute_fibonacci(goal, nothrow=True, timeout_sec=10.0)
+    assert len(result.sequence) == 0
+
     with pytest.raises(ActionAborted) as exc_info:
-        compute_fibonacci(Fibonacci.Goal(order=5), timeout_sec=10.0)
+        compute_fibonacci(goal, timeout_sec=10.0)
     assert exc_info.value.action.aborted
     result = exc_info.value.action.result
     assert len(result.sequence) == 0
@@ -298,10 +304,15 @@ def test_cancelled_synchronous_action_invocation(ros: ROSAwareScope) -> None:
         time.sleep(0.5)
         cancel_goal_client.call(CancelGoal.Request())
 
+    goal = Fibonacci.Goal(order=5)
     assert ros.executor is not None
     ros.executor.create_task(deferred_cancel)
+    result = compute_fibonacci(goal, nothrow=True, timeout_sec=10.0)
+    assert len(result.sequence) == 0
+
+    ros.executor.create_task(deferred_cancel)
     with pytest.raises(ActionCancelled) as exc_info:
-        compute_fibonacci(Fibonacci.Goal(order=5), timeout_sec=10.0)
+        compute_fibonacci(goal, timeout_sec=10.0)
     assert exc_info.value.action.cancelled
     result = exc_info.value.action.result
     assert len(result.sequence) == 0

@@ -77,6 +77,7 @@ class Serviced:
         request: Optional[Any] = None,
         *,
         timeout_sec: Optional[float] = None,
+        nothrow: bool = False,
     ) -> Any:
         """Invoke service synchronously.
 
@@ -86,23 +87,28 @@ class Serviced:
             timeout_sec: optional action timeout, in seconds. If a timeout is specified and it
             expires, the service request will be cancelled and the call will raise. Note this
             timeout is local to the caller.
+            nothrow: if set to true, errors will not raise exceptions.
 
         Returns:
-            the service response.
+            the service response or None on error if `nothrow` was set and no response is available.
 
         Raises:
-            ServiceTimeout: if the service request timed out.
-            ServiceError: if the service request failed.
+            ServiceTimeout: if the service request timed out and `nothrow` was not set.
+            ServiceError: if the service request failed and `nothrow` was not set.
         """
         future = self.asynchronously(request)
         if not wait_for_future(future, timeout_sec):
             future.cancel()
+            if nothrow:
+                return None
             raise ServiceTimeout(future)
         exception = future.exception()
         if exception is not None:
+            if nothrow:
+                return None
             raise ServiceError(future) from exception
         response = future.result()
-        if not getattr(response, "success", True):
+        if not nothrow and not getattr(response, "success", True):
             raise ServiceError(future)
         return response
 
