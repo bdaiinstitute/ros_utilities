@@ -58,6 +58,25 @@ def test_successful_synchronous_action_invocation(ros: ROSAwareScope) -> None:
     assert result.sequence == expected_result
 
 
+def test_successful_synchronous_composed_action_invocation(ros: ROSAwareScope) -> None:
+    ActionServer(ros.node, Fibonacci, "fibonacci/compute", default_execute_callback)
+    compute_fibonacci = Actionable(Fibonacci, "fibonacci/compute", ros.node)
+    compute_fibonacci_sequences = compute_fibonacci.vectorized.compose(
+        lambda n: (Fibonacci.Goal(order=i) for i in range(n + 1)),
+    )
+    assert compute_fibonacci_sequences.wait_for_server(timeout_sec=2.0)
+    results = compute_fibonacci_sequences.synchronously(5, timeout_sec=5.0)
+    expected_results = [
+        array.array("i", [0]),
+        array.array("i", [0, 1]),
+        array.array("i", [0, 1, 1]),
+        array.array("i", [0, 1, 1, 2]),
+        array.array("i", [0, 1, 1, 2, 3]),
+        array.array("i", [0, 1, 1, 2, 3, 5]),
+    ]
+    assert [result.sequence for result in results] == expected_results
+
+
 def test_successful_synchronous_action_invocation_with_feedback(ros: ROSAwareScope) -> None:
     mock_callback = Mock()
     ActionServer(ros.node, Fibonacci, "fibonacci/compute", default_execute_callback)
@@ -84,6 +103,26 @@ def test_successful_asynchronous_action_invocation(ros: ROSAwareScope) -> None:
     assert action.status == GoalStatus.STATUS_SUCCEEDED
     expected_result = array.array("i", [0, 1, 1, 2, 3, 5])
     assert action.result.sequence == expected_result
+
+
+def test_successful_asynchronous_composed_action_invocation(ros: ROSAwareScope) -> None:
+    ActionServer(ros.node, Fibonacci, "fibonacci/compute", default_execute_callback)
+    compute_fibonacci = Actionable(Fibonacci, "fibonacci/compute", ros.node)
+    compute_fibonacci_sequences = compute_fibonacci.vectorized.compose(
+        lambda n: (Fibonacci.Goal(order=i) for i in range(n + 1)),
+    )
+    assert compute_fibonacci_sequences.wait_for_server(timeout_sec=2.0)
+    future = compute_fibonacci_sequences.asynchronously(5)
+    assert wait_for_future(future, timeout_sec=10.0)
+    expected_results = [
+        array.array("i", [0]),
+        array.array("i", [0, 1]),
+        array.array("i", [0, 1, 1]),
+        array.array("i", [0, 1, 1, 2]),
+        array.array("i", [0, 1, 1, 2, 3]),
+        array.array("i", [0, 1, 1, 2, 3, 5]),
+    ]
+    assert [result.sequence for result in future.result()] == expected_results
 
 
 def test_spin_on_succesful_asynchronous_action_invocation() -> None:

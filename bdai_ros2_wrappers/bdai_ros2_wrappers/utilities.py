@@ -3,9 +3,11 @@
 import collections
 import contextlib
 import functools
+import inspect
 import queue
 import threading
 import warnings
+from collections.abc import Mapping
 from typing import Any, Callable, Iterator, List, Optional, Tuple
 
 import rclpy.clock
@@ -428,3 +430,23 @@ def cap(func: Callable, num_times: int, fill_value: Any = None) -> Callable:
         return fill_value
 
     return _wrapper
+
+
+def take_kwargs(func: Callable, kwargs: Mapping) -> Tuple[Mapping, Mapping]:
+    """Take keyword arguments given a callable's signature.
+
+    Args:
+        func: callable to take keyword arguments for.
+        kwargs: mapping to take keyword arguments from.
+
+    Returns:
+        a tuple of taken and dropped keyword arguments.
+    """
+    signature = inspect.signature(func)
+    taken, dropped = {}, {}
+    for name, value in kwargs.items():
+        if name in signature.parameters:
+            taken[name] = value
+        else:
+            dropped[name] = value
+    return taken, dropped
