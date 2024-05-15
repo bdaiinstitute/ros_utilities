@@ -7,6 +7,7 @@ from rclpy.node import Node
 from rclpy.task import Future
 
 import bdai_ros2_wrappers.scope as scope
+from bdai_ros2_wrappers.callables import ComposableCallable, VectorizingCallable
 from bdai_ros2_wrappers.futures import wait_for_future
 
 
@@ -30,7 +31,7 @@ class ServiceError(ServiceException):
     pass
 
 
-class Serviced:
+class Serviced(ComposableCallable, VectorizingCallable):
     """An ergonomic interface to call services in ROS 2.
 
     Serviced instances wrap `rclpy.Client` instances to allow for synchronous
@@ -68,11 +69,7 @@ class Serviced:
         """
         return self._client.wait_for_service(*args, **kwargs)
 
-    def __call__(self, *args: Any, **kwargs: Any) -> Any:
-        """Forward invocation to `Serviced.synchronously`."""
-        return self.synchronously(*args, **kwargs)
-
-    def synchronously(
+    def synchronous(
         self,
         request: Optional[Any] = None,
         *,
@@ -96,7 +93,7 @@ class Serviced:
             ServiceTimeout: if the service request timed out and `nothrow` was not set.
             ServiceError: if the service request failed and `nothrow` was not set.
         """
-        future = self.asynchronously(request)
+        future = self.asynchronous(request)
         if not wait_for_future(future, timeout_sec):
             future.cancel()
             if nothrow:
@@ -112,7 +109,9 @@ class Serviced:
             raise ServiceError(future)
         return response
 
-    def asynchronously(self, request: Optional[Any] = None) -> Future:
+    synchronously = synchronous
+
+    def asynchronous(self, request: Optional[Any] = None) -> Future:
         """Invoke service asynchronously.
 
         Args:
@@ -125,3 +124,5 @@ class Serviced:
         if request is None:
             request = self.service_type.Request()
         return self._client.call_async(request)
+
+    asynchronously = asynchronous

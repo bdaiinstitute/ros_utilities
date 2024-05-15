@@ -2,7 +2,7 @@
 
 import inspect
 from collections.abc import Sequence
-from typing import Any, Callable, Iterator, Optional, Type, Union
+from typing import Any, Callable, Generator, Iterator, Optional, Type, Union
 
 import action_msgs.msg
 from rclpy.action.client import ActionClient, ClientGoalHandle
@@ -10,7 +10,8 @@ from rclpy.node import Node
 from rclpy.task import Future
 
 import bdai_ros2_wrappers.scope as scope
-from bdai_ros2_wrappers.futures import wait_for_future
+from bdai_ros2_wrappers.callables import ComposableCallable, VectorizingCallable
+from bdai_ros2_wrappers.futures import FutureConvertible, wait_for_future
 from bdai_ros2_wrappers.utilities import Tape
 
 
@@ -46,7 +47,7 @@ class ActionCancelled(ActionException):
     pass
 
 
-class ActionFuture:
+class ActionFuture(FutureConvertible):
     """A proxy to a ROS 2 action invocation.
 
     Action futures are to actions what plain futures are to services, with a bit more functionality
@@ -149,6 +150,18 @@ class ActionFuture:
         if self._result_future is None or not self._result_future.done():
             raise RuntimeError("Action still executing")
         return self._result_future.result().result
+
+    def __await__(self) -> Generator:
+        """Await for action result."""
+        if not self.finalized:
+            yield
+        if not self.accepted:
+            raise ActionRejected(self)
+        if self.aborted:
+            raise ActionRejected(self)
+        if self.cancelled:
+            raise ActionCancelled(self)
+        return self.result
 
     @property
     def tracks_feedback(self) -> bool:
@@ -327,7 +340,7 @@ class ActionFuture:
         return cancellation_future
 
 
-class Actionable:
+class Actionable(ComposableCallable, VectorizingCallable):
     """An ergonomic interface to call actions in ROS 2.
 
     Actionables wrap `rclpy.action.ActionClient` instances to allow for synchronous
@@ -373,11 +386,7 @@ class Actionable:
         """
         return self._action_client.wait_for_server(*args, **kwargs)
 
-    def __call__(self, *args: Any, **kwargs: Any) -> Any:
-        """Forward invocation to `Actionable.synchronously`."""
-        return self.synchronously(*args, **kwargs)
-
-    def synchronously(
+    def synchronous(
         self,
         goal: Any,
         *,
@@ -425,7 +434,7 @@ class Actionable:
                 raise RuntimeError("internal server error")
         return action.result
 
-    def asynchronously(self, goal: Any, *, track_feedback: Union[int, bool] = False) -> ActionFuture:
+    def asynchronous(self, goal: Any, *, track_feedback: Union[int, bool] = False) -> ActionFuture:
         """Invoke action asynchronously.
 
         Args:
