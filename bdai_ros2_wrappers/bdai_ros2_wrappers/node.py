@@ -1,30 +1,26 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 import contextlib
-from typing import Any, Iterable, Optional, cast
+import functools
+from typing import Any, Callable, Iterable, Optional, Type
 
 from rclpy.callback_groups import CallbackGroup
 from rclpy.exceptions import InvalidHandle
-from rclpy.impl.implementation_singleton import rclpy_implementation as _rclpy
 from rclpy.node import Node as BaseNode
-from rclpy.waitables import Waitable
+from rclpy.waitable import Waitable
 
 from bdai_ros2_wrappers.callback_groups import NonReentrantCallbackGroup
 from bdai_ros2_wrappers.logging import MemoizingRcutilsLogger, as_memoizing_logger
 
 
-class SafeWaitable:
-    """A decorator to workaround https://github.com/ros2/rclpy/issues/1284."""
+def suppressed(exception: Type[BaseException], func: Callable) -> Callable:
+    """Suppress the given `exception` type from `func` invocations"""
 
-    def __init__(self, wrapped: Waitable) -> None:
-        self._wrapped = wrapped
+    @functools.wraps(func)
+    def __wrapper(*args: Any, **kwargs: Any) -> Any:
+        with contextlib.suppress(exception):
+            return func(*args, **kwargs)
 
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self._wrapped, name)
-
-    def add_to_wait_set(self, wait_set: _rclpy.WaitSet) -> None:
-        """Add waitable to `wait_set` safely."""
-        with contextlib.suppress(InvalidHandle):
-            self._wrapped.add_to_wait_set(wait_set)
+    return __wrapper
 
 
 class Node(BaseNode):
@@ -61,9 +57,15 @@ class Node(BaseNode):
 
     @property
     def waitables(self) -> Iterable[Waitable]:
-        """Get node waitables."""
+        """Get patched node waitables.
+
+        Workaround for https://github.com/ros2/rclpy/issues/1284.
+        """
         for waitable in super().waitables:
-            yield cast(Waitable, SafeWaitable(waitable))
+            if not getattr(waitable, "__patched__", False):
+                waitable.add_to_wait_set = suppressed(InvalidHandle, waitable.add_to_wait_set)
+                waitable.__patched__ = True
+            yield waitable
 
     @property
     def destruction_requested(self) -> bool:
