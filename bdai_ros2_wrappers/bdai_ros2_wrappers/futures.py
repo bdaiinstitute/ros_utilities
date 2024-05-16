@@ -8,7 +8,6 @@ from rclpy.utilities import get_default_context
 T = TypeVar("T", covariant=True)
 
 
-@runtime_checkable
 class FutureLike(Awaitable[T], Protocol[T]):
     """A future-like awaitable object.
 
@@ -40,6 +39,7 @@ class FutureLike(Awaitable[T], Protocol[T]):
         ...
 
 
+@runtime_checkable
 class FutureConvertible(Awaitable[T], Protocol[T]):
     """An awaitable that is convertible to a future-like object."""
 
@@ -53,9 +53,9 @@ AnyFuture = Union[FutureLike, FutureConvertible]
 
 def as_proper_future(instance: AnyFuture) -> FutureLike:
     """Return `instance` as a proper future-like object."""
-    if isinstance(instance, FutureLike):
-        return instance
-    return instance.as_future()
+    if isinstance(instance, FutureConvertible):
+        return instance.as_future()
+    return instance
 
 
 def wait_for_future(
