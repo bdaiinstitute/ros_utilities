@@ -3,7 +3,7 @@
 import abc
 import functools
 import inspect
-from typing import Any, Callable, Iterable, Optional, Tuple, Type, Union, overload
+from typing import Any, Callable, Iterable, Literal, Optional, Tuple, Type, Union, overload
 
 from rclpy.task import Future
 
@@ -211,18 +211,24 @@ class GeneralizedMethod:
             """
             self.synchronous_callable: Optional[Callable] = None
             self.asynchronous_callable: Optional[Callable] = None
-            self.transitional_callable: Optional[Callable] = None
             if not method.transitional:
                 if inspect.iscoroutinefunction(method.prototype):
                     self.asynchronous_callable = method.prototype
                 else:
                     self.synchronous_callable = method.prototype
-            else:
-                self.transitional_callable = method.prototype
             if method.synchronous_overload is not None:
                 self.synchronous_callable = method.synchronous_overload
             if method.asynchronous_overload is not None:
                 self.asynchronous_callable = method.asynchronous_overload
+
+            self.default_callable: Optional[Callable] = None
+            if not method.transitional:
+                if self.synchronous_callable is not None:
+                    self.default_callable = self.synchronous_callable
+                else:
+                    self.default_callable = self.asynchronous_callable
+            else:
+                self.default_callable = method.prototype
 
         def __get__(
             self,
@@ -233,32 +239,34 @@ class GeneralizedMethod:
                 return self
             synchronous_callable = self.synchronous_callable
             if synchronous_callable is not None:
-                asynchronous_callable = synchronous_callable.__get__(instance, owner)
+                synchronous_callable = synchronous_callable.__get__(instance, owner)
+                assert synchronous_callable is not None
             asynchronous_callable = self.asynchronous_callable
             if asynchronous_callable is not None:
                 asynchronous_callable = asynchronous_callable.__get__(instance, owner)
+                assert asynchronous_callable is not None
                 if inspect.iscoroutinefunction(self.asynchronous_callable):
                     asynchronous_callable = assign_coroutine(asynchronous_callable, instance.executor)
+            default_callable = self.default_callable
+            if default_callable is not None:
+                default_callable = default_callable.__get__(instance, owner)
+                assert default_callable is not None
+                if inspect.iscoroutinefunction(self.default_callable):
+                    default_callable = assign_coroutine(default_callable, instance.executor)
             implementation = GeneralizedFunction(synchronous_callable, asynchronous_callable)
-            transitional_callable = self.transitional_callable
-            if transitional_callable is not None:
-                transitional_callable = transitional_callable.__get__(instance, owner)
-            return GeneralizedMethod.Bound(implementation, migrating_from=transitional_callable)
+            return GeneralizedMethod.Bound(implementation, default_callable)
 
     class Bound(VectorizingCallable, ComposableCallable):
         """A bound generalized method callable."""
 
-        def __init__(self, body: GeneralizedCallable, migrating_from: Optional[Callable] = None) -> None:
+        def __init__(self, body: GeneralizedCallable, default_callable: Optional[Callable] = None) -> None:
             """Initialize bound method callable.
 
             Args:
                 body: method body as a generalized callable
-                migrating_from: when migrating to generalized methods,
-                the prior definition may be fed here so as to keep plain
-                method invocations the same.
+                default_callable: optionally override default plain calls, defaults to synchronous calls.
             """
             self.body = body
-            default_callable = migrating_from
             if default_callable is None:
                 default_callable = body.synchronous
             self._default_callable = default_callable
@@ -294,17 +302,19 @@ class GeneralizedMethod:
         self.synchronous_overload: Optional[Callable] = None
         self.asynchronous_overload: Optional[Callable] = None
 
-    def sync_overload(self, func: Callable) -> None:
+    def sync_overload(self, func: Callable) -> Callable:
         """Register `func` as this method synchronous overload."""
         if self.synchronous_overload is not None:
             raise RuntimeError("cannot redefine synchronous overload")
         self.synchronous_overload = func
+        return func
 
-    def async_overload(self, func: Callable) -> None:
+    def async_overload(self, func: Callable) -> Callable:
         """Register `func` as this method asynchronous overload."""
         if self.asynchronous_overload is not None:
             raise RuntimeError("cannot redefine asynchronous overload")
         self.asynchronous_overload = func
+        return func
 
     def __set_name__(self, owner: Type, name: str) -> None:
         self.__attribute_name = f"__{name}_method"
@@ -312,11 +322,19 @@ class GeneralizedMethod:
 
     def rebind(self, instance: Any, body: GeneralizedCallable) -> None:
         """Change this method's `body` for the given `instance`."""
-        bound_method = GeneralizedMethod.Bound(
-            body,
-            migrating_from=(self.prototype.__get__(instance) if self.transitional else None),
-        )
+        default_callable: Optional[Callable] = None
+        if self.transitional:
+            default_callable = self.prototype.__get__(instance)
+        bound_method = GeneralizedMethod.Bound(body, default_callable)
         setattr(instance, self.__attribute_name, bound_method)
+
+    @overload
+    def __get__(self, instance: Literal[None], owner: Optional[Type] = ...) -> "GeneralizedMethod":
+        ...
+
+    @overload
+    def __get__(self, instance: Any, owner: Optional[Type] = ...) -> "GeneralizedMethod.Bound":
+        ...
 
     def __get__(
         self,
