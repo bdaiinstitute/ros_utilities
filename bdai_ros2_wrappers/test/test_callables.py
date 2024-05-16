@@ -5,7 +5,7 @@ from typing import Any, Optional
 
 import pytest
 
-from bdai_ros2_wrappers.callables import generalizedmethod
+from bdai_ros2_wrappers.callables import generalized_method
 from bdai_ros2_wrappers.futures import wait_for_future
 from bdai_ros2_wrappers.scope import ROSAwareScope
 
@@ -21,7 +21,7 @@ class Bucket:
             storage = {}
         self._storage = dict(storage)
 
-    @generalizedmethod(transitional=True)
+    @generalized_method(transitional=True)
     def create(self, content: Any) -> str:
         name = str(hash(content))
         if name in self._storage:
@@ -40,7 +40,7 @@ class Bucket:
     async def _create_async(self, name: str, content: Any) -> bool:
         return self._create_sync(name, content)
 
-    @generalizedmethod
+    @generalized_method
     def read(self, name: str) -> Optional[Any]:
         return self._storage.get(name)
 
@@ -48,14 +48,14 @@ class Bucket:
     async def _read_async(self, name: str) -> Optional[Any]:
         return self.read(name)
 
-    @generalizedmethod
+    @generalized_method
     async def update(self, name: str, content: Any) -> bool:
         if name not in self._storage:
             return False
         self._storage[name] = content
         return True
 
-    @generalizedmethod
+    @generalized_method
     def delete(self, name: str) -> bool:
         if name not in self._storage:
             return False

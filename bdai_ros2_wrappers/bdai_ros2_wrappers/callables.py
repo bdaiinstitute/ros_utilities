@@ -347,16 +347,16 @@ class GeneralizedMethod:
 
 
 @overload
-def generalizedmethod(func: Callable, *, transitional: bool = ...) -> GeneralizedMethod:
+def generalized_method(func: Callable, *, transitional: bool = ...) -> GeneralizedMethod:
     ...
 
 
 @overload
-def generalizedmethod(*, transitional: bool = ...) -> Callable:
+def generalized_method(*, transitional: bool = ...) -> Callable:
     ...
 
 
-def generalizedmethod(
+def generalized_method(
     func: Optional[Callable] = None,
     *,
     transitional: bool = False,
