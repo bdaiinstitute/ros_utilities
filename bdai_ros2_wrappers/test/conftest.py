@@ -16,6 +16,6 @@ def ros() -> Iterable[ROSAwareScope]:
 
 @pytest.fixture(scope="function")
 def verbose_ros() -> Iterable[ROSAwareScope]:
-    args = ["--ros-args", "--enable-rosout-logs"]
+    args = ["--ros-args", "--enable-rosout-logs", "--log-level", "INFO"]
     with scope.top(args, global_=True, namespace="fixture") as top:
         yield top
