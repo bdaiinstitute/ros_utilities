@@ -80,6 +80,7 @@ def test_log_forwarding(verbose_ros: ROSAwareScope) -> None:
 
     def callback(message: Log) -> None:
         nonlocal future
+        print(message)
         if future and not future.done():
             future.set_result(message)
 
