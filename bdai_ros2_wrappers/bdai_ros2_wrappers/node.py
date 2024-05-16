@@ -4,8 +4,8 @@ from typing import Any, Iterable, Optional, cast
 
 from rclpy.callback_groups import CallbackGroup
 from rclpy.exceptions import InvalidHandle
+from rclpy.impl.implementation_singleton import rclpy_implementation as _rclpy
 from rclpy.node import Node as BaseNode
-from rclpy.wait_set import WaitSet
 from rclpy.waitables import Waitable
 
 from bdai_ros2_wrappers.callback_groups import NonReentrantCallbackGroup
@@ -21,7 +21,7 @@ class SafeWaitable:
     def __getattr__(self, name: str) -> Any:
         return getattr(self._wrapped, name)
 
-    def add_to_wait_set(self, wait_set: WaitSet) -> None:
+    def add_to_wait_set(self, wait_set: _rclpy.WaitSet) -> None:
         """Add waitable to `wait_set` safely."""
         with contextlib.suppress(InvalidHandle):
             self._wrapped.add_to_wait_set(wait_set)
