@@ -46,7 +46,6 @@ class Bucket:
 
     @read.async_overload
     async def _read_async(self, name: str) -> Optional[Any]:
-        # mypy does not handle data descriptors well
         return self.read(name)
 
     @generalizedmethod
