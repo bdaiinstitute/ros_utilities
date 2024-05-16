@@ -4,6 +4,7 @@ import collections
 import concurrent.futures
 import contextlib
 import dataclasses
+import functools
 import inspect
 import logging
 import os
@@ -14,6 +15,7 @@ import weakref
 
 import rclpy.executors
 
+from bdai_ros2_wrappers.futures import FutureLike
 from bdai_ros2_wrappers.utilities import bind_to_thread, fqn
 
 
@@ -728,3 +730,20 @@ def foreground(executor: rclpy.executors.Executor) -> typing.Iterator[rclpy.exec
         yield executor
     finally:
         executor.shutdown()
+
+
+def assign_coroutine(
+    coroutine: typing.Callable[..., typing.Awaitable],
+    executor: rclpy.executors.Executor,
+) -> typing.Callable[..., FutureLike]:
+    """Assign a `coroutine` to a given `executor`.
+
+    An assigned coroutine will return a future-like object
+    that will be serviced by the associated executor.
+    """
+
+    @functools.wraps(coroutine)
+    def __wrapper(*args: typing.Any, **kwargs: typing.Any) -> FutureLike:
+        return executor.create_task(coroutine, *args, **kwargs)
+
+    return __wrapper
