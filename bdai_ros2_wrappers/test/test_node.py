@@ -15,10 +15,10 @@ from bdai_ros2_wrappers.scope import ROSAwareScope
 
 
 @pytest.fixture
-def ros_context() -> Generator[Context, None, None]:
+def ros_context(domain_id: int) -> Generator[Context, None, None]:
     """A fixture yielding a managed rclpy.context.Context instance."""
     context = Context()
-    rclpy.init(context=context)
+    rclpy.init(context=context, domain_id=domain_id)
     try:
         yield context
     finally:

@@ -89,6 +89,7 @@ def test_log_forwarding(verbose_ros: ROSAwareScope) -> None:
     future = Future()
     with logs_to_ros(verbose_ros.node):
         logger = logging.getLogger("my_logger")
+        logger.setLevel(logging.INFO)
         logger.propagate = True  # ensure propagation is enabled
         logger.info("test")
 
