@@ -23,6 +23,6 @@ def ros(domain_id: int) -> Iterable[ROSAwareScope]:
 
 @pytest.fixture
 def verbose_ros(domain_id: int) -> Iterable[ROSAwareScope]:
-    args = ["--ros-args", "--enable-rosout-logs", "--log-level", "DEBUG"]
+    args = ["--ros-args", "--enable-rosout-logs", "--log-level", "INFO"]
     with scope.top(args, global_=True, domain_id=domain_id, namespace="fixture") as top:
         yield top
