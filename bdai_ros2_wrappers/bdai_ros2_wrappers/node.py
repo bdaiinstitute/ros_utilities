@@ -1,11 +1,26 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
-from typing import Any, Optional
+import contextlib
+import functools
+from typing import Any, Callable, Iterable, Optional, Type
 
 from rclpy.callback_groups import CallbackGroup
+from rclpy.exceptions import InvalidHandle
 from rclpy.node import Node as BaseNode
+from rclpy.waitable import Waitable
 
 from bdai_ros2_wrappers.callback_groups import NonReentrantCallbackGroup
 from bdai_ros2_wrappers.logging import MemoizingRcutilsLogger, as_memoizing_logger
+
+
+def suppressed(exception: Type[BaseException], func: Callable) -> Callable:
+    """Suppress the given `exception` type from `func` invocations"""
+
+    @functools.wraps(func)
+    def __wrapper(*args: Any, **kwargs: Any) -> Any:
+        with contextlib.suppress(exception):
+            return func(*args, **kwargs)
+
+    return __wrapper
 
 
 class Node(BaseNode):
@@ -39,6 +54,18 @@ class Node(BaseNode):
         """Get the default callback group."""
         # NOTE(hidmic): this overrides the hardcoded default group in rclpy.node.Node implementation
         return self._default_callback_group_override
+
+    @property
+    def waitables(self) -> Iterable[Waitable]:
+        """Get patched node waitables.
+
+        Workaround for https://github.com/ros2/rclpy/issues/1284.
+        """
+        for waitable in super().waitables:
+            if not getattr(waitable, "__patched__", False):
+                waitable.add_to_wait_set = suppressed(InvalidHandle, waitable.add_to_wait_set)
+                waitable.__patched__ = True
+            yield waitable
 
     @property
     def destruction_requested(self) -> bool:
