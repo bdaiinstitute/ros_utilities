@@ -56,13 +56,10 @@ class Subscription:
         self._message_type = message_type
         self._topic_name = topic_name
         self._message_tape = Tape(history_length)
-        self._topic_subscription = self._node.create_subscription(
-            message_type,
-            topic_name,
-            self._message_tape.write,
-            qos_profile,
-            **kwargs,
+        self._topic_subscription = message_filters.Subscriber(
+            node, message_type, topic_name, qos_profile=qos_profile, **kwargs
         )
+        self._topic_subscription.registerCallback(self._message_tape.write)
         self._node.context.on_shutdown(self._message_tape.close)
 
     @property
@@ -121,7 +118,7 @@ class Subscription:
 
     def cancel(self) -> None:
         """Cancels the message subscription if not cancelled already."""
-        self._node.destroy_subscription(self._topic_subscription)
+        self._node.destroy_subscription(self._topic_subscription.sub)
         self._message_tape.close()
 
     # Alias for improved readability
