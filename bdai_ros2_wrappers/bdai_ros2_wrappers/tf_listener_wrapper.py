@@ -71,11 +71,10 @@ class TFListenerWrapper:
             node: optional node for transform listening, defaults to the current scope node.
             cache_time_s: optional transform buffer size, in seconds.
         """
-        import bdai_ros2_wrappers.scope  # locally to avoid circular import
+        import bdai_ros2_wrappers.scope as scope  # locally to avoid circular import
 
-        node = node or bdai_ros2_wrappers.scope.node()
         if node is None:
-            raise ValueError("no ROS 2 node available (did you use bdai_ros2_wrapper.process.main?)")
+            node = scope.ensure_node()
         self._node = node
         cache_time_py = None
         if cache_time_s is not None:

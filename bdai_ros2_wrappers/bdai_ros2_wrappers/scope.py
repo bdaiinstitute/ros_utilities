@@ -529,6 +529,14 @@ def node() -> typing.Optional[rclpy.node.Node]:
     return scope.node
 
 
+def ensure_node() -> rclpy.node.Node:
+    """Gets a node from the current ROS 2 aware scope or fails trying"""
+    current_node = node()
+    if current_node is None:
+        raise ValueError("no ROS 2 node available (did you use bdai_ros2_wrapper.process.main?)")
+    return current_node
+
+
 def tf_listener() -> typing.Optional[TFListenerWrapper]:
     """Gets the tf listener of the current ROS 2 aware scope, if any."""
     scope = current()

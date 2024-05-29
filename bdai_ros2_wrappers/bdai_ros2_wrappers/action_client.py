@@ -27,9 +27,8 @@ class ActionClientWrapper(rclpy.action.ActionClient):
             node (Optional[Node]): optional node for action client, defaults to the current process node
             wait_for_server (bool): Whether to wait for the server
         """
-        node = node or scope.node()
         if node is None:
-            raise ValueError("no ROS 2 node available (did you use bdai_ros2_wrapper.process.main?)")
+            node = scope.ensure_node()
         self._node = node
         super().__init__(self._node, action_type, action_name)
         if wait_for_server:
