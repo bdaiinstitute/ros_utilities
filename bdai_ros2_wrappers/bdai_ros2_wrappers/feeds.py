@@ -1,12 +1,14 @@
 # Copyright (c) 2024 Boston Dynamics AI Institute Inc.  All rights reserved.
 
-from typing import Any, Callable, Iterator, List, Optional
+from typing import Any, Callable, Iterable, Iterator, List, Optional
 
-from message_filters import SimpleFilter
+import tf2_ros
+from message_filters import ApproximateTimeSynchronizer, SimpleFilter
 from rclpy.node import Node
 from rclpy.task import Future
 
 import bdai_ros2_wrappers.scope as scope
+from bdai_ros2_wrappers.filters import TransformFilter
 from bdai_ros2_wrappers.utilities import Tape
 
 
@@ -34,7 +36,7 @@ class MessageFeed:
             history_length = 1
         self._link = link
         self._tape = Tape(history_length)
-        self._link.registerCallback(self._tape.write)
+        self._link.registerCallback(lambda *msgs: self._tape.write(msgs if len(msgs) > 1 else msgs[0]))
         node.context.on_shutdown(self._tape.close)
 
     @property
@@ -50,7 +52,7 @@ class MessageFeed:
     @property
     def latest(self) -> Optional[Any]:
         """Gets the latest message received, if any."""
-        return next(self._tape.content(), None)
+        return self._tape.head
 
     @property
     def update(self) -> Future:
@@ -99,3 +101,105 @@ class MessageFeed:
     def close(self) -> None:
         """Closes the message feed."""
         self._tape.close()
+
+
+class FramedMessageFeed(MessageFeed):
+    """A message feed decorator, incorporating transforms using a `TransformFilter` instance."""
+
+    def __init__(
+        self,
+        feed: MessageFeed,
+        target_frame_id: str,
+        *,
+        tolerance_sec: float = 1.0,
+        tf_buffer: Optional[tf2_ros.Buffer] = None,
+        history_length: Optional[int] = None,
+        node: Optional[Node] = None,
+    ) -> None:
+        """Initializes the message feed.
+
+        Args:
+            feed: the upstream message feed.
+            target_frame_id: the target frame ID for transforms.
+            tf_buffer: optional buffer of transforms to look up. If none is provided
+            a transforms' buffer and a listener will be instantiated.
+            tolerance_sec: optional tolerance, in seconds, to wait for late transforms.
+            history_length: optional historic data size, defaults to 1.
+            node: optional node for the underlying native subscription, defaults to
+            the current process node.
+        """
+        if node is None:
+            node = scope.ensure_node()
+        if tf_buffer is None:
+            tf_buffer = tf2_ros.Buffer()
+            self._tf_listener = tf2_ros.TransformListener(tf_buffer, node)
+        super().__init__(
+            TransformFilter(
+                feed.link,
+                target_frame_id,
+                tf_buffer,
+                tolerance_sec,
+                node.get_logger(),
+            ),
+            history_length=history_length,
+            node=node,
+        )
+        self._feed = feed
+
+    @property
+    def feed(self) -> MessageFeed:
+        """Gets the upstream message feed."""
+        return self._feed
+
+    def close(self) -> None:
+        """Closes this message feed and the upstream one as well."""
+        self._feed.close()
+        super().close()
+
+
+class SynchronizedMessageFeed(MessageFeed):
+    """A message feeds' aggregator using a `message_filters.ApproximateTimeSynchronizer` instance."""
+
+    def __init__(
+        self,
+        *feeds: MessageFeed,
+        queue_size: int = 10,
+        delay: float = 0.2,
+        allow_headerless: bool = False,
+        history_length: Optional[int] = None,
+        node: Optional[Node] = None,
+    ) -> None:
+        """Initializes the message feed.
+
+        Args:
+            feeds: upstream message feeds to be synchronized.
+            queue_size: the message queue size for synchronization.
+            delay: the maximum delay, in seconds, between messages for synchronization to succeed.
+            allow_headerless: whether it's OK for there to be no header in the messages (in which
+            case, the ROS time of arrival will be used).
+            history_length: optional historic data size, defaults to 1.
+            node: optional node for the underlying native subscription, defaults to
+            the current process node.
+        """
+        super().__init__(
+            ApproximateTimeSynchronizer(
+                [f.link for f in feeds],
+                queue_size,
+                delay,
+                allow_headerless=allow_headerless,
+            ),
+            history_length=history_length,
+            node=node,
+        )
+        self._feeds = feeds
+
+    @property
+    def feeds(self) -> Iterable[MessageFeed]:
+        """Gets all aggregated message feeds."""
+        return self._feeds
+
+    def close(self) -> None:
+        """Closes this message feed and all upstream ones as well."""
+        for feed in self._feeds:
+            feed.close()
+        super().close()

@@ -43,7 +43,7 @@ class TransformFilter(SimpleFilter):
         """
         super().__init__()
         self._logger = logger
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
         self._waitqueue: collections.deque = collections.deque()
         self._ongoing_wait: Optional[Future] = None
         self._ongoing_wait_time: Optional[Time] = None

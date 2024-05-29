@@ -200,6 +200,16 @@ class Tape:
                     self._future_matching_writes.remove(item)
             return True
 
+    @property
+    def head(self) -> Optional[Any]:
+        """Returns the data tape head, if any."""
+        with self._lock:
+            if self._content is None:
+                return None
+            if len(self._content) == 0:
+                return None
+            return self._content[0]
+
     def content(
         self,
         *,
@@ -450,3 +460,20 @@ def take_kwargs(func: Callable, kwargs: Mapping) -> Tuple[Mapping, Mapping]:
         else:
             dropped[name] = value
     return taken, dropped
+
+
+def ensure(value: Optional[Any]) -> Any:
+    """Ensures `value` is not None or fails trying."""
+    if value is None:
+        frame = inspect.currentframe()
+        assert frame is not None
+        frame = frame.f_back
+        assert frame is not None
+        traceback = inspect.getframeinfo(frame)
+        message = f"{traceback.filename}:{traceback.lineno}: "
+        if traceback.code_context is not None:
+            message += "".join(traceback.code_context).strip("\n ") + " failed"
+        else:
+            message += "ensure() failed"
+        raise ValueError(message)
+    return value

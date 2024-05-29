@@ -2,7 +2,9 @@
 
 import argparse
 
-from bdai_ros2_wrappers.utilities import either_or, namespace_with
+import pytest
+
+from bdai_ros2_wrappers.utilities import either_or, ensure, namespace_with
 
 
 def test_either_or() -> None:
@@ -18,3 +20,10 @@ def test_namespace_with() -> None:
     assert namespace_with("", "foo") == "foo"
     assert namespace_with("/", "foo") == "/foo"
     assert namespace_with("foo", "bar") == "foo/bar"
+
+
+def test_ensure() -> None:
+    data = None
+    with pytest.raises(ValueError) as excinfo:
+        ensure(data)
+    assert "ensure(data) failed" in str(excinfo.value)
