@@ -358,7 +358,8 @@ class Actionable(ComposableCallable, VectorizingCallable):
             kwargs: other keyword arguments are forwarded to the underlying action client.
             See `rclpy.action.ActionClient` documentation for further reference.
         """
-        node = node or scope.node()
+        if node is None:
+            node = scope.ensure_node()
         self._action_type = action_type
         self._action_name = action_name
         self._action_client = ActionClient(node, action_type, action_name, **kwargs)

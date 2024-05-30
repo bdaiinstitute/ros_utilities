@@ -45,9 +45,8 @@ class Subscription:
             kwargs: other keyword arguments are used to create the underlying native subscription.
             See `rclpy.node.Node.create_subscription` documentation for further reference.
         """
-        node = node or scope.node()
         if node is None:
-            raise ValueError("no ROS 2 node available (did you use bdai_ros2_wrapper.process.main?)")
+            node = scope.ensure_node()
         self._node = node
         if history_length is None:
             history_length = 1
@@ -150,9 +149,8 @@ def wait_for_message_async(
     Raises:
         RuntimeError: if no node is available.
     """
-    node = node or scope.node()
     if node is None:
-        raise ValueError("no ROS 2 node available (did you use bdai_ros2_wrapper.process.main?)")
+        node = scope.ensure_node()
     future = Future()
 
     def callback(msg: MessageT) -> None:
@@ -187,9 +185,8 @@ def wait_for_message(
     Returns:
         The message received, or None on timeout.
     """
-    node = node or scope.node()
     if node is None:
-        raise ValueError("no ROS 2 node available (did you use bdai_ros2_wrapper.process.main?)")
+        node = scope.ensure_node()
     future = wait_for_message_async(msg_type, topic_name, node=node, **kwargs)
     if not wait_for_future(future, timeout_sec, context=node.context):
         future.cancel()
@@ -224,9 +221,8 @@ def wait_for_messages(
     See `wait_for_messages_async` documentation for a reference on
     additional keyword arguments.
     """
-    node = node or scope.node()
     if node is None:
-        raise ValueError("no ROS 2 node available (did you use bdai_ros2_wrapper.process.main?)")
+        node = scope.ensure_node()
     future = wait_for_messages_async(topic_names, message_types, node=node, **kwargs)
     if not wait_for_future(future, timeout_sec, context=node.context):
         future.cancel()
@@ -261,9 +257,8 @@ def wait_for_messages_async(
         process-wide node (if any).
         callback_group: optional callback group for the message filter subscribers.
     """
-    node = node or scope.node()
     if node is None:
-        raise ValueError("no ROS 2 node available (did you use bdai_ros2_wrapper.process.main?)")
+        node = scope.ensure_node()
 
     if qos_profiles is None:
         qos_profiles = [None] * len(topic_names)

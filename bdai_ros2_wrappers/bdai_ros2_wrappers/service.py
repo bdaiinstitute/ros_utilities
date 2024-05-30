@@ -40,9 +40,8 @@ class Serviced(ComposableCallable, VectorizingCallable):
     """
 
     def __init__(self, service_type: Type, service_name: str, node: Optional[Node] = None, **kwargs: Any) -> None:
-        node = node or scope.node()
         if node is None:
-            raise ValueError("no ROS 2 node available (did you use bdai_ros2_wrapper.process.main?)")
+            node = scope.ensure_node()
         self._service_type = service_type
         self._service_name = service_name
         self._client = node.create_client(service_type, service_name, **kwargs)
