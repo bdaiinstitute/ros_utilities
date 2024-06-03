@@ -1,7 +1,7 @@
 # Copyright (c) 2024 Boston Dynamics AI Institute Inc.  All rights reserved.
 import itertools
 import time
-from typing import Any, Iterator, cast
+from typing import Any, Iterator
 
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile
 from std_msgs.msg import Int8, String
@@ -10,6 +10,7 @@ from bdai_ros2_wrappers.futures import wait_for_future
 from bdai_ros2_wrappers.node import Node
 from bdai_ros2_wrappers.scope import ROSAwareScope
 from bdai_ros2_wrappers.subscription import Subscription, wait_for_message, wait_for_messages
+from bdai_ros2_wrappers.utilities import ensure
 
 DEFAULT_QOS_PROFILE = QoSProfile(
     durability=DurabilityPolicy.TRANSIENT_LOCAL,
@@ -44,7 +45,7 @@ def test_subscription_future_wait(ros: ROSAwareScope) -> None:
     pub.publish(Int8(data=1))
 
     assert wait_for_future(sequence.update, timeout_sec=5.0)
-    assert cast(Int8, sequence.latest).data == 1
+    assert ensure(sequence.latest).data == 1
 
 
 def test_subscription_matching_future_wait(ros: ROSAwareScope) -> None:
@@ -132,7 +133,7 @@ def test_subscription_cancelation(ros: ROSAwareScope) -> None:
     assert len(historic_numbers) == 1
     assert historic_numbers[0] == 1
 
-    assert cast(Int8, sequence.latest).data == 1
+    assert ensure(sequence.latest).data == 1
 
 
 def test_wait_for_messages(ros: ROSAwareScope) -> None:
