@@ -462,18 +462,28 @@ def take_kwargs(func: Callable, kwargs: Mapping) -> Tuple[Mapping, Mapping]:
     return taken, dropped
 
 
+def localized_error_message(user_message: Optional[str] = None) -> str:
+    """Returns an error message with source location information."""
+    this_frame = inspect.currentframe()
+    assert this_frame is not None
+    inner_frame = this_frame.f_back
+    assert inner_frame is not None
+    outer_frame = inner_frame.f_back
+    assert outer_frame is not None
+    traceback = inspect.getframeinfo(outer_frame)
+    message = f"{traceback.filename}:{traceback.lineno}: "
+    if traceback.code_context is not None:
+        message += "".join(traceback.code_context).strip("\n ") + " failed"
+    else:
+        traceback = inspect.getframeinfo(inner_frame)
+        message += f"{traceback.function}() failed"
+    if user_message is not None:
+        message += ": " + user_message
+    return message
+
+
 def ensure(value: Optional[Any]) -> Any:
     """Ensures `value` is not None or fails trying."""
     if value is None:
-        frame = inspect.currentframe()
-        assert frame is not None
-        frame = frame.f_back
-        assert frame is not None
-        traceback = inspect.getframeinfo(frame)
-        message = f"{traceback.filename}:{traceback.lineno}: "
-        if traceback.code_context is not None:
-            message += "".join(traceback.code_context).strip("\n ") + " failed"
-        else:
-            message += "ensure() failed"
-        raise ValueError(message)
+        raise ValueError(localized_error_message())
     return value
