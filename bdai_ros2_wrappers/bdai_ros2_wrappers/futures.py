@@ -1,6 +1,6 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 from threading import Event
-from typing import Awaitable, Callable, Optional, Protocol, TypeVar, Union, runtime_checkable
+from typing import Any, Awaitable, Callable, Optional, Protocol, TypeVar, Union, runtime_checkable
 
 from rclpy.context import Context
 from rclpy.utilities import get_default_context
@@ -84,3 +84,21 @@ def wait_for_future(
         event.set()
     event.wait(timeout=timeout_sec)
     return proper_future.done()
+
+
+def unwrap_future(
+    future: AnyFuture,
+    timeout_sec: Optional[float] = None,
+    *,
+    context: Optional[Context] = None,
+) -> Any:
+    """Fetch future result when it is done.
+
+    Note this function may block and may raise if the future does or it times out
+    waiting for it. See wait_for_future() documentation for further reference on
+    arguments taken.
+    """
+    proper_future = as_proper_future(future)
+    if not wait_for_future(proper_future, timeout_sec, context=context):
+        raise ValueError("cannot unwrap future that is not done")
+    return proper_future.result()
