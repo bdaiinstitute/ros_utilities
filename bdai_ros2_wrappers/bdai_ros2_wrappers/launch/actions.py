@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Final, Type
+from typing import Any, Final, List, Type
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
