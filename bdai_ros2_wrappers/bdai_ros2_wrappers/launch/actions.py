@@ -23,7 +23,10 @@ def convert_to_bool(param_name: str, val: str) -> bool:
 
 
 def update_sigterm_sigkill_timeout(
-    ld: LaunchDescription, *, sigterm_timeout_s: float = 60, sigkill_timeout_s: float = 60
+    ld: LaunchDescription,
+    *,
+    sigterm_timeout_s: float = 60,
+    sigkill_timeout_s: float = 60,
 ) -> None:
     """Increases the timeout for launch to escalate to SIGTERM and SIGKILL after you CTRL+C"""
     ld.add_action(DeclareLaunchArgument("sigterm_timeout", default_value=str(sigterm_timeout_s)))
@@ -60,20 +63,26 @@ class DeclareEnumLaunchArgument(DeclareLaunchArgument):
             if isinstance(default_value, str):
                 if default_value not in choices:
                     raise ValueError(
-                        f"For an Enum Launch Argument of type {enum_type.__name__}, the `default_value` must be from"
-                        f" {choices} or {list(enum_type)}"
+                        (
+                            f"For an Enum Launch Argument of type {enum_type.__name__}, the `default_value` must be"
+                            f" from {choices} or {list(enum_type)}"
+                        ),
                     )
             elif isinstance(default_value, enum_type):
                 if default_value not in enum_type:
                     raise ValueError(
-                        f"For an Enum Launch Argument of type {enum_type.__name__}, the `default_value` must be from"
-                        f" {choices} or {list(enum_type)}"
+                        (
+                            f"For an Enum Launch Argument of type {enum_type.__name__}, the `default_value` must be"
+                            f" from {choices} or {list(enum_type)}"
+                        ),
                     )
                 kwargs["default_value"] = str(default_value.value)
             else:
                 raise TypeError(
-                    f"For an Enum Launch Argument of type {enum_type.__name__}, the `default_value` must be of type"
-                    f" `str` or `{enum_type.__name__}`"
+                    (
+                        f"For an Enum Launch Argument of type {enum_type.__name__}, the `default_value` must be of type"
+                        f" `str` or `{enum_type.__name__}`"
+                    ),
                 )
 
         super().__init__(*args, choices=choices, **kwargs)

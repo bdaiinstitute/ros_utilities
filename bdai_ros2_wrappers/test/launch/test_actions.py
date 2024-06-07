@@ -2,6 +2,7 @@
 from enum import Enum
 
 import pytest
+
 from bdai_ros2_wrappers.launch.actions import DeclareBooleanLaunchArgument, DeclareEnumLaunchArgument
 
 

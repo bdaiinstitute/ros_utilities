@@ -27,7 +27,7 @@ def add_robot_name_argument(ld: LaunchDescription) -> LaunchConfiguration:
             _ROBOT_NAME,
             description="Name of the robot.",
             default_value="",
-        )
+        ),
     )
     return LaunchConfiguration(_ROBOT_NAME)
 
