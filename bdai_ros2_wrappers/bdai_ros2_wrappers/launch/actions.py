@@ -8,9 +8,9 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.utilities.type_utils import coerce_to_type
 
-_BOOLEAN_STR_CHOICES: Final[list[str]] = ["true", "True", "false", "False"]
-_BOOLEAN_CHOICES: Final[list[str | bool]] = [*_BOOLEAN_STR_CHOICES, True, False]
-_OPTIONAL_CHOICES: Final[list[str]] = [""]
+_BOOLEAN_STR_CHOICES: Final[List[str]] = ["true", "True", "false", "False"]
+_BOOLEAN_CHOICES: Final[List[str | bool]] = [*_BOOLEAN_STR_CHOICES, True, False]
+_OPTIONAL_CHOICES: Final[List[str]] = [""]
 
 
 def convert_to_bool(param_name: str, val: str) -> bool:
