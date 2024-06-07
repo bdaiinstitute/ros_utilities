@@ -1,4 +1,4 @@
-#  Copyright (c) 2023-2024 Boston Dynamics AI Institute Inc.  All rights reserved.
+# Copyright (c) 2024 Boston Dynamics AI Institute LLC. All rights reserved.
 from __future__ import annotations
 
 from enum import Enum
@@ -14,7 +14,7 @@ _OPTIONAL_CHOICES: Final[list[str]] = [""]
 
 
 def convert_to_bool(param_name: str, val: str) -> bool:
-    """Converts a ros argument to a bool"""
+    """Converts a ros parameter to a bool"""
     try:
         return coerce_to_type(val.lower(), bool)
     except ValueError:
@@ -25,7 +25,7 @@ def convert_to_bool(param_name: str, val: str) -> bool:
 def update_sigterm_sigkill_timeout(
     ld: LaunchDescription, *, sigterm_timeout_s: float = 60, sigkill_timeout_s: float = 60
 ) -> None:
-    """Specify the timeout that launch takes to escalate to SIGTERM and SIGKILL after CTRL+C"""
+    """Increases the timeout for launch to escalate to SIGTERM and SIGKILL after you CTRL+C"""
     ld.add_action(DeclareLaunchArgument("sigterm_timeout", default_value=str(sigterm_timeout_s)))
     ld.add_action(DeclareLaunchArgument("sigkill_timeout", default_value=str(sigkill_timeout_s)))
 
