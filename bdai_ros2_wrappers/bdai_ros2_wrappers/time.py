@@ -8,7 +8,12 @@ from rclpy.time import Time
 
 
 def as_proper_time(time: Union[int, float, datetime, Time]) -> Time:
-    """Return `time` as a proper Time object."""
+    """Return `time` as a proper Time object.
+
+    Note that for scalar times the convention is that floating point times
+    are expressed in seconds since some clock epoch, and integral times are
+    expressed in nanoseconds since some clock epoch.
+    """
     if isinstance(time, int):
         return Time(nanoseconds=time)
     if isinstance(time, float):
@@ -19,7 +24,11 @@ def as_proper_time(time: Union[int, float, datetime, Time]) -> Time:
 
 
 def as_proper_duration(duration: Union[int, float, timedelta, Duration]) -> Duration:
-    """Return `duration` as a proper Duration object."""
+    """Return `duration` as a proper Duration object.
+
+    Note that for scalar durations the convention is that floating point durations
+    are expressed in seconds, and integral durations are expressed in nanoseconds.
+    """
     if isinstance(duration, int):
         return Duration(nanoseconds=duration)
     if isinstance(duration, float):
