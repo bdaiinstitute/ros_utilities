@@ -4,7 +4,7 @@ import collections
 import functools
 import threading
 from collections.abc import Sequence
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 import tf2_ros
 from message_filters import SimpleFilter
@@ -115,3 +115,22 @@ class TransformFilter(SimpleFilter):
                 )
                 self._ongoing_wait_time = time
                 self._ongoing_wait.add_done_callback(functools.partial(self._wait_callback, messages))
+
+
+class SimpleAdapter(SimpleFilter):
+    """A message filter for data adaptation."""
+
+    def __init__(self, f: SimpleFilter, fn: Callable) -> None:
+        """Initializes the adapter.
+
+        Args:
+            f: the upstream message filter.
+            fn: adapter implementation as a callable.
+        """
+        super().__init__()
+        self.do_adapt = fn
+        self.incoming_connection = f.registerCallback(self.add)
+
+    def add(self, *messages: Any) -> None:
+        """Adds new `messages` to the adapter."""
+        self.signalMessage(self.do_adapt(*messages))

@@ -8,7 +8,7 @@ from rclpy.node import Node
 from rclpy.task import Future
 
 import bdai_ros2_wrappers.scope as scope
-from bdai_ros2_wrappers.filters import TransformFilter
+from bdai_ros2_wrappers.filters import SimpleAdapter, TransformFilter
 from bdai_ros2_wrappers.utilities import Tape
 
 
@@ -27,8 +27,7 @@ class MessageFeed:
         Args:
             link: Wrapped message filter, connecting this message feed with its source.
             history_length: optional historic data size, defaults to 1
-            node: optional node for the underlying native subscription, defaults to
-            the current process node.
+            node: optional node for lifetime control, defaults to the current process node.
         """
         if node is None:
             node = scope.ensure_node()
@@ -101,6 +100,37 @@ class MessageFeed:
     def close(self) -> None:
         """Closes the message feed."""
         self._tape.close()
+
+
+class AdaptedMessageFeed(MessageFeed):
+    """A message feed decorator to simplify adapter patterns."""
+
+    def __init__(
+        self,
+        feed: MessageFeed,
+        fn: Callable,
+        **kwargs: Any,
+    ) -> None:
+        """Initializes the message feed.
+
+        Args:
+            feed: the upstream (ie. decorated) message feed.
+            fn: message adapting callable.
+            kwargs: all other keyword arguments are forwarded
+            for `MessageFeed` initialization.
+        """
+        super().__init__(SimpleAdapter(feed.link, fn), **kwargs)
+        self._feed = feed
+
+    @property
+    def feed(self) -> MessageFeed:
+        """Gets the upstream message feed."""
+        return self._feed
+
+    def close(self) -> None:
+        """Closes this message feed and the upstream one as well."""
+        self._feed.close()
+        super().close()
 
 
 class FramedMessageFeed(MessageFeed):
