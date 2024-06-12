@@ -36,11 +36,27 @@ def test_wait_for_message(ros: ROSAwareScope) -> None:
     assert message.data == 1
 
 
+def test_subscription_matching_publishers(ros: ROSAwareScope) -> None:
+    """Asserts that checking for publisher matching on a subscription works as expected."""
+    assert ros.node is not None
+    sequence = Subscription(Int8, "sequence", DEFAULT_QOS_PROFILE, node=ros.node)
+    assert sequence.matched_publishers == 0
+    future = sequence.publisher_matches(1)
+    assert not future.done()
+    future.cancel()
+
+    ros.node.create_publisher(Int8, "sequence", DEFAULT_QOS_PROFILE)
+    assert wait_for_future(sequence.publisher_matches(1), timeout_sec=5.0)
+    assert sequence.matched_publishers == 1
+
+
 def test_subscription_future_wait(ros: ROSAwareScope) -> None:
     """Asserts that waiting for a subscription update works as expected."""
     assert ros.node is not None
     pub = ros.node.create_publisher(Int8, "sequence", DEFAULT_QOS_PROFILE)
     sequence = Subscription(Int8, "sequence", DEFAULT_QOS_PROFILE, node=ros.node)
+    assert wait_for_future(sequence.publisher_matches(1), timeout_sec=5.0)
+    assert sequence.matched_publishers == 1
 
     pub.publish(Int8(data=1))
 
@@ -53,6 +69,8 @@ def test_subscription_matching_future_wait(ros: ROSAwareScope) -> None:
     assert ros.node is not None
     pub = ros.node.create_publisher(Int8, "sequence", DEFAULT_QOS_PROFILE)
     sequence = Subscription(Int8, "sequence", DEFAULT_QOS_PROFILE, node=ros.node)
+    assert wait_for_future(sequence.publisher_matches(1), timeout_sec=5.0)
+    assert sequence.matched_publishers == 1
 
     def deferred_publish() -> None:
         time.sleep(0.5)
@@ -84,6 +102,8 @@ def test_subscription_iteration(ros: ROSAwareScope) -> None:
         history_length=3,
         node=ros.node,
     )
+    assert wait_for_future(sequence.publisher_matches(1), timeout_sec=5.0)
+    assert sequence.matched_publishers == 1
 
     expected_sequence_numbers = [1, 10, 100]
 
@@ -108,6 +128,8 @@ def test_subscription_cancelation(ros: ROSAwareScope) -> None:
     assert ros.node is not None
     pub = ros.node.create_publisher(Int8, "sequence", DEFAULT_QOS_PROFILE)
     sequence = Subscription(Int8, "sequence", DEFAULT_QOS_PROFILE, node=ros.node)
+    assert wait_for_future(sequence.publisher_matches(1), timeout_sec=5.0)
+    assert sequence.matched_publishers == 1
 
     pub.publish(Int8(data=1))
 
