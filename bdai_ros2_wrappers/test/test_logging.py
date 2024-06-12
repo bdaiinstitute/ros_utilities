@@ -1,16 +1,17 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 import logging
 import threading
-from typing import List, Optional
+from typing import List
 
 from rcl_interfaces.msg import Log
 from rclpy.clock import ROSClock
 from rclpy.task import Future
 from rclpy.time import Time
 
-from bdai_ros2_wrappers.futures import wait_for_future
+from bdai_ros2_wrappers.futures import unwrap_future
 from bdai_ros2_wrappers.logging import LoggingSeverity, as_memoizing_logger, logs_to_ros
 from bdai_ros2_wrappers.scope import ROSAwareScope
+from bdai_ros2_wrappers.subscription import Subscription
 
 
 def test_memoizing_logger(verbose_ros: ROSAwareScope) -> None:
@@ -76,26 +77,18 @@ def test_memoizing_logger(verbose_ros: ROSAwareScope) -> None:
 
 
 def test_log_forwarding(verbose_ros: ROSAwareScope) -> None:
-    future: Optional[Future] = None
-
-    def callback(message: Log) -> None:
-        nonlocal future
-        if future and not future.done():
-            future.set_result(message)
-
     assert verbose_ros.node is not None
-    verbose_ros.node.create_subscription(Log, "/rosout", callback, 10)
+    rosout = Subscription(Log, "/rosout", 10, node=verbose_ros.node)
+    assert unwrap_future(rosout.publisher_matches(1), timeout_sec=5.0) > 0
 
-    future = Future()
+    Future()
     with logs_to_ros(verbose_ros.node):
         logger = logging.getLogger("my_logger")
         logger.setLevel(logging.INFO)
         logger.propagate = True  # ensure propagation is enabled
         logger.info("test")
 
-    assert wait_for_future(future, timeout_sec=10)
-    assert future.done()
-    log = future.result()
+    log = unwrap_future(rosout.update, timeout_sec=5.0)
     # NOTE(hidmic) why are log levels of bytestring type !?
     assert log.level == int.from_bytes(Log.INFO, byteorder="little")
     assert log.name == verbose_ros.node.get_logger().name
