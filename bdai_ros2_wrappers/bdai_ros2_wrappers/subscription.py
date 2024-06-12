@@ -1,5 +1,6 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 
+
 from collections.abc import Sequence
 from typing import Any, Optional, Type, Union, cast
 
@@ -66,6 +67,56 @@ class Subscription(MessageFeed):
         self._node = node
 
     @property
+    def subscriber(self) -> Subscriber:
+        """Gets the underlying subscriber.
+
+        Type-casted alias of `Subscription.link`.
+        """
+        return cast(Subscriber, self.link)
+
+    def publisher_matches(self, num_publishers: int) -> Future:
+        """Gets a future to next publisher matching status update.
+
+        Note that in ROS 2 Humble and ealier distributions, this method relies on
+        polling the number of known publishers for the topic subscribed, as subscription
+        matching events are missing.
+
+        Args:
+            num_publishers: lower bound on the number of publishers to match.
+
+        Returns:
+            a future, done if the current number of publishers already matches
+            the specified lower bound.
+        """
+        future_match = Future()
+        num_matched_publishers = self._node.count_publishers(self._topic_name)
+        if num_matched_publishers < num_publishers:
+
+            def _poll_publisher_matches() -> None:
+                nonlocal future_match, num_publishers
+                if future_match.cancelled():
+                    return
+                num_matched_publishers = self._node.count_publishers(self._topic_name)
+                if num_publishers <= num_matched_publishers:
+                    future_match.set_result(num_matched_publishers)
+
+            timer = self._node.create_timer(0.1, _poll_publisher_matches)
+            future_match.add_done_callback(lambda _: self._node.destroy_timer(timer))
+        else:
+            future_match.set_result(num_matched_publishers)
+        return future_match
+
+    @property
+    def matched_publishers(self) -> int:
+        """Gets the number publishers matched and linked to.
+
+        Note that in ROS 2 Humble and earlier distributions, this property
+        relies on the number of known publishers for the topic subscribed
+        as subscription matching status info is missing.
+        """
+        return self._node.count_publishers(self._topic_name)
+
+    @property
     def message_type(self) -> Type[MessageT]:
         """Gets the type of the message subscribed."""
         return self._message_type
@@ -77,9 +128,7 @@ class Subscription(MessageFeed):
 
     def close(self) -> None:
         """Closes the subscription."""
-        self._node.destroy_subscription(
-            cast(Subscriber, self.link).sub,
-        )
+        self._node.destroy_subscription(self.subscriber.sub)
         super().close()
 
     # Aliases for improved readability
