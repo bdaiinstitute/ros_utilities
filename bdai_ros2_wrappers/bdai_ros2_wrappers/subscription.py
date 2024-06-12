@@ -1,6 +1,5 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 
-
 from collections.abc import Sequence
 from typing import Any, Optional, Type, Union, cast
 

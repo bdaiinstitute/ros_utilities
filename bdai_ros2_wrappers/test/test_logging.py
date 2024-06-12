@@ -5,7 +5,6 @@ from typing import List
 
 from rcl_interfaces.msg import Log
 from rclpy.clock import ROSClock
-from rclpy.task import Future
 from rclpy.time import Time
 
 from bdai_ros2_wrappers.futures import unwrap_future
@@ -81,7 +80,6 @@ def test_log_forwarding(verbose_ros: ROSAwareScope) -> None:
     rosout = Subscription(Log, "/rosout", 10, node=verbose_ros.node)
     assert unwrap_future(rosout.publisher_matches(1), timeout_sec=5.0) > 0
 
-    Future()
     with logs_to_ros(verbose_ros.node):
         logger = logging.getLogger("my_logger")
         logger.setLevel(logging.INFO)
