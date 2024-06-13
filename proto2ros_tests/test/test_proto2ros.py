@@ -79,6 +79,7 @@ def test_circularly_dependent_messages() -> None:
     other_proto_list_value = proto_value.dict.items["range"]
     assert [v.number for v in other_proto_list_value.list.values] == [v.number for v in proto_list_value.list.values]
 
+
 def test_messages_with_enums() -> None:
     proto_motion_request = test_pb2.MotionRequest()
     proto_motion_request.direction = test_pb2.MotionRequest.Direction.Forward
