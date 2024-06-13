@@ -60,22 +60,24 @@ def test_recursive_messages() -> None:
 
 
 def test_circularly_dependent_messages() -> None:
-    proto_pair = test_pb2.Pair()
-    proto_pair.first.text = "interval"
-    proto_pair.second.pair.first.number = -0.5
-    proto_pair.second.pair.second.number = 0.5
-    ros_pair = proto2ros_tests.msg.Pair()
-    convert(proto_pair, ros_pair)
-    assert ros_pair.first.data.which == ros_pair.first.data.DATA_TEXT_SET
-    assert ros_pair.first.data.text == proto_pair.first.text
-    assert ros_pair.second.data.which == ros_pair.second.data.DATA_PAIR_SET
-    assert ros_pair.second.data.pair.type_name == "proto2ros_tests/Pair"
-    other_proto_pair = test_pb2.Pair()
-    convert(ros_pair, other_proto_pair)
-    assert other_proto_pair.first.text == proto_pair.first.text
-    assert other_proto_pair.second.pair.first.number == proto_pair.second.pair.first.number
-    assert other_proto_pair.second.pair.second.number == proto_pair.second.pair.second.number
-
+    proto_value = test_pb2.Value()
+    proto_pair_value = proto_value.dict.items["interval"]
+    proto_pair_value.pair.first.number = -0.5
+    proto_pair_value.pair.second.number = 0.5
+    proto_list_value = proto_value.dict.items["range"]
+    for number in (-0.1, 0.0, 0.1, -0.7, 0.3, 0.4):
+        value = proto_list_value.list.values.add()
+        value.number = number
+    ros_value = proto2ros_tests.msg.Value()
+    convert(proto_value, ros_value)
+    other_proto_value = test_pb2.Value()
+    convert(ros_value, other_proto_value)
+    assert "interval" in other_proto_value.dict.items
+    other_proto_pair_value = proto_value.dict.items["interval"]
+    assert other_proto_pair_value.pair.first.number == proto_pair_value.pair.first.number
+    assert other_proto_pair_value.pair.second.number == proto_pair_value.pair.second.number
+    other_proto_list_value = proto_value.dict.items["range"]
+    assert [v.number for v in other_proto_list_value.list.values] == [v.number for v in proto_list_value.list.values]
 
 def test_messages_with_enums() -> None:
     proto_motion_request = test_pb2.MotionRequest()

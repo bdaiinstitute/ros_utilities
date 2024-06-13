@@ -47,10 +47,21 @@ message Fragment {
 
 // Heterogeneous pair.
 message Pair {
-    // Sequence first values.
+    // First value.
     Value first = 1;
-    // Sequence second values.
+    // Second value.
     Value second = 2;
+}
+
+// Heterogeneous list.
+message List {
+    // Listed values.
+    repeated Value values = 1;
+}
+
+// Heterogeneous dict.
+message Dict {
+    map<string, Value> items = 1;
 }
 
 // Heterogeneous value.
@@ -62,6 +73,10 @@ message Value {
         string text = 2;
         // Pair value.
         Pair pair = 3;
+        // List value.
+        List list = 4;
+        // Dict value.
+        Dict dict = 5;
     }
 }
 
