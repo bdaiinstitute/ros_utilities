@@ -174,7 +174,7 @@ class GeneralizedGuard(GeneralizedDecorator):
         self,
         condition: Callable[[], bool],
         wrapped_callable: GeneralizedCallable,
-        message: Optional[str] = None
+        message: Optional[str] = None,
     ) -> None:
         """Initializes generalized guard.
 
