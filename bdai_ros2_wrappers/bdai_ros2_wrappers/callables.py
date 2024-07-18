@@ -9,7 +9,7 @@ from rclpy.task import Future
 
 from bdai_ros2_wrappers.executors import assign_coroutine
 from bdai_ros2_wrappers.futures import AnyFuture, FutureLike, as_proper_future
-from bdai_ros2_wrappers.utilities import take_kwargs
+from bdai_ros2_wrappers.utilities import fqn, take_kwargs
 
 
 def starmap_async(func: Callable[..., AnyFuture], iterable: Iterable[Tuple[Any, ...]]) -> Future:
@@ -165,6 +165,42 @@ class ComposedCallable(GeneralizedDecorator, ComposableCallable, VectorizingCall
         if self.starred:
             return self.wrapped_callable.asynchronous(*self.composed_callable(*args, **inner_kwargs), **outer_kwargs)
         return self.wrapped_callable.asynchronous(self.composed_callable(*args, **inner_kwargs), **outer_kwargs)
+
+
+class GeneralizedGuard(GeneralizedDecorator):
+    """A decorator that guards generalized callable invocations."""
+
+    def __init__(
+        self,
+        condition: Callable[[], bool],
+        wrapped_callable: GeneralizedCallable,
+        message: Optional[str] = None,
+    ) -> None:
+        """Initializes generalized guard.
+
+        Args:
+            condition: boolean predicate to guard invocations.
+            wrapped_callable: the guarded callable.
+            message: optional human-readable message to raise whenever
+            the guard condition does not hold.
+        """
+        super().__init__(wrapped_callable)
+        self.condition = condition
+        if message is None:
+            message = fqn(condition)
+        self.message = message
+
+    def synchronous(self, *args: Any, **kwargs: Any) -> Any:
+        """Invokes callable synchronously if the guarded condition holds true, raises otherwise."""
+        if not self.condition():
+            raise RuntimeError(self.message)
+        return self.wrapped_callable.synchronous(*args, **kwargs)
+
+    def asynchronous(self, *args: Any, **kwargs: Any) -> Any:
+        """Invokes callable asynchronously if the guarded condition holds true, raises otherwise."""
+        if not self.condition():
+            raise RuntimeError(self.message)
+        return self.wrapped_callable.asynchronous(*args, **kwargs)
 
 
 class GeneralizedFunction(GeneralizedCallable):

@@ -5,7 +5,7 @@ from typing import Any, Optional
 
 import pytest
 
-from bdai_ros2_wrappers.callables import generalized_method
+from bdai_ros2_wrappers.callables import GeneralizedGuard, generalized_method
 from bdai_ros2_wrappers.futures import wait_for_future
 from bdai_ros2_wrappers.scope import ROSAwareScope
 
@@ -182,3 +182,23 @@ def test_composed_method(ros: ROSAwareScope) -> None:
     assert future.result() is True
     assert "extras" in bucket._storage
     assert bucket._storage["extras"] == (0, "more data", False)
+
+
+def test_guarded_method(ros: ROSAwareScope) -> None:
+    bucket = Bucket(ros, {"my-data": "some data"})
+
+    read_permission = False
+
+    def allowed() -> bool:
+        nonlocal read_permission
+        return read_permission
+
+    guarded_read = GeneralizedGuard(allowed, bucket.read)
+    Bucket.read.rebind(bucket, guarded_read)
+
+    with pytest.raises(RuntimeError):
+        bucket.read("my-data")
+
+    read_permission = True
+
+    assert bucket.read("my-data") == "some data"
