@@ -25,7 +25,7 @@ class TransformFilter(SimpleFilter):
 
     def __init__(
         self,
-        f: SimpleFilter,
+        upstream: SimpleFilter,
         target_frame_id: str,
         tf_buffer: tf2_ros.Buffer,
         tolerance_sec: float,
@@ -34,7 +34,7 @@ class TransformFilter(SimpleFilter):
         """Initializes the transform filter.
 
         Args:
-            f: the upstream message filter.
+            upstream: the upstream message filter.
             target_frame_id: the target frame ID for transforms.
             tf_buffer: a buffer of transforms to look up.
             tolerance_sec: a tolerance, in seconds, to wait for late transforms
@@ -50,7 +50,7 @@ class TransformFilter(SimpleFilter):
         self.target_frame_id = target_frame_id
         self.tf_buffer = tf_buffer
         self.tolerance = Duration(seconds=tolerance_sec)
-        self.incoming_connection = f.registerCallback(self.add)
+        self.connection = upstream.registerCallback(self.add)
 
     def _wait_callback(self, messages: Sequence[Any], future: Future) -> None:
         if future.cancelled():
@@ -120,17 +120,34 @@ class TransformFilter(SimpleFilter):
 class SimpleAdapter(SimpleFilter):
     """A message filter for data adaptation."""
 
-    def __init__(self, f: SimpleFilter, fn: Callable) -> None:
+    def __init__(self, upstream: SimpleFilter, fn: Callable) -> None:
         """Initializes the adapter.
 
         Args:
-            f: the upstream message filter.
+            upstream: the upstream message filter.
             fn: adapter implementation as a callable.
         """
         super().__init__()
         self.do_adapt = fn
-        self.incoming_connection = f.registerCallback(self.add)
+        self.connection = upstream.registerCallback(self.add)
 
     def add(self, *messages: Any) -> None:
         """Adds new `messages` to the adapter."""
         self.signalMessage(self.do_adapt(*messages))
+
+
+class Tunnel(SimpleFilter):
+    """A message filter that simply forwards messages but can be detached."""
+
+    def __init__(self, upstream: SimpleFilter) -> None:
+        """Initializes the tunnel.
+
+        Args:
+            upstream: the upstream message filter.
+        """
+        self.upstream = upstream
+        self.connection = upstream.registerCallback(self.signalMessage)
+
+    def close(self) -> None:
+        """Closes the tunnel, disconnecting it from upstream."""
+        del self.upstream.callbacks[self.connection]

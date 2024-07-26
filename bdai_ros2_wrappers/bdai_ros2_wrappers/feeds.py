@@ -8,7 +8,7 @@ from rclpy.node import Node
 from rclpy.task import Future
 
 import bdai_ros2_wrappers.scope as scope
-from bdai_ros2_wrappers.filters import SimpleAdapter, TransformFilter
+from bdai_ros2_wrappers.filters import SimpleAdapter, TransformFilter, Tunnel
 from bdai_ros2_wrappers.utilities import Tape
 
 
@@ -68,6 +68,16 @@ class MessageFeed:
             a future.
         """
         return self._tape.future_matching_write(matching_predicate)
+
+    def recall(self, callback: Callable) -> Tunnel:
+        """Adds a callback for message recalling.
+
+        Returns:
+            the underlying connection, which can be closed to stop future callbacks.
+        """
+        tunnel = Tunnel(self.link)
+        tunnel.registerCallback(callback)
+        return tunnel
 
     def stream(
         self,
