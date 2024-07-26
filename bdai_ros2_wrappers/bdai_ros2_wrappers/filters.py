@@ -145,6 +145,7 @@ class Tunnel(SimpleFilter):
         Args:
             upstream: the upstream message filter.
         """
+        super().__init__()
         self.upstream = upstream
         self.connection = upstream.registerCallback(self.signalMessage)
 
