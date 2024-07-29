@@ -4,13 +4,12 @@ from typing import List, Tuple
 
 import tf2_ros
 from geometry_msgs.msg import PoseStamped, TransformStamped
-from message_filters import SimpleFilter
 
-from bdai_ros2_wrappers.filters import TransformFilter
+from bdai_ros2_wrappers.filters import Filter, TransformFilter
 
 
 def test_transform_wait() -> None:
-    source = SimpleFilter()
+    source = Filter()
     tf_buffer = tf2_ros.Buffer()
     tf_filter = TransformFilter(source, "map", tf_buffer, tolerance_sec=1.0)
     sink: List[Tuple[PoseStamped, TransformStamped]] = []
@@ -39,7 +38,7 @@ def test_transform_wait() -> None:
 
 
 def test_old_transform_filtering() -> None:
-    source = SimpleFilter()
+    source = Filter()
     tf_buffer = tf2_ros.Buffer()
     tf_filter = TransformFilter(source, "map", tf_buffer, tolerance_sec=2.0)
     sink: List[Tuple[PoseStamped, TransformStamped]] = []

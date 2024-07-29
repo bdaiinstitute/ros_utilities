@@ -3,12 +3,11 @@
 from typing import Any, Callable, Iterable, Iterator, List, Optional
 
 import tf2_ros
-from message_filters import ApproximateTimeSynchronizer, SimpleFilter
 from rclpy.node import Node
 from rclpy.task import Future
 
 import bdai_ros2_wrappers.scope as scope
-from bdai_ros2_wrappers.filters import SimpleAdapter, TransformFilter, Tunnel
+from bdai_ros2_wrappers.filters import Adapter, ApproximateTimeSynchronizer, Filter, TransformFilter, Tunnel
 from bdai_ros2_wrappers.utilities import Tape
 
 
@@ -17,7 +16,7 @@ class MessageFeed:
 
     def __init__(
         self,
-        link: SimpleFilter,
+        link: Filter,
         *,
         history_length: Optional[int] = None,
         node: Optional[Node] = None,
@@ -39,7 +38,7 @@ class MessageFeed:
         node.context.on_shutdown(self._tape.close)
 
     @property
-    def link(self) -> SimpleFilter:
+    def link(self) -> Filter:
         """Gets the underlying message connection."""
         return self._link
 
@@ -129,7 +128,7 @@ class AdaptedMessageFeed(MessageFeed):
             kwargs: all other keyword arguments are forwarded
             for `MessageFeed` initialization.
         """
-        super().__init__(SimpleAdapter(feed.link, fn), **kwargs)
+        super().__init__(Adapter(feed.link, fn), **kwargs)
         self._feed = feed
 
     @property
