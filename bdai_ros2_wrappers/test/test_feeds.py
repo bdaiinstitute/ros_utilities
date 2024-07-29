@@ -8,7 +8,6 @@ from geometry_msgs.msg import (
     TransformStamped,
     TwistStamped,
 )
-from message_filters import SimpleFilter
 
 from bdai_ros2_wrappers.feeds import (
     AdaptedMessageFeed,
@@ -16,13 +15,14 @@ from bdai_ros2_wrappers.feeds import (
     MessageFeed,
     SynchronizedMessageFeed,
 )
+from bdai_ros2_wrappers.filters import Filter
 from bdai_ros2_wrappers.scope import ROSAwareScope
 from bdai_ros2_wrappers.utilities import ensure
 
 
 def test_framed_message_feed(ros: ROSAwareScope) -> None:
     tf_buffer = tf2_ros.Buffer()
-    pose_message_feed = MessageFeed(SimpleFilter())
+    pose_message_feed = MessageFeed(Filter())
     framed_message_feed = FramedMessageFeed(
         pose_message_feed,
         target_frame_id="map",
@@ -50,8 +50,8 @@ def test_framed_message_feed(ros: ROSAwareScope) -> None:
 
 
 def test_synchronized_message_feed(ros: ROSAwareScope) -> None:
-    pose_message_feed = MessageFeed(SimpleFilter())
-    twist_message_feed = MessageFeed(SimpleFilter())
+    pose_message_feed = MessageFeed(Filter())
+    twist_message_feed = MessageFeed(Filter())
     synchronized_message_feed = SynchronizedMessageFeed(
         pose_message_feed,
         twist_message_feed,
@@ -78,7 +78,7 @@ def test_synchronized_message_feed(ros: ROSAwareScope) -> None:
 
 
 def test_adapted_message_feed(ros: ROSAwareScope) -> None:
-    pose_message_feed = MessageFeed(SimpleFilter())
+    pose_message_feed = MessageFeed(Filter())
     position_message_feed = AdaptedMessageFeed(
         pose_message_feed,
         fn=lambda message: message.pose.position,
@@ -98,7 +98,7 @@ def test_adapted_message_feed(ros: ROSAwareScope) -> None:
 
 
 def test_message_feed_recalls(ros: ROSAwareScope) -> None:
-    pose_message_feed = MessageFeed(SimpleFilter())
+    pose_message_feed = MessageFeed(Filter())
 
     latest_message: Optional[PoseStamped] = None
 
