@@ -2,20 +2,106 @@
 
 import collections
 import functools
+import itertools
 import threading
 from collections.abc import Sequence
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Dict, Optional, Tuple, Protocol
 
 import tf2_ros
-from message_filters import SimpleFilter
+import message_filters
 from rclpy.duration import Duration
+from rclpy.node import Node
 from rclpy.task import Future
 from rclpy.time import Time
 
 from bdai_ros2_wrappers.logging import RcutilsLogger
 
 
-class TransformFilter(SimpleFilter):
+class SimpleFilterProtocol(Protocol):
+    """Protocol for `message_filters.SimpleFilter` subclasses."""
+
+    def registerCallback(self, callback: Callable, *args: Any) -> int: ...
+
+    def signalMessage(self, *messages: Any) -> None: ...
+
+
+class Filter(SimpleFilterProtocol):
+    """A threadsafe `message_filters.SimpleFilter` compliant message filter."""
+
+    def __init__(self) -> None:
+        self.__lock = threading.Lock()
+        self._connection_sequence = itertools.count()
+        self.callbacks: Dict[int, Tuple[Callable, Tuple]] = {}
+
+    def registerCallback(self, fn: Callable, *args: Any) -> int:
+        """Register callable to be called on filter output.
+
+        Args:
+            fn: callback callable.
+            args: optional positional arguments to supply on call.
+
+        Returns:
+            a unique connection identifier.
+        """
+        with self.__lock:
+            connection = next(self._connection_sequence)
+            self.callbacks[connection] = (fn, args)
+            return connection
+
+    def unregisterCallback(self, connection: int) -> None:
+        """Unregister a callback.
+
+        Args:
+            connection: unique identifier for the callback.
+        """
+        with self.__lock:
+            del self.callbacks[connection]
+
+    def signalMessage(self, *messages: Any) -> None:
+        """Feed one or more `messages` to the filter."""
+        with self.__lock:
+            callbacks = list(self.callbacks.values())
+
+        for fn, args in callbacks:
+            fn(*(messages + args))
+
+
+class Subscriber(Filter):
+    """A threadsafe `message_filters.Subscriber` equivalent."""
+
+    def __init__(self, node: Node, *args: Any, **kwargs: Any) -> None:
+        """Initializes the `Subscriber` instance.
+
+        All positional and keyword arguments are forwarded
+        to `rclpy.node.Node.create_subscription`.
+        """
+        super().__init__()
+        self.sub = node.create_subscription(
+            *args, callback=self.signalMessage, **kwargs
+        )
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.subscription, name)
+
+
+class ApproximateTimeSynchronizer(Filter):
+    """A threadsafe `message_filters.ApproximateTimeSynchronizer` equivalent."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Initializes the `ApproximateTimeSynchronizer` instance.
+
+        All positional and keyword arguments are forwarded
+        to the underlying `message_filters.ApproximateTimeSynchronizer`.
+        """
+        super().__init__()
+        self._unsafe_synchronizer = message_filters.ApproximateTimeSynchronizer(*args, **kwargs)
+        self._unsafe_synchronizer.registerCallback(self.signalMessage)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._unsafe_synchronizer, name)
+
+
+class TransformFilter(Filter):
     """A :mod:`tf2_ros` driven message filter, ensuring user defined transforms' availability.
 
     This filter passes a stamped transform along with filtered messages, from message frame ID
@@ -25,7 +111,7 @@ class TransformFilter(SimpleFilter):
 
     def __init__(
         self,
-        upstream: SimpleFilter,
+        upstream: Filter,
         target_frame_id: str,
         tf_buffer: tf2_ros.Buffer,
         tolerance_sec: float,
@@ -117,10 +203,10 @@ class TransformFilter(SimpleFilter):
                 self._ongoing_wait.add_done_callback(functools.partial(self._wait_callback, messages))
 
 
-class SimpleAdapter(SimpleFilter):
+class Adapter(Filter):
     """A message filter for data adaptation."""
 
-    def __init__(self, upstream: SimpleFilter, fn: Callable) -> None:
+    def __init__(self, upstream: Filter, fn: Callable) -> None:
         """Initializes the adapter.
 
         Args:
@@ -128,18 +214,18 @@ class SimpleAdapter(SimpleFilter):
             fn: adapter implementation as a callable.
         """
         super().__init__()
-        self.do_adapt = fn
+        self.fn = fn
         self.connection = upstream.registerCallback(self.add)
 
     def add(self, *messages: Any) -> None:
         """Adds new `messages` to the adapter."""
-        self.signalMessage(self.do_adapt(*messages))
+        self.signalMessage(self.fn(*messages))
 
 
-class Tunnel(SimpleFilter):
+class Tunnel(Filter):
     """A message filter that simply forwards messages but can be detached."""
 
-    def __init__(self, upstream: SimpleFilter) -> None:
+    def __init__(self, upstream: Filter) -> None:
         """Initializes the tunnel.
 
         Args:
@@ -151,4 +237,4 @@ class Tunnel(SimpleFilter):
 
     def close(self) -> None:
         """Closes the tunnel, disconnecting it from upstream."""
-        del self.upstream.callbacks[self.connection]
+        self.upstream.unregisterCallback(self.connection)

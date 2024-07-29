@@ -3,7 +3,6 @@
 from collections.abc import Sequence
 from typing import Any, Optional, Type, Union, cast
 
-from message_filters import ApproximateTimeSynchronizer, Subscriber
 from rclpy.callback_groups import CallbackGroup
 from rclpy.node import Node
 from rclpy.qos import QoSProfile
@@ -11,6 +10,7 @@ from rclpy.task import Future
 
 import bdai_ros2_wrappers.scope as scope
 from bdai_ros2_wrappers.feeds import MessageFeed
+from bdai_ros2_wrappers.filters import ApproximateTimeSynchronizer, Subscriber
 from bdai_ros2_wrappers.futures import wait_for_future
 from bdai_ros2_wrappers.type_hints import Msg as MessageT
 
