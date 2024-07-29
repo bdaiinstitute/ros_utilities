@@ -5,10 +5,10 @@ import functools
 import itertools
 import threading
 from collections.abc import Sequence
-from typing import Any, Callable, Dict, Optional, Tuple, Protocol
+from typing import Any, Callable, Dict, Optional, Protocol, Tuple
 
-import tf2_ros
 import message_filters
+import tf2_ros
 from rclpy.duration import Duration
 from rclpy.node import Node
 from rclpy.task import Future
@@ -20,9 +20,11 @@ from bdai_ros2_wrappers.logging import RcutilsLogger
 class SimpleFilterProtocol(Protocol):
     """Protocol for `message_filters.SimpleFilter` subclasses."""
 
-    def registerCallback(self, callback: Callable, *args: Any) -> int: ...
+    def registerCallback(self, callback: Callable, *args: Any) -> int:
+        """Register callable to be called on filter output."""
 
-    def signalMessage(self, *messages: Any) -> None: ...
+    def signalMessage(self, *messages: Any) -> None:
+        """Feed one or more `messages` to the filter."""
 
 
 class Filter(SimpleFilterProtocol):
@@ -77,7 +79,9 @@ class Subscriber(Filter):
         """
         super().__init__()
         self.sub = node.create_subscription(
-            *args, callback=self.signalMessage, **kwargs
+            *args,
+            callback=self.signalMessage,
+            **kwargs,
         )
 
     def __getattr__(self, name: str) -> Any:

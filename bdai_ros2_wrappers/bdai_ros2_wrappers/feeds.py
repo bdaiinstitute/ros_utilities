@@ -7,9 +7,7 @@ from rclpy.node import Node
 from rclpy.task import Future
 
 import bdai_ros2_wrappers.scope as scope
-from bdai_ros2_wrappers.filters import (
-    Filter, Adapter, ApproximateTimeSynchronizer, TransformFilter, Tunnel
-)
+from bdai_ros2_wrappers.filters import Adapter, ApproximateTimeSynchronizer, Filter, TransformFilter, Tunnel
 from bdai_ros2_wrappers.utilities import Tape
 
 
