@@ -356,6 +356,7 @@ class GeneralizedMethod:
 
     @property
     def transitional(self) -> bool:
+        """Check whether this method is transitional or not."""
         return self.legacy_overload is not None
 
     def legacy(self, func: Callable) -> Callable:
