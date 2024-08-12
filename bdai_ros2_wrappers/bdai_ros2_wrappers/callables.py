@@ -395,11 +395,7 @@ class GeneralizedMethod:
         bound_method = GeneralizedMethod.Bound(body, default_callable)
         setattr(instance, self.__attribute_name, bound_method)
 
-    def __get__(
-        self,
-        instance: Optional[Any],
-        owner: Optional[Type] = None,
-    ) -> Union["GeneralizedMethod", "GeneralizedMethod.Bound"]:
+    def __get__(self, instance: Optional[Any], owner: Optional[Type] = None) -> Any:
         if instance is None:
             return self
         return getattr(instance, self.__attribute_name)
