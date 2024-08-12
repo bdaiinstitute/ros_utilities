@@ -13,7 +13,7 @@ def test_transform_wait() -> None:
     tf_buffer = tf2_ros.Buffer()
     tf_filter = TransformFilter(source, "map", tf_buffer, tolerance_sec=1.0)
     sink: List[Tuple[PoseStamped, TransformStamped]] = []
-    tf_filter.registerCallback(lambda *msgs: sink.append(msgs))
+    tf_filter.registerCallback(lambda *msgs: sink.append((msgs[0], msgs[1])))
     assert len(sink) == 0
     pose_message = PoseStamped()
     pose_message.header.frame_id = "odom"
@@ -42,7 +42,7 @@ def test_old_transform_filtering() -> None:
     tf_buffer = tf2_ros.Buffer()
     tf_filter = TransformFilter(source, "map", tf_buffer, tolerance_sec=2.0)
     sink: List[Tuple[PoseStamped, TransformStamped]] = []
-    tf_filter.registerCallback(lambda *msgs: sink.append(msgs))
+    tf_filter.registerCallback(lambda *msgs: sink.append((msgs[0], msgs[1])))
     assert len(sink) == 0
     first_pose_message = PoseStamped()
     first_pose_message.header.frame_id = "odom"

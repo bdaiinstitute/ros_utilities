@@ -1,13 +1,11 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute LLC. All rights reserved.
 import threading
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 from rclpy.context import Context
 from rclpy.impl.rcutils_logger import RcutilsLogger
 from rclpy.task import Future
 from rclpy.utilities import get_default_context
-
-from bdai_ros2_wrappers.type_hints import SrvTypeResponse
 
 
 class ServiceHandle:
@@ -33,14 +31,14 @@ class ServiceHandle:
         context.on_shutdown(self._future_ready_event.set)
         self._result_callback: Optional[Callable] = None
         self._on_failure_callback: Optional[Callable] = None
-        self._result: Optional[SrvTypeResponse] = None
+        self._result: Optional[Any] = None
         if logger is None:
             self._logger = RcutilsLogger(name=f"{service_name} Handle")
         else:
             self._logger = logger
 
     @property
-    def result(self) -> Optional[SrvTypeResponse]:
+    def result(self) -> Optional[Any]:
         """Returns the result if one has been received from the service"""
         return self._result
 

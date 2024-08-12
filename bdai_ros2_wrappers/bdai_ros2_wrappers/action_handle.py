@@ -1,6 +1,6 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 from threading import Event
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 from action_msgs.msg import GoalStatus
 from rclpy.action.client import ClientGoalHandle
@@ -8,8 +8,6 @@ from rclpy.context import Context
 from rclpy.impl.rcutils_logger import RcutilsLogger
 from rclpy.task import Future
 from rclpy.utilities import get_default_context
-
-from bdai_ros2_wrappers.type_hints import Action
 
 
 class ActionHandle:
@@ -35,23 +33,23 @@ class ActionHandle:
         self._wait_for_acceptance_event: Event = Event()
         context.on_shutdown(self._wait_for_acceptance_event.set)
         self._get_result_future: Optional[Future] = None
-        self._feedback_callback: Optional[Callable[[Action.Feedback], None]] = None
+        self._feedback_callback: Optional[Callable[[Any], None]] = None
         self._wait_for_result_event: Event = Event()
         context.on_shutdown(self._wait_for_result_event.set)
-        self._result_callback: Optional[Callable[[Action.Result], None]] = None
+        self._result_callback: Optional[Callable[[Any], None]] = None
         self._on_failure_callback: Optional[Callable] = None
         self._cancel_future: Optional[Future] = None
         self._on_cancel_success_callback: Optional[Callable] = None
         self._on_cancel_failure_callback: Optional[Callable] = None
         self._exception: Optional[Exception] = None
-        self._result: Optional[Action.Result] = None
+        self._result: Optional[Any] = None
         if logger is None:
             self._logger = RcutilsLogger(name=f"{action_name} Handle")
         else:
             self._logger = logger
 
     @property
-    def result(self) -> Optional[Action.Result]:
+    def result(self) -> Optional[Any]:
         """Returns the result of the action if it has been received from the ActionServer, None otherwise"""
         if self._exception is not None:
             raise self._exception
@@ -92,11 +90,11 @@ class ActionHandle:
         self._send_goal_future = send_goal_future
         self._send_goal_future.add_done_callback(self._goal_response_callback)
 
-    def set_feedback_callback(self, feedback_callback: Callable[[Action.Feedback], None]) -> None:
+    def set_feedback_callback(self, feedback_callback: Callable[[Any], None]) -> None:
         """Sets the callback used to process feedback received while an Action is being executed"""
         self._feedback_callback = feedback_callback
 
-    def set_result_callback(self, result_callback: Callable[[Action.Result], None]) -> None:
+    def set_result_callback(self, result_callback: Callable[[Any], None]) -> None:
         """Sets the callback for processing the result from executing an Action"""
         self._result_callback = result_callback
 
@@ -137,7 +135,7 @@ class ActionHandle:
         self._get_result_future.add_done_callback(self._get_result_callback)
         self._wait_for_acceptance_event.set()
 
-    def get_feedback_callback(self, feedback: Action.Feedback) -> None:
+    def get_feedback_callback(self, feedback: Any) -> None:
         """Public feedback callback that can be given to the ActionClient
 
         Currently just passes the feedback to the user provided callback
@@ -150,6 +148,7 @@ class ActionHandle:
         self._exception = future.exception()
         if self._exception is None:
             self._result = future.result()
+            assert self._result is not None
             if self._result.status == GoalStatus.STATUS_SUCCEEDED:
                 self._logger.info("Finished successfully")
                 if self._result_callback is not None:
