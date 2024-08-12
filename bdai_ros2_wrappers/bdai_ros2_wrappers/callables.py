@@ -3,7 +3,21 @@
 import abc
 import functools
 import inspect
-from typing import Any, Callable, Iterable, Literal, Optional, Tuple, Type, Union, overload
+from typing import (
+    Any,
+    Callable,
+    Generic,
+    Iterable,
+    List,
+    Literal,
+    Optional,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+    overload,
+)
 
 from rclpy.task import Future
 
@@ -110,14 +124,14 @@ class ComposableCallable(GeneralizedCallable):
 class VectorizedCallable(GeneralizedDecorator, ComposableCallable, VectorizingCallable):
     """A vectorization decorator that aggregates multiple invocations sequentially."""
 
-    def synchronous(self, *vargs: Iterable[Any], **kwargs: Any) -> Any:
+    def synchronous(self, *vargs: Iterable[Any], **kwargs: Any) -> List:
         """Invoke callable synchronously over a sequence of a argument tuples (zipped).
 
         A sequence of results is returned.
         """
         return [self.wrapped_callable.synchronous(*args, **kwargs) for args in zip(*vargs)]
 
-    def asynchronous(self, *vargs: Iterable[Any], **kwargs: Any) -> Any:
+    def asynchronous(self, *vargs: Iterable[Any], **kwargs: Any) -> Future:
         """Invoke callable asynchronously over a sequence of a argument tuples (zipped).
 
         A future to a sequence of results is returned.
@@ -364,14 +378,6 @@ class GeneralizedMethod:
         bound_method = GeneralizedMethod.Bound(body, default_callable)
         setattr(instance, self.__attribute_name, bound_method)
 
-    @overload
-    def __get__(self, instance: Literal[None], owner: Optional[Type] = ...) -> "GeneralizedMethod":
-        ...
-
-    @overload
-    def __get__(self, instance: Any, owner: Optional[Type] = ...) -> "GeneralizedMethod.Bound":
-        ...
-
     def __get__(
         self,
         instance: Optional[Any],
@@ -382,26 +388,93 @@ class GeneralizedMethod:
         return getattr(instance, self.__attribute_name)
 
 
+P = TypeVar("P")
+
+
+class GeneralizedMethodLike(Generic[P], GeneralizedMethod):
+    """A generalized method that can be type annotated via user-defined protocols."""
+
+    @overload
+    def __get__(
+        self,
+        instance: Literal[None],
+        owner: Optional[Type] = ...,
+    ) -> "GeneralizedMethodLike[P]":
+        ...
+
+    @overload
+    def __get__(self, instance: Any, owner: Optional[Type] = ...) -> "P":
+        ...
+
+    def __get__(
+        self,
+        instance: Optional[Any],
+        owner: Optional[Type] = None,
+    ) -> Union["GeneralizedMethodLike[P]", "P"]:
+        if instance is None:
+            return self
+        return cast(P, getattr(instance, self.__attribute_name))
+
+
+@overload
+def generalized_method(
+    func: Callable,
+    *,
+    spec: Type[GeneralizedMethodLike[P]],
+) -> GeneralizedMethodLike[P]:
+    ...
+
+
+@overload
+def generalized_method(
+    func: Literal[None] = None,
+    *,
+    spec: Type[GeneralizedMethodLike[P]],
+    transitional: bool = ...,
+) -> Callable[[Callable], GeneralizedMethodLike[P]]:
+    ...
+
+
 @overload
 def generalized_method(func: Callable, *, transitional: bool = ...) -> GeneralizedMethod:
     ...
 
 
 @overload
-def generalized_method(*, transitional: bool = ...) -> Callable:
+def generalized_method(
+    func: Literal[None] = None,
+    *,
+    transitional: bool = ...,
+) -> Callable[[Callable], GeneralizedMethod]:
     ...
 
 
 def generalized_method(
     func: Optional[Callable] = None,
     *,
+    spec: Optional[Type[GeneralizedMethodLike[P]]] = None,
     transitional: bool = False,
-) -> Union[Callable, GeneralizedMethod]:
-    """Define a generalized method by decoration."""
+) -> Union[
+    GeneralizedMethod,
+    GeneralizedMethodLike[P],
+    Callable[[Callable], GeneralizedMethod],
+    Callable[[Callable], GeneralizedMethodLike[P]],
+]:
+    """Define a generalized method by decoration.
 
-    def _decorator(func: Callable) -> GeneralizedMethod:
-        return GeneralizedMethod(func, transitional)
+    Args:
+        func: method function, usually just a signature but
+        may also be used as an overload for convenience.
+        spec: optional type annotated specification.
+        transitional: a transitional method will stick to its
+        prototype for default invocations.
+    """
+
+    def __decorator(func: Callable) -> GeneralizedMethodLike[P]:
+        if spec is not None:
+            return spec(func, transitional)
+        return GeneralizedMethodLike[P](func, transitional)
 
     if func is None:
-        return _decorator
-    return _decorator(func)
+        return __decorator
+    return __decorator(func)
