@@ -278,7 +278,7 @@ class GeneralizedMethod:
                 else:
                     self.default_callable = self.asynchronous_callable
             else:
-                self.default_callable = method.prototype
+                self.default_callable = method.legacy_overload
 
         def __get__(
             self,
@@ -348,23 +348,40 @@ class GeneralizedMethod:
             adoption of generalized methods in existing codebases.
         """
         self.prototype = prototype
-        self.transitional = transitional
+        self.legacy_overload: Optional[Callable] = None
+        if transitional:
+            self.legacy_overload = prototype
         self.synchronous_overload: Optional[Callable] = None
         self.asynchronous_overload: Optional[Callable] = None
 
-    def sync_overload(self, func: Callable) -> Callable:
+    @property
+    def transitional(self) -> bool:
+        return self.legacy_overload is not None
+
+    def legacy(self, func: Callable) -> Callable:
+        """Register `func` as this method legacy overload."""
+        if self.legacy_overload is not None:
+            raise RuntimeError("cannot redefine legacy overload")
+        self.legacy_overload = func
+        return func
+
+    def synchronous(self, func: Callable) -> Callable:
         """Register `func` as this method synchronous overload."""
         if self.synchronous_overload is not None:
             raise RuntimeError("cannot redefine synchronous overload")
         self.synchronous_overload = func
         return func
 
-    def async_overload(self, func: Callable) -> Callable:
+    sync_overload = synchronous
+
+    def asynchronous(self, func: Callable) -> Callable:
         """Register `func` as this method asynchronous overload."""
         if self.asynchronous_overload is not None:
             raise RuntimeError("cannot redefine asynchronous overload")
         self.asynchronous_overload = func
         return func
+
+    async_overload = asynchronous
 
     def __set_name__(self, owner: Type, name: str) -> None:
         self.__attribute_name = f"__{name}_method"
@@ -373,8 +390,8 @@ class GeneralizedMethod:
     def rebind(self, instance: Any, body: GeneralizedCallable) -> None:
         """Change this method's `body` for the given `instance`."""
         default_callable: Optional[Callable] = None
-        if self.transitional:
-            default_callable = self.prototype.__get__(instance)
+        if self.legacy_overload is not None:
+            default_callable = self.legacy_overload.__get__(instance)
         bound_method = GeneralizedMethod.Bound(body, default_callable)
         setattr(instance, self.__attribute_name, bound_method)
 
