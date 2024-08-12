@@ -427,7 +427,7 @@ class GeneralizedMethodLike(Generic[P], GeneralizedMethod):
     ) -> Union["GeneralizedMethodLike[P]", "P"]:
         if instance is None:
             return self
-        return cast(P, getattr(instance, self.__attribute_name))
+        return cast(P, super().__get__(instance, owner))
 
 
 @overload
@@ -483,11 +483,18 @@ def generalized_method(
         transitional: a transitional method will stick to its
         prototype for default invocations.
     """
+    if spec is not None:
 
-    def __decorator(func: Callable) -> GeneralizedMethodLike[P]:
-        if spec is not None:
+        def __decorator_with_spec(func: Callable) -> GeneralizedMethodLike[P]:
+            assert spec is not None
             return spec(func, transitional)
-        return GeneralizedMethodLike[P](func, transitional)
+
+        if func is None:
+            return __decorator_with_spec
+        return __decorator_with_spec(func)
+
+    def __decorator(func: Callable) -> GeneralizedMethod:
+        return GeneralizedMethod(func, transitional)
 
     if func is None:
         return __decorator
