@@ -8,7 +8,7 @@ from rclpy.callback_groups import CallbackGroup
 from rclpy.impl.rcutils_logger import RcutilsLogger
 from rclpy.node import Node
 
-from bdai_ros2_wrappers.type_hints import Action, ActionType
+from bdai_ros2_wrappers.type_hints import ActionType
 from bdai_ros2_wrappers.utilities import synchronized
 
 
@@ -66,7 +66,7 @@ class SingleGoalMultipleActionServers:
         for action_server in self._action_servers:
             action_server.destroy()
 
-    def goal_callback(self, goal: Action.Goal) -> GoalResponse:
+    def goal_callback(self, goal: Any) -> GoalResponse:
         """Accept or reject a client request to begin an action."""
         self.get_logger().info("Received goal request")
         return GoalResponse.ACCEPT

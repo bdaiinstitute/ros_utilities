@@ -1,12 +1,11 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
-from typing import Callable, Optional, Type
+from typing import Any, Callable, Optional, Type
 
 import rclpy.action
 from rclpy.node import Node
 
 import bdai_ros2_wrappers.scope as scope
 from bdai_ros2_wrappers.action_handle import ActionHandle
-from bdai_ros2_wrappers.type_hints import Action
 
 
 class ActionClientWrapper(rclpy.action.ActionClient):
@@ -14,7 +13,7 @@ class ActionClientWrapper(rclpy.action.ActionClient):
 
     def __init__(
         self,
-        action_type: Type[Action],
+        action_type: Type,
         action_name: str,
         node: Optional[Node] = None,
         wait_for_server: bool = True,
@@ -22,7 +21,7 @@ class ActionClientWrapper(rclpy.action.ActionClient):
         """Constructor
 
         Args:
-            action_type (Type[Action]): The type of the action
+            action_type (Type): The type of the action
             action_name (str): The name of the action (for logging purposes)
             node (Optional[Node]): optional node for action client, defaults to the current process node
             wait_for_server (bool): Whether to wait for the server
@@ -39,19 +38,19 @@ class ActionClientWrapper(rclpy.action.ActionClient):
     def send_goal_and_wait(
         self,
         action_name: str,
-        goal: Action.Goal,
+        goal: Optional[Any],
         timeout_sec: Optional[float] = None,
-    ) -> Optional[Action.Result]:
+    ) -> Optional[Any]:
         """Sends an action goal and waits for the result
 
         Args:
             action_name (str): A representative name of the action for logging
-            goal (Action.Goal): The Action Goal sent to the action server
+            goal (Any): The Action Goal sent to the action server
             timeout_sec (Optional[float]): A timeout for waiting on a response/result from the action server. Setting to
                 None creates no timeout
 
         Returns:
-            Optional[Action.Result]:
+            Optional[Any]:
         """
         if goal is None:
             self._node.get_logger.warn("Cannot send NULL ActionGoal")
@@ -84,10 +83,10 @@ class ActionClientWrapper(rclpy.action.ActionClient):
     def send_goal_async_handle(
         self,
         action_name: str,
-        goal: Action.Goal,
+        goal: Any,
         *,
-        result_callback: Optional[Callable[[Action.Result], None]] = None,
-        feedback_callback: Optional[Callable[[Action.Feedback], None]] = None,
+        result_callback: Optional[Callable[[Any], None]] = None,
+        feedback_callback: Optional[Callable[[Any], None]] = None,
         on_failure_callback: Optional[Callable[[], None]] = None,
     ) -> ActionHandle:
         """Sends an action goal asynchronously and create an `ActionHandle`
@@ -105,7 +104,11 @@ class ActionClientWrapper(rclpy.action.ActionClient):
         Returns:
             ActionHandle: An object to manage the asynchronous lifecycle of the action request
         """
-        handle = ActionHandle(action_name=action_name, logger=self._node.get_logger(), context=self._node.context)
+        handle = ActionHandle(
+            action_name=action_name,
+            logger=self._node.get_logger(),
+            context=self._node.context,
+        )
         if result_callback is not None:
             handle.set_result_callback(result_callback)
 

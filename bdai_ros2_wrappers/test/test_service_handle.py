@@ -76,7 +76,7 @@ def test_failed_trigger(ros: ROSAwareScope) -> None:
     assert result.message == "bar"
 
 
-def setbool_service_callback(req: SrvTypeRequest, resp: SrvTypeResponse) -> SrvTypeResponse:
+def setbool_service_callback(req: SetBool.Request, resp: SetBool.Response) -> SetBool.Response:
     result = SetBool.Response()
     if req.data:
         result.success = True

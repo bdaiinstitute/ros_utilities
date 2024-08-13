@@ -12,7 +12,6 @@ from rclpy.node import Node
 
 from bdai_ros2_wrappers.action_handle import ActionHandle
 from bdai_ros2_wrappers.scope import ROSAwareScope
-from bdai_ros2_wrappers.type_hints import Action
 
 
 def _default_execute_callback(goal_handle: ServerGoalHandle) -> Fibonacci.Result:
@@ -64,7 +63,7 @@ def _execute_callback_slowly(goal_handle: ServerGoalHandle) -> Fibonacci.Result:
     return _default_execute_callback(goal_handle)
 
 
-def _goal_callback_reject(goal: Action.Goal) -> GoalResponse:
+def _goal_callback_reject(goal: Any) -> GoalResponse:
     return GoalResponse.REJECT
 
 
@@ -111,7 +110,7 @@ class ActionHandleMocks:
 
 def do_send_goal(
     action_client: ActionClient,
-    goal: Action.Goal,
+    goal: Any,
     label: Optional[str] = None,
 ) -> Tuple[ActionHandle, ActionHandleMocks]:
     if label is None:
