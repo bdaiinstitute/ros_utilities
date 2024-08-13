@@ -3,7 +3,21 @@
 import abc
 import functools
 import inspect
-from typing import Any, Callable, Iterable, Literal, Optional, Tuple, Type, Union, overload
+from typing import (
+    Any,
+    Callable,
+    Generic,
+    Iterable,
+    List,
+    Literal,
+    Optional,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+    overload,
+)
 
 from rclpy.task import Future
 
@@ -110,14 +124,14 @@ class ComposableCallable(GeneralizedCallable):
 class VectorizedCallable(GeneralizedDecorator, ComposableCallable, VectorizingCallable):
     """A vectorization decorator that aggregates multiple invocations sequentially."""
 
-    def synchronous(self, *vargs: Iterable[Any], **kwargs: Any) -> Any:
+    def synchronous(self, *vargs: Iterable[Any], **kwargs: Any) -> List:
         """Invoke callable synchronously over a sequence of a argument tuples (zipped).
 
         A sequence of results is returned.
         """
         return [self.wrapped_callable.synchronous(*args, **kwargs) for args in zip(*vargs)]
 
-    def asynchronous(self, *vargs: Iterable[Any], **kwargs: Any) -> Any:
+    def asynchronous(self, *vargs: Iterable[Any], **kwargs: Any) -> Future:
         """Invoke callable asynchronously over a sequence of a argument tuples (zipped).
 
         A future to a sequence of results is returned.
@@ -264,7 +278,7 @@ class GeneralizedMethod:
                 else:
                     self.default_callable = self.asynchronous_callable
             else:
-                self.default_callable = method.prototype
+                self.default_callable = method.legacy_overload
 
         def __get__(
             self,
@@ -334,23 +348,41 @@ class GeneralizedMethod:
             adoption of generalized methods in existing codebases.
         """
         self.prototype = prototype
-        self.transitional = transitional
+        self.legacy_overload: Optional[Callable] = None
+        if transitional:
+            self.legacy_overload = prototype
         self.synchronous_overload: Optional[Callable] = None
         self.asynchronous_overload: Optional[Callable] = None
 
-    def sync_overload(self, func: Callable) -> Callable:
+    @property
+    def transitional(self) -> bool:
+        """Check whether this method is transitional or not."""
+        return self.legacy_overload is not None
+
+    def legacy(self, func: Callable) -> Callable:
+        """Register `func` as this method legacy overload."""
+        if self.legacy_overload is not None:
+            raise RuntimeError("cannot redefine legacy overload")
+        self.legacy_overload = func
+        return func
+
+    def synchronous(self, func: Callable) -> Callable:
         """Register `func` as this method synchronous overload."""
         if self.synchronous_overload is not None:
             raise RuntimeError("cannot redefine synchronous overload")
         self.synchronous_overload = func
         return func
 
-    def async_overload(self, func: Callable) -> Callable:
+    sync_overload = synchronous
+
+    def asynchronous(self, func: Callable) -> Callable:
         """Register `func` as this method asynchronous overload."""
         if self.asynchronous_overload is not None:
             raise RuntimeError("cannot redefine asynchronous overload")
         self.asynchronous_overload = func
         return func
+
+    async_overload = asynchronous
 
     def __set_name__(self, owner: Type, name: str) -> None:
         self.__attribute_name = f"__{name}_method"
@@ -359,27 +391,62 @@ class GeneralizedMethod:
     def rebind(self, instance: Any, body: GeneralizedCallable) -> None:
         """Change this method's `body` for the given `instance`."""
         default_callable: Optional[Callable] = None
-        if self.transitional:
-            default_callable = self.prototype.__get__(instance)
+        if self.legacy_overload is not None:
+            default_callable = self.legacy_overload.__get__(instance)
         bound_method = GeneralizedMethod.Bound(body, default_callable)
         setattr(instance, self.__attribute_name, bound_method)
 
+    def __get__(self, instance: Optional[Any], owner: Optional[Type] = None) -> Any:
+        if instance is None:
+            return self
+        return getattr(instance, self.__attribute_name)
+
+
+P = TypeVar("P")
+
+
+class GeneralizedMethodLike(Generic[P], GeneralizedMethod):
+    """A generalized method that can be type annotated via user-defined protocols."""
+
     @overload
-    def __get__(self, instance: Literal[None], owner: Optional[Type] = ...) -> "GeneralizedMethod":
+    def __get__(
+        self,
+        instance: Literal[None],
+        owner: Optional[Type] = ...,
+    ) -> "GeneralizedMethodLike[P]":
         ...
 
     @overload
-    def __get__(self, instance: Any, owner: Optional[Type] = ...) -> "GeneralizedMethod.Bound":
+    def __get__(self, instance: Any, owner: Optional[Type] = ...) -> "P":
         ...
 
     def __get__(
         self,
         instance: Optional[Any],
         owner: Optional[Type] = None,
-    ) -> Union["GeneralizedMethod", "GeneralizedMethod.Bound"]:
+    ) -> Union["GeneralizedMethodLike[P]", "P"]:
         if instance is None:
             return self
-        return getattr(instance, self.__attribute_name)
+        return cast(P, super().__get__(instance, owner))
+
+
+@overload
+def generalized_method(
+    func: Callable,
+    *,
+    spec: Type[GeneralizedMethodLike[P]],
+) -> GeneralizedMethodLike[P]:
+    ...
+
+
+@overload
+def generalized_method(
+    func: Literal[None] = None,
+    *,
+    spec: Type[GeneralizedMethodLike[P]],
+    transitional: bool = ...,
+) -> Callable[[Callable], GeneralizedMethodLike[P]]:
+    ...
 
 
 @overload
@@ -388,20 +455,47 @@ def generalized_method(func: Callable, *, transitional: bool = ...) -> Generaliz
 
 
 @overload
-def generalized_method(*, transitional: bool = ...) -> Callable:
+def generalized_method(
+    func: Literal[None] = None,
+    *,
+    transitional: bool = ...,
+) -> Callable[[Callable], GeneralizedMethod]:
     ...
 
 
 def generalized_method(
     func: Optional[Callable] = None,
     *,
+    spec: Optional[Type[GeneralizedMethodLike[P]]] = None,
     transitional: bool = False,
-) -> Union[Callable, GeneralizedMethod]:
-    """Define a generalized method by decoration."""
+) -> Union[
+    GeneralizedMethod,
+    GeneralizedMethodLike[P],
+    Callable[[Callable], GeneralizedMethod],
+    Callable[[Callable], GeneralizedMethodLike[P]],
+]:
+    """Define a generalized method by decoration.
 
-    def _decorator(func: Callable) -> GeneralizedMethod:
+    Args:
+        func: method function, usually just a signature but
+        may also be used as an overload for convenience.
+        spec: optional type annotated specification.
+        transitional: a transitional method will stick to its
+        prototype for default invocations.
+    """
+    if spec is not None:
+
+        def __decorator_with_spec(func: Callable) -> GeneralizedMethodLike[P]:
+            assert spec is not None
+            return spec(func, transitional)
+
+        if func is None:
+            return __decorator_with_spec
+        return __decorator_with_spec(func)
+
+    def __decorator(func: Callable) -> GeneralizedMethod:
         return GeneralizedMethod(func, transitional)
 
     if func is None:
-        return _decorator
-    return _decorator(func)
+        return __decorator
+    return __decorator(func)
