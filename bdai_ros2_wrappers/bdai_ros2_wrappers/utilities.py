@@ -8,7 +8,7 @@ import queue
 import threading
 import warnings
 from collections.abc import Mapping
-from typing import Any, Callable, Iterator, List, Optional, Tuple
+from typing import Any, Callable, Iterator, List, Optional, Tuple, TypeVar
 
 import rclpy.clock
 import rclpy.duration
@@ -482,7 +482,10 @@ def localized_error_message(user_message: Optional[str] = None) -> str:
     return message
 
 
-def ensure(value: Optional[Any]) -> Any:
+T = TypeVar("T")
+
+
+def ensure(value: Optional[T]) -> T:
     """Ensures `value` is not None or fails trying."""
     if value is None:
         raise ValueError(localized_error_message())
