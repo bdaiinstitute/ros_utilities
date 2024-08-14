@@ -18,9 +18,13 @@ from rclpy.validate_node_name import validate_node_name
 
 import bdai_ros2_wrappers.context as context
 import bdai_ros2_wrappers.scope as scope
-from bdai_ros2_wrappers.scope import AnyEntity, AnyEntityFactoryCallable, ROSAwareScope
+from bdai_ros2_wrappers.scope import ROSAwareScope
 from bdai_ros2_wrappers.tf_listener_wrapper import TFListenerWrapper
 from bdai_ros2_wrappers.utilities import either_or
+
+NodeT = typing.TypeVar("NodeT", bound=rclpy.node.Node)
+NodeFactoryCallable = typing.Callable[..., NodeT]
+GraphFactoryCallable = typing.Callable[..., typing.List[NodeT]]
 
 MainCallableTakingArgs = typing.Callable[[argparse.Namespace], typing.Optional[int]]
 MainCallableTakingArgv = typing.Callable[[typing.Sequence[str]], typing.Optional[int]]
@@ -239,7 +243,38 @@ def tf_listener() -> typing.Optional[TFListenerWrapper]:
     return process.tf_listener
 
 
-def load(factory: AnyEntityFactoryCallable, *args: typing.Any, **kwargs: typing.Any) -> AnyEntity:
+@typing.overload
+def load(factory: NodeFactoryCallable[NodeT], *args: typing.Any, **kwargs: typing.Any) -> NodeT:
+    """Loads a ROS 2 node within the current ROS 2 aware process scope.
+
+    See `ROSAwareProcess` and `ROSAwareScope.load` documentation for further
+    reference on positional and keyword arguments taken by this function.
+
+    Raises:
+        RuntimeError: if no process is executing.
+    """
+
+
+@typing.overload
+def load(factory: GraphFactoryCallable[NodeT], *args: typing.Any, **kwargs: typing.Any) -> typing.List[NodeT]:
+    """Loads a ROS 2 graph within the current ROS 2 aware process scope.
+
+    See `ROSAwareProcess` and `ROSAwareScope.load` documentation for further
+    reference on positional and keyword arguments taken by this function.
+
+    Raises:
+        RuntimeError: if no process is executing.
+    """
+
+
+def load(
+    factory: typing.Union[
+        NodeFactoryCallable[NodeT],
+        GraphFactoryCallable[NodeT],
+    ],
+    *args: typing.Any,
+    **kwargs: typing.Any,
+) -> typing.Union[NodeT, typing.List[NodeT]]:
     """Loads a ROS 2 node (or a collection thereof) within the current ROS 2 aware process scope.
 
     See `ROSAwareProcess` and `ROSAwareScope.load` documentation for further
@@ -254,7 +289,7 @@ def load(factory: AnyEntityFactoryCallable, *args: typing.Any, **kwargs: typing.
     return process.load(factory, *args, **kwargs)
 
 
-def unload(loaded: AnyEntity) -> None:
+def unload(loaded: typing.Union[rclpy.node.Node, typing.List[rclpy.node.Node]]) -> None:
     """Unloads a ROS 2 node (or a collection thereof) from the current ROS 2 aware process scope.
 
     See `ROSAwareProcess` and `ROSAwareScope.unload` documentation for further
@@ -269,11 +304,46 @@ def unload(loaded: AnyEntity) -> None:
     process.unload(loaded)
 
 
+@typing.overload
 def managed(
-    factory: AnyEntityFactoryCallable,
+    factory: NodeFactoryCallable[NodeT],
     *args: typing.Any,
     **kwargs: typing.Any,
-) -> typing.ContextManager[AnyEntity]:
+) -> typing.ContextManager[NodeT]:
+    """Manages a ROS 2 node within the current ROS 2 aware process scope.
+
+    See `ROSAwareProcess` and `ROSAwareScope.managed` documentation for further
+    reference on positional and keyword arguments taken by this function.
+
+    Raises:
+        RuntimeError: if no process is executing.
+    """
+
+
+@typing.overload
+def managed(
+    factory: GraphFactoryCallable[NodeT],
+    *args: typing.Any,
+    **kwargs: typing.Any,
+) -> typing.ContextManager[typing.List[NodeT]]:
+    """Manages a ROS 2 graph within the current ROS 2 aware process scope.
+
+    See `ROSAwareProcess` and `ROSAwareScope.managed` documentation for further
+    reference on positional and keyword arguments taken by this function.
+
+    Raises:
+        RuntimeError: if no process is executing.
+    """
+
+
+def managed(
+    factory: typing.Union[
+        NodeFactoryCallable[NodeT],
+        GraphFactoryCallable[NodeT],
+    ],
+    *args: typing.Any,
+    **kwargs: typing.Any,
+) -> typing.Union[typing.ContextManager[NodeT], typing.ContextManager[typing.List[NodeT]]]:
     """Manages a ROS 2 node (or a collection thereof) within the current ROS 2 aware process scope.
 
     See `ROSAwareProcess` and `ROSAwareScope.managed` documentation for further
@@ -288,7 +358,11 @@ def managed(
     return process.managed(factory, *args, **kwargs)
 
 
-def spin(factory: typing.Optional[AnyEntityFactoryCallable] = None, *args: typing.Any, **kwargs: typing.Any) -> None:
+def spin(
+    factory: typing.Optional[typing.Union[NodeFactoryCallable, GraphFactoryCallable]] = None,
+    *args: typing.Any,
+    **kwargs: typing.Any,
+) -> None:
     """Spins current ROS 2 aware process executor (and all ROS 2 nodes in it).
 
     Optionally, manages a ROS 2 node (or a collection thereof) for as long as it spins.
