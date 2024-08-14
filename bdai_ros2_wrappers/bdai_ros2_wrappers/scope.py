@@ -16,10 +16,9 @@ from bdai_ros2_wrappers.node import Node
 from bdai_ros2_wrappers.tf_listener_wrapper import TFListenerWrapper
 from bdai_ros2_wrappers.utilities import fqn, namespace_with
 
-AnyEntity = typing.Union[rclpy.node.Node, typing.List[rclpy.node.Node]]
-NodeFactoryCallable = typing.Callable[..., rclpy.node.Node]
-GraphFactoryCallable = typing.Callable[..., typing.Iterable[rclpy.node.Node]]
-AnyEntityFactoryCallable = typing.Union[NodeFactoryCallable, GraphFactoryCallable]
+NodeT = typing.TypeVar("NodeT", bound=rclpy.node.Node)
+NodeFactoryCallable = typing.Callable[..., NodeT]
+GraphFactoryCallable = typing.Callable[..., typing.List[NodeT]]
 
 
 class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
@@ -256,10 +255,10 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
     @typing.overload
     def managed(
         self,
-        factory: NodeFactoryCallable,
+        factory: NodeFactoryCallable[NodeT],
         *args: typing.Any,
         **kwargs: typing.Any,
-    ) -> typing.ContextManager[rclpy.node.Node]:
+    ) -> typing.ContextManager[NodeT]:
         """Manages a ROS 2 node within scope.
 
         Upon context entry, a ROS 2 node is instantiated and loaded.
@@ -275,10 +274,10 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
     @typing.overload
     def managed(
         self,
-        factory: GraphFactoryCallable,
+        factory: GraphFactoryCallable[NodeT],
         *args: typing.Any,
         **kwargs: typing.Any,
-    ) -> typing.ContextManager[typing.List[rclpy.node.Node]]:
+    ) -> typing.ContextManager[typing.List[NodeT]]:
         """Manages a collection (or graph) of ROS 2 nodes within scope.
 
         Upon context entry, ROS 2 nodes are instantiated and loaded.
@@ -294,10 +293,10 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
     @contextlib.contextmanager
     def managed(
         self,
-        factory: AnyEntityFactoryCallable,
+        factory: typing.Union[NodeFactoryCallable[NodeT], GraphFactoryCallable[NodeT]],
         *args: typing.Any,
         **kwargs: typing.Any,
-    ) -> typing.Iterator[AnyEntity]:
+    ) -> typing.Union[typing.Iterator[NodeT], typing.Iterator[typing.List[NodeT]]]:
         """Overloaded method. See above for documentation."""
         loaded = self.load(factory, *args, **kwargs)
         try:
@@ -306,7 +305,7 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
             self.unload(loaded)
 
     @typing.overload
-    def load(self, factory: NodeFactoryCallable, *args: typing.Any, **kwargs: typing.Any) -> rclpy.node.Node:
+    def load(self, factory: NodeFactoryCallable[NodeT], *args: typing.Any, **kwargs: typing.Any) -> NodeT:
         """Instantiates and loads a ROS 2 node.
 
         If a __post_init__ method is defined by the instantiated ROS 2 node, it will be invoked
@@ -331,10 +330,10 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
     @typing.overload
     def load(
         self,
-        factory: GraphFactoryCallable,
+        factory: GraphFactoryCallable[NodeT],
         *args: typing.Any,
         **kwargs: typing.Any,
-    ) -> typing.List[rclpy.node.Node]:
+    ) -> typing.List[NodeT]:
         """Instantiates and loads a collection (or graph) of ROS 2 nodes.
 
         For each ROS 2 node instantiated, if a __post_init__ method is defined it will be invoked
@@ -357,11 +356,11 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
 
     def load(
         self,
-        factory: AnyEntityFactoryCallable,
+        factory: typing.Union[NodeFactoryCallable[NodeT], GraphFactoryCallable[NodeT]],
         *args: typing.Any,
         namespace: typing.Optional[str] = None,
         **kwargs: typing.Any,
-    ) -> AnyEntity:
+    ) -> typing.Union[NodeT, typing.List[NodeT]]:
         """Overloaded method. See above for documentation."""
         with self._lock:
             if self._stack is None:
@@ -385,7 +384,7 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
             self._graph.append(node)
             return node
 
-    def unload(self, loaded: AnyEntity) -> None:
+    def unload(self, loaded: typing.Union[rclpy.node.Node, typing.List[rclpy.node.Node]]) -> None:
         """Unloads and destroys ROS 2 nodes.
 
         Args:
@@ -459,7 +458,7 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
 
     def spin(
         self,
-        factory: typing.Optional[AnyEntityFactoryCallable] = None,
+        factory: typing.Optional[typing.Union[NodeFactoryCallable, GraphFactoryCallable]] = None,
         *args: typing.Any,
         **kwargs: typing.Any,
     ) -> None:
@@ -553,7 +552,43 @@ def executor() -> typing.Optional[rclpy.executors.Executor]:
     return scope.executor
 
 
-def load(factory: AnyEntityFactoryCallable, *args: typing.Any, **kwargs: typing.Any) -> AnyEntity:
+@typing.overload
+def load(
+    factory: NodeFactoryCallable[NodeT],
+    *args: typing.Any,
+    **kwargs: typing.Any,
+) -> NodeT:
+    """Loads a ROS 2 node within the current ROS 2 aware scope.
+
+    See `ROSAwareScope.load` documentation for further reference on positional and keyword
+    arguments taken by this function.
+
+    Raises:
+        RuntimeError: if called outside scope.
+    """
+
+
+@typing.overload
+def load(
+    factory: GraphFactoryCallable[NodeT],
+    *args: typing.Any,
+    **kwargs: typing.Any,
+) -> typing.List[NodeT]:
+    """Loads a ROS 2 graph within the current ROS 2 aware scope.
+
+    See `ROSAwareScope.load` documentation for further reference on positional and keyword
+    arguments taken by this function.
+
+    Raises:
+        RuntimeError: if called outside scope.
+    """
+
+
+def load(
+    factory: typing.Union[NodeFactoryCallable[NodeT], GraphFactoryCallable[NodeT]],
+    *args: typing.Any,
+    **kwargs: typing.Any,
+) -> typing.Union[NodeT, typing.List[NodeT]]:
     """Loads a ROS 2 node (or a collection thereof) within the current ROS 2 aware scope.
 
     See `ROSAwareScope.load` documentation for further reference on positional and keyword
@@ -568,7 +603,7 @@ def load(factory: AnyEntityFactoryCallable, *args: typing.Any, **kwargs: typing.
     return scope.load(factory, *args, **kwargs)
 
 
-def unload(loaded: AnyEntity) -> None:
+def unload(loaded: typing.Union[rclpy.node.Node, typing.List[rclpy.node.Node]]) -> None:
     """Unloads a ROS 2 node (or a collection thereof) from the current ROS 2 aware scope.
 
     See `ROSAwareScope.unload` documentation for further reference on positional and
@@ -583,11 +618,43 @@ def unload(loaded: AnyEntity) -> None:
     scope.unload(loaded)
 
 
+@typing.overload
 def managed(
-    factory: AnyEntityFactoryCallable,
+    factory: NodeFactoryCallable[NodeT],
     *args: typing.Any,
     **kwargs: typing.Any,
-) -> typing.ContextManager[AnyEntity]:
+) -> typing.ContextManager[NodeT]:
+    """Manages a ROS 2 node within the current ROS 2 aware scope.
+
+    See `ROSAwareScope.managed` documentation for further reference on positional and
+    keyword arguments taken by this function.
+
+    Raises:
+        RuntimeError: if called outside scope.
+    """
+
+
+@typing.overload
+def managed(
+    factory: GraphFactoryCallable[NodeT],
+    *args: typing.Any,
+    **kwargs: typing.Any,
+) -> typing.ContextManager[typing.List[NodeT]]:
+    """Manages a ROS 2 graph within the current ROS 2 aware scope.
+
+    See `ROSAwareScope.managed` documentation for further reference on positional and
+    keyword arguments taken by this function.
+
+    Raises:
+        RuntimeError: if called outside scope.
+    """
+
+
+def managed(
+    factory: typing.Union[NodeFactoryCallable[NodeT], GraphFactoryCallable[NodeT]],
+    *args: typing.Any,
+    **kwargs: typing.Any,
+) -> typing.Union[typing.ContextManager[NodeT], typing.ContextManager[typing.List[NodeT]]]:
     """Manages a ROS 2 node (or a collection thereof) within the current ROS 2 aware scope.
 
     See `ROSAwareScope.managed` documentation for further reference on positional and
@@ -602,7 +669,11 @@ def managed(
     return scope.managed(factory, *args, **kwargs)
 
 
-def spin(factory: typing.Optional[AnyEntityFactoryCallable] = None, *args: typing.Any, **kwargs: typing.Any) -> None:
+def spin(
+    factory: typing.Optional[typing.Union[NodeFactoryCallable, GraphFactoryCallable]] = None,
+    *args: typing.Any,
+    **kwargs: typing.Any,
+) -> None:
     """Spins current ROS 2 aware scope executor (and all the ROS 2 nodes in it).
 
     Optionally, manages a ROS 2 node (or a collection thereof) for as long as it spins.
