@@ -40,12 +40,12 @@ def test_autoscaling_thread_pool() -> None:
     """Asserts that the autoscaling thread pool scales and de-scales on demand."""
     with AutoScalingThreadPool(max_idle_time=2.0) as pool:
         assert len(pool.workers) == 0
-        assert not pool.working
+        assert not bool(pool.working)
 
         events = [threading.Event() for _ in range(10)]
         results = pool.map(lambda i, e: e.wait() and i, range(10), events)
         assert len(pool.workers) == len(events)
-        assert pool.working
+        assert bool(pool.working)
         assert not pool.capped
 
         for e in events:
@@ -57,7 +57,7 @@ def test_autoscaling_thread_pool() -> None:
 
         with pool.scaling_event:
             assert pool.scaling_event.wait_for(predicate, timeout=10)
-        assert not pool.working
+        assert not bool(pool.working)
 
 
 def test_autoscaling_thread_pool_checks_arguments() -> None:
@@ -92,12 +92,12 @@ def test_autoscaling_thread_pool_with_limits() -> None:
     """Asserts that the autoscaling thread pool enforces the user-defined range on the number of workers."""
     with AutoScalingThreadPool(min_workers=2, max_workers=5, max_idle_time=0.1) as pool:
         assert len(pool.workers) == 2
-        assert not pool.working
+        assert bool(not pool.working)
 
         events = [threading.Event() for _ in range(10)]
         results = pool.map(lambda i, e: e.wait() and i, range(10), events)
         assert len(pool.workers) == 5
-        assert pool.working
+        assert bool(pool.working)
 
         for e in events:
             e.set()
@@ -115,12 +115,12 @@ def test_autoscaling_thread_pool_with_quota() -> None:
     """Asserts that the autoscaling thread pool respects submission quotas."""
     with AutoScalingThreadPool(submission_quota=5, submission_patience=1.0, max_idle_time=2.0) as pool:
         assert len(pool.workers) == 0
-        assert not pool.working
+        assert not bool(pool.working)
 
         events = [threading.Event() for _ in range(10)]
         results = pool.map(lambda i, e: e.wait() and i, range(10), events)
         assert len(pool.workers) == 5
-        assert pool.working
+        assert bool(pool.working)
         assert pool.capped
 
         for e in events[:5]:

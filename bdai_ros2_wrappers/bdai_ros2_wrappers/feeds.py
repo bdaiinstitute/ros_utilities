@@ -1,17 +1,19 @@
 # Copyright (c) 2024 Boston Dynamics AI Institute Inc.  All rights reserved.
 
-from typing import Any, Callable, Iterable, Iterator, List, Optional
+from typing import Any, Callable, Generic, Iterable, Iterator, List, Optional, TypeVar
 
 import tf2_ros
 from rclpy.node import Node
-from rclpy.task import Future
 
 import bdai_ros2_wrappers.scope as scope
 from bdai_ros2_wrappers.filters import Adapter, ApproximateTimeSynchronizer, Filter, TransformFilter, Tunnel
+from bdai_ros2_wrappers.futures import FutureLike
 from bdai_ros2_wrappers.utilities import Tape
 
+MessageT = TypeVar("MessageT")
 
-class MessageFeed:
+
+class MessageFeed(Generic[MessageT]):
     """An ergonomic wrapper for generic message filters."""
 
     def __init__(
@@ -33,7 +35,7 @@ class MessageFeed:
         if history_length is None:
             history_length = 1
         self._link = link
-        self._tape = Tape(history_length)
+        self._tape = Tape[MessageT](history_length)
         self._link.registerCallback(lambda *msgs: self._tape.write(msgs if len(msgs) > 1 else msgs[0]))
         node.context.on_shutdown(self._tape.close)
 
@@ -43,21 +45,21 @@ class MessageFeed:
         return self._link
 
     @property
-    def history(self) -> List[Any]:
+    def history(self) -> List[MessageT]:
         """Gets the entire history of messages received so far."""
         return list(self._tape.content())
 
     @property
-    def latest(self) -> Optional[Any]:
+    def latest(self) -> Optional[MessageT]:
         """Gets the latest message received, if any."""
         return self._tape.head
 
     @property
-    def update(self) -> Future:
+    def update(self) -> FutureLike[MessageT]:
         """Gets the future to the next message yet to be received."""
         return self._tape.future_write
 
-    def matching_update(self, matching_predicate: Callable[[Any], bool]) -> Future:
+    def matching_update(self, matching_predicate: Callable[[MessageT], bool]) -> FutureLike[MessageT]:
         """Gets a future to the next matching message yet to be received.
 
         Args:
@@ -68,7 +70,7 @@ class MessageFeed:
         """
         return self._tape.future_matching_write(matching_predicate)
 
-    def recall(self, callback: Callable) -> Tunnel:
+    def recall(self, callback: Callable[[MessageT], None]) -> Tunnel:
         """Adds a callback for message recalling.
 
         Returns:
@@ -84,7 +86,7 @@ class MessageFeed:
         forward_only: bool = False,
         buffer_size: Optional[int] = None,
         timeout_sec: Optional[float] = None,
-    ) -> Iterator[Any]:
+    ) -> Iterator[MessageT]:
         """Iterates over messages as they come.
 
         Iteration stops when the given timeout expires or when the associated context
@@ -111,13 +113,13 @@ class MessageFeed:
         self._tape.close()
 
 
-class AdaptedMessageFeed(MessageFeed):
+class AdaptedMessageFeed(MessageFeed[MessageT]):
     """A message feed decorator to simplify adapter patterns."""
 
     def __init__(
         self,
         feed: MessageFeed,
-        fn: Callable,
+        fn: Callable[..., MessageT],
         **kwargs: Any,
     ) -> None:
         """Initializes the message feed.
@@ -142,7 +144,7 @@ class AdaptedMessageFeed(MessageFeed):
         super().close()
 
 
-class FramedMessageFeed(MessageFeed):
+class FramedMessageFeed(MessageFeed[MessageT]):
     """A message feed decorator, incorporating transforms using a `TransformFilter` instance."""
 
     def __init__(
@@ -186,7 +188,7 @@ class FramedMessageFeed(MessageFeed):
         self._feed = feed
 
     @property
-    def feed(self) -> MessageFeed:
+    def feed(self) -> MessageFeed[MessageT]:
         """Gets the upstream message feed."""
         return self._feed
 

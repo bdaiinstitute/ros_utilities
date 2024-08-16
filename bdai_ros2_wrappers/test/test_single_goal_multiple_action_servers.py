@@ -68,8 +68,9 @@ def action_triplet(ros: ROSAwareScope) -> Iterable[Tuple[Barrier, Actionable, Ac
     ]
     assert ros.node is not None
     SingleGoalMultipleActionServers(ros.node, action_parameters, nosync=True)
-    compute_fibonacci = Actionable(Fibonacci, "fibonacci/compute", ros.node)
-    compute_fibonacci_reversed = Actionable(Fibonacci, "fibonacci/compute_reversed", ros.node)
+    FibonacciActionable = Actionable[Fibonacci.Goal, Fibonacci.Result, Fibonacci.Feedback]
+    compute_fibonacci: FibonacciActionable = Actionable(Fibonacci, "fibonacci/compute", ros.node)
+    compute_fibonacci_reversed: FibonacciActionable = Actionable(Fibonacci, "fibonacci/compute_reversed", ros.node)
 
     try:
         yield barrier, compute_fibonacci, compute_fibonacci_reversed

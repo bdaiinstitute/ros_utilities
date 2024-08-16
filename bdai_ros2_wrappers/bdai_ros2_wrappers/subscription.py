@@ -1,7 +1,7 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 
 from collections.abc import Sequence
-from typing import Any, Optional, Type, Union, cast
+from typing import Any, Optional, Type, TypeVar, Union, cast
 
 from rclpy.callback_groups import CallbackGroup
 from rclpy.node import Node
@@ -11,11 +11,12 @@ from rclpy.task import Future
 import bdai_ros2_wrappers.scope as scope
 from bdai_ros2_wrappers.feeds import MessageFeed
 from bdai_ros2_wrappers.filters import ApproximateTimeSynchronizer, Subscriber
-from bdai_ros2_wrappers.futures import wait_for_future
-from bdai_ros2_wrappers.type_hints import Msg as MessageT
+from bdai_ros2_wrappers.futures import FutureLike, wait_for_future
+
+MessageT = TypeVar("MessageT")
 
 
-class Subscription(MessageFeed):
+class Subscription(MessageFeed[MessageT]):
     """An ergonomic interface for topic subscriptions in ROS 2.
 
     Subscription instances are `MessageFeed` instances wrapping `message_filters.Subscriber`
@@ -141,7 +142,7 @@ def wait_for_message_async(
     *,
     qos_profile: Union[QoSProfile, int] = 1,
     node: Optional[Node] = None,
-) -> Future:
+) -> FutureLike[MessageT]:
     """Wait for message on a given topic asynchronously.
 
     Args:
@@ -204,7 +205,7 @@ def wait_for_message(
 
 def wait_for_messages(
     topic_names: Sequence[str],
-    message_types: Sequence[MessageT],
+    message_types: Sequence[Type],
     *,
     timeout_sec: Optional[float] = None,
     node: Optional[Node] = None,
@@ -240,7 +241,7 @@ def wait_for_messages(
 
 def wait_for_messages_async(
     topic_names: Sequence[str],
-    message_types: Sequence[MessageT],
+    message_types: Sequence[Type],
     *,
     queue_size: int = 10,
     delay: float = 0.2,
@@ -248,7 +249,7 @@ def wait_for_messages_async(
     node: Optional[Node] = None,
     qos_profiles: Optional[Sequence[Optional[QoSProfile]]] = None,
     callback_group: Optional[CallbackGroup] = None,
-) -> Future:
+) -> FutureLike[Sequence[Any]]:
     """Asynchronous version of wait_for_messages
 
     Args:

@@ -1,6 +1,6 @@
 # Copyright (c) 2024 Boston Dynamics AI Institute Inc.  All rights reserved.
 
-from typing import Any, Optional, Type
+from typing import Any, Generic, Literal, Optional, Protocol, Type, TypeVar, overload
 
 from rclpy.client import Client
 from rclpy.node import Node
@@ -8,7 +8,7 @@ from rclpy.task import Future
 
 import bdai_ros2_wrappers.scope as scope
 from bdai_ros2_wrappers.callables import ComposableCallable, VectorizingCallable
-from bdai_ros2_wrappers.futures import wait_for_future
+from bdai_ros2_wrappers.futures import FutureLike, wait_for_future
 
 
 class ServiceException(Exception):
@@ -31,7 +31,76 @@ class ServiceError(ServiceException):
     pass
 
 
-class Serviced(ComposableCallable, VectorizingCallable):
+ServiceRequestT = TypeVar("ServiceRequestT", contravariant=True)
+ServiceResponseT = TypeVar("ServiceResponseT", covariant=True)
+
+
+class ServicedProtocol(Protocol[ServiceRequestT, ServiceResponseT]):
+    """Ergonomic protocol to call services in ROS 2."""
+
+    @property
+    def client(self) -> Client:
+        """Get the underlying service client."""
+
+    def wait_for_service(self, *args: Any, **kwargs: Any) -> bool:
+        """Wait for service to become available."""
+
+    @overload
+    def synchronous(
+        self,
+        request: Optional[ServiceRequestT] = ...,
+        *,
+        timeout_sec: Optional[float] = ...,
+    ) -> ServiceResponseT:
+        """Invoke service synchronously.
+
+        Args:
+            request: request to be serviced, or a default initialized one if none is provided.
+            timeout_sec: optional action timeout, in seconds. If a timeout is specified and it
+            expires, the service request will be cancelled and the call will raise. Note this
+            timeout is local to the caller.
+
+        Returns:
+            the service response.
+
+        Raises:
+            ServiceTimeout: if the service request timed out and `nothrow` was not set.
+            ServiceError: if the service request failed and `nothrow` was not set.
+        """
+
+    @overload
+    def synchronous(
+        self,
+        request: Optional[ServiceRequestT] = ...,
+        *,
+        timeout_sec: Optional[float] = ...,
+        nothrow: bool = ...,
+    ) -> Optional[ServiceResponseT]:
+        """Invoke service synchronously.
+
+        Args:
+            request: request to be serviced, or a default initialized one if none is provided.
+            timeout_sec: optional action timeout, in seconds. If a timeout is specified and it
+            expires, the service request will be cancelled and the call will raise. Note this
+            timeout is local to the caller.
+            nothrow: when set, errors do not raise exceptions.
+
+        Returns:
+            the service response or None on timeout or failure.
+        """
+
+    def asynchronous(self, request: Optional[ServiceRequestT] = None) -> FutureLike[ServiceResponseT]:
+        """Invoke service asynchronously.
+
+        Args:
+            request: request to be serviced, or a default initialized one if none is provided.
+
+        Returns:
+            the future response.
+        """
+
+
+class Serviced(Generic[ServiceRequestT, ServiceResponseT], ComposableCallable, VectorizingCallable):
     """An ergonomic interface to call services in ROS 2.
 
     Serviced instances wrap `rclpy.Client` instances to allow for synchronous
@@ -68,29 +137,60 @@ class Serviced(ComposableCallable, VectorizingCallable):
         """
         return self._client.wait_for_service(*args, **kwargs)
 
+    @overload
     def synchronous(
         self,
-        request: Optional[Any] = None,
+        request: Optional[ServiceRequestT] = ...,
         *,
-        timeout_sec: Optional[float] = None,
-        nothrow: bool = False,
-    ) -> Any:
+        timeout_sec: Optional[float] = ...,
+    ) -> ServiceResponseT:
         """Invoke service synchronously.
 
         Args:
-            request: request to be serviced. If none is provided, a default initialized request
-            will be used instead.
+            request: request to be serviced, or a default initialized one if none is provided.
             timeout_sec: optional action timeout, in seconds. If a timeout is specified and it
             expires, the service request will be cancelled and the call will raise. Note this
             timeout is local to the caller.
-            nothrow: if set to true, errors will not raise exceptions.
 
         Returns:
-            the service response or None on error if `nothrow` was set and no response is available.
+            the service response.
 
         Raises:
             ServiceTimeout: if the service request timed out and `nothrow` was not set.
             ServiceError: if the service request failed and `nothrow` was not set.
+        """
+
+    @overload
+    def synchronous(
+        self,
+        request: Optional[ServiceRequestT] = ...,
+        *,
+        timeout_sec: Optional[float] = ...,
+        nothrow: bool = ...,
+    ) -> Optional[ServiceResponseT]:
+        """Invoke service synchronously but never raise a exception.
+
+        Args:
+            request: request to be serviced, or a default initialized one if none is provided.
+            timeout_sec: optional action timeout, in seconds. If a timeout is specified and it
+            expires, the service request will be cancelled and the call will raise. Note this
+            timeout is local to the caller.
+            nothrow: when set, errors do not raise exceptions.
+
+        Returns:
+            the service response or None on timeout or error.
+        """
+
+    def synchronous(
+        self,
+        request: Optional[ServiceRequestT] = None,
+        *,
+        timeout_sec: Optional[float] = None,
+        nothrow: bool = False,
+    ) -> Optional[ServiceResponseT]:
+        """Invoke service synchronously.
+
+        Check available overloads documentation.
         """
         future = self.asynchronous(request)
         if not wait_for_future(future, timeout_sec):
@@ -108,9 +208,7 @@ class Serviced(ComposableCallable, VectorizingCallable):
             raise ServiceError(future)
         return response
 
-    synchronously = synchronous
-
-    def asynchronous(self, request: Optional[Any] = None) -> Future:
+    def asynchronous(self, request: Optional[ServiceRequestT] = None) -> FutureLike[ServiceResponseT]:
         """Invoke service asynchronously.
 
         Args:
@@ -123,5 +221,3 @@ class Serviced(ComposableCallable, VectorizingCallable):
         if request is None:
             request = self.service_type.Request()
         return self._client.call_async(request)
-
-    asynchronously = asynchronous

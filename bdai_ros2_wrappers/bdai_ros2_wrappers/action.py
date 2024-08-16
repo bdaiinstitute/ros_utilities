@@ -1,8 +1,7 @@
 # Copyright (c) 2024 Boston Dynamics AI Institute Inc.  All rights reserved.
 
 import inspect
-from collections.abc import Sequence
-from typing import Any, Callable, Generator, Iterator, Optional, Type, Union
+from typing import Any, Callable, Generator, Generic, Iterator, List, Literal, Optional, Type, TypeVar, Union, overload
 
 import action_msgs.msg
 from rclpy.action.client import ActionClient, ClientGoalHandle
@@ -11,7 +10,7 @@ from rclpy.task import Future
 
 import bdai_ros2_wrappers.scope as scope
 from bdai_ros2_wrappers.callables import ComposableCallable, VectorizingCallable
-from bdai_ros2_wrappers.futures import FutureConvertible, wait_for_future
+from bdai_ros2_wrappers.futures import FutureConvertible, FutureLike, wait_for_future
 from bdai_ros2_wrappers.utilities import Tape
 
 
@@ -47,7 +46,12 @@ class ActionCancelled(ActionException):
     pass
 
 
-class ActionFuture(FutureConvertible):
+ActionGoalT = TypeVar("ActionGoalT")
+ActionFeedbackT = TypeVar("ActionFeedbackT")
+ActionResultT = TypeVar("ActionResultT")
+
+
+class ActionFuture(Generic[ActionResultT, ActionFeedbackT], FutureConvertible[ActionResultT]):
     """A proxy to a ROS 2 action invocation.
 
     Action futures are to actions what plain futures are to services, with a bit more functionality
@@ -56,7 +60,7 @@ class ActionFuture(FutureConvertible):
     Action futures are rarely instantiated explicitly, but implicitly through `Actionable` APIs.
     """
 
-    def __init__(self, goal_handle_future: Future, feedback_tape: Optional[Tape] = None) -> None:
+    def __init__(self, goal_handle_future: Future, feedback_tape: Optional[Tape[ActionFeedbackT]] = None) -> None:
         """Initializes the action future.
 
         Args:
@@ -103,7 +107,7 @@ class ActionFuture(FutureConvertible):
             self._feedback_tape.close()
 
     @property
-    def acknowledgement(self) -> Future:
+    def acknowledgement(self) -> FutureLike[bool]:
         """Get future to wait for action acknowledgement (either acceptance or rejection)."""
         return self._acknowledgement_future
 
@@ -124,7 +128,7 @@ class ActionFuture(FutureConvertible):
         return self._goal_handle_future.result()
 
     @property
-    def finalization(self) -> Future:
+    def finalization(self) -> FutureLike[bool]:
         """Get future to wait for action finalization.
 
         Action rejection also counts as finalization.
@@ -137,7 +141,7 @@ class ActionFuture(FutureConvertible):
         return self._finalization_future.done()
 
     @property
-    def result(self) -> Any:
+    def result(self) -> ActionResultT:
         """Get action result.
 
         Raises:
@@ -151,7 +155,7 @@ class ActionFuture(FutureConvertible):
             raise RuntimeError("Action still executing")
         return self._result_future.result().result
 
-    def __await__(self) -> Generator:
+    def __await__(self) -> Generator[None, None, ActionResultT]:
         """Await for action result."""
         if not self.finalized:
             yield
@@ -169,7 +173,7 @@ class ActionFuture(FutureConvertible):
         return self._feedback_tape is not None
 
     @property
-    def feedback(self) -> Sequence:
+    def feedback(self) -> List[ActionFeedbackT]:
         """Get all buffered action feedback.
 
         Action must have been accepted before any feedback can be fetched.
@@ -194,7 +198,7 @@ class ActionFuture(FutureConvertible):
         forward_only: bool = False,
         buffer_size: Optional[int] = None,
         timeout_sec: Optional[float] = None,
-    ) -> Iterator:
+    ) -> Iterator[ActionFeedbackT]:
         """Iterate over action feedback as it comes.
 
         Iteration stops when the given timeout expires or when the action is done executing.
@@ -282,7 +286,7 @@ class ActionFuture(FutureConvertible):
             raise RuntimeError("Action still executing")
         return self._result_future.result().status
 
-    def as_future(self) -> Future:
+    def as_future(self) -> FutureLike[ActionResultT]:
         """Get action future as a plain future.
 
         Useful to pass action futures to APIs that expect plain futures.
@@ -317,7 +321,7 @@ class ActionFuture(FutureConvertible):
 
         return future
 
-    def cancel(self) -> Future:
+    def cancel(self) -> FutureLike[int]:
         """Cancel action.
 
         Returns:
@@ -340,7 +344,7 @@ class ActionFuture(FutureConvertible):
         return cancellation_future
 
 
-class Actionable(ComposableCallable, VectorizingCallable):
+class Actionable(Generic[ActionGoalT, ActionResultT, ActionFeedbackT], ComposableCallable, VectorizingCallable):
     """An ergonomic interface to call actions in ROS 2.
 
     Actionables wrap `rclpy.action.ActionClient` instances to allow for synchronous
@@ -387,36 +391,76 @@ class Actionable(ComposableCallable, VectorizingCallable):
         """
         return self._action_client.wait_for_server(*args, **kwargs)
 
+    @overload
     def synchronous(
         self,
-        goal: Any,
+        goal: Optional[ActionGoalT] = None,
         *,
-        feedback_callback: Optional[Callable] = None,
+        feedback_callback: Optional[Callable[[ActionFeedbackT], None]] = None,
         timeout_sec: Optional[float] = None,
-        nothrow: bool = False,
-    ) -> Any:
+    ) -> ActionResultT:
         """Invoke action synchronously.
 
         Args:
-            goal: goal to invoke action with.
+            goal: goal to invoke action with, or a default initialized one if none is provided.
             feedback_callback: optional action feedback callback.
             timeout_sec: optional action timeout, in seconds. If a timeout is specified and it
             expires, the action will be cancelled and the call will raise. Note this timeout is
             local to the caller. It may take some time for the action to be cancelled, that is
             if cancellation is not rejected by the action server.
-            nothrow: if set to true, errors will not raise exceptions.
 
         Returns:
-            the action result or None on error if `nothrow` was set and no result is available.
+            the action result.
 
         Raises:
-            ActionTimeout: if the action timed out and `nothrow` was not set.
-            ActionRejected: if the action was not accepted and `nothrow` was not set.
-            ActionCancelled: if the action was cancelled and `nothrow` was not set.
-            ActionAborted: if the action was aborted and `nothrow` was not set.
-            RuntimeError: if there is an internal server error and `nothrow` was not set.
+            ActionTimeout: if the action timed out.
+            ActionRejected: if the action was not accepted.
+            ActionCancelled: if the action was cancelled.
+            ActionAborted: if the action was aborted.
+            RuntimeError: if there is an internal server error.
         """
-        action = ActionFuture(self._action_client.send_goal_async(goal, feedback_callback))
+
+    @overload
+    def synchronous(
+        self,
+        goal: Optional[ActionGoalT] = None,
+        *,
+        feedback_callback: Optional[Callable[[ActionFeedbackT], None]] = None,
+        timeout_sec: Optional[float] = None,
+        nothrow: bool = ...,
+    ) -> Optional[ActionResultT]:
+        """Invoke action synchronously but never raise a exception.
+
+        Args:
+            goal: goal to invoke action with, or a default initialized one if none is provided.
+            feedback_callback: optional action feedback callback.
+            timeout_sec: optional action timeout, in seconds. If a timeout is specified and it
+            expires, the action will be cancelled and the call will raise. Note this timeout is
+            local to the caller. It may take some time for the action to be cancelled, that is
+            if cancellation is not rejected by the action server.
+            nothrow: when set, errors will not raise exceptions.
+
+        Returns:
+            the action result or None on timeout or error.
+        """
+
+    def synchronous(
+        self,
+        goal: Optional[ActionGoalT] = None,
+        *,
+        feedback_callback: Optional[Callable[[ActionFeedbackT], None]] = None,
+        timeout_sec: Optional[float] = None,
+        nothrow: bool = False,
+    ) -> Optional[ActionResultT]:
+        """Invoke action synchronously.
+
+        Check available overloads documentation.
+        """
+        if goal is None:
+            goal = self.action_type.Goal()
+        action = ActionFuture[ActionResultT, ActionFeedbackT](
+            self._action_client.send_goal_async(goal, feedback_callback),
+        )
         if not wait_for_future(action.finalization, timeout_sec=timeout_sec):
             action.cancel()  # proactively cancel
             if nothrow:
@@ -435,7 +479,12 @@ class Actionable(ComposableCallable, VectorizingCallable):
                 raise RuntimeError("internal server error")
         return action.result
 
-    def asynchronous(self, goal: Any, *, track_feedback: Union[int, bool] = False) -> ActionFuture:
+    def asynchronous(
+        self,
+        goal: Optional[ActionGoalT] = None,
+        *,
+        track_feedback: Union[int, bool] = False,
+    ) -> ActionFuture[ActionResultT, ActionFeedbackT]:
         """Invoke action asynchronously.
 
         Args:
@@ -448,11 +497,13 @@ class Actionable(ComposableCallable, VectorizingCallable):
             the action future.
         """
         feedback_tape: Optional[Tape] = None
+        if goal is None:
+            goal = self.action_type.Goal()
         if track_feedback is not False:
             feedback_tape_length = None
             if track_feedback is not True:
                 feedback_tape_length = track_feedback
-            feedback_tape = Tape(feedback_tape_length)
+            feedback_tape = Tape[ActionFeedbackT](feedback_tape_length)
             goal_handle_future = self._action_client.send_goal_async(
                 goal,
                 lambda feedback: feedback_tape.write(feedback.feedback),

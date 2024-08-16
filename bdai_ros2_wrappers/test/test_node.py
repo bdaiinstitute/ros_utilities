@@ -54,7 +54,7 @@ def test_node_destruction_during_execution(ros_context: Context) -> None:
         # Then queue node destruction
         executor.create_task(lambda: node.destroy_node())
         executor.spin_once()
-        assert not node.destruction_requested  # still queued
+        assert not bool(node.destruction_requested)  # still queued
         # Then queue another service invocation
         future = client.call_async(Trigger.Request())
         executor.spin_once()
