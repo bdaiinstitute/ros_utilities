@@ -1,6 +1,6 @@
 # Copyright (c) 2024 Boston Dynamics AI Institute Inc.  All rights reserved.
 
-from typing import Any, Generic, Literal, Optional, Protocol, Type, TypeVar, overload
+from typing import Any, Generic, Optional, Protocol, Type, TypeVar, overload
 
 from rclpy.client import Client
 from rclpy.node import Node

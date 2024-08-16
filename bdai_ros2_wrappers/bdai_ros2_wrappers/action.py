@@ -1,7 +1,7 @@
 # Copyright (c) 2024 Boston Dynamics AI Institute Inc.  All rights reserved.
 
 import inspect
-from typing import Any, Callable, Generator, Generic, Iterator, List, Literal, Optional, Type, TypeVar, Union, overload
+from typing import Any, Callable, Generator, Generic, Iterator, List, Optional, Type, TypeVar, Union, overload
 
 import action_msgs.msg
 from rclpy.action.client import ActionClient, ClientGoalHandle
