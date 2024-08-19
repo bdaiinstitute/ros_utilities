@@ -51,7 +51,7 @@ ActionFeedbackT = TypeVar("ActionFeedbackT")
 ActionResultT = TypeVar("ActionResultT")
 
 
-class ActionFuture(Generic[ActionResultT, ActionFeedbackT], FutureConvertible[ActionResultT]):
+class ActionFuture(FutureConvertible[ActionResultT], Generic[ActionResultT, ActionFeedbackT]):
     """A proxy to a ROS 2 action invocation.
 
     Action futures are to actions what plain futures are to services, with a bit more functionality
