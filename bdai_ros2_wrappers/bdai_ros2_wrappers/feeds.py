@@ -35,7 +35,7 @@ class MessageFeed(Generic[MessageT]):
         if history_length is None:
             history_length = 1
         self._link = link
-        self._tape = Tape[MessageT](history_length)
+        self._tape: Tape[MessageT] = Tape(history_length)
         self._link.registerCallback(lambda *msgs: self._tape.write(msgs if len(msgs) > 1 else msgs[0]))
         node.context.on_shutdown(self._tape.close)
 

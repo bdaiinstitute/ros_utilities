@@ -6,6 +6,7 @@ from typing import Iterable, Tuple
 import pytest
 from example_interfaces.action import Fibonacci
 from rclpy.action.server import ServerGoalHandle
+from typing_extensions import TypeAlias
 
 from bdai_ros2_wrappers.action import Actionable
 from bdai_ros2_wrappers.futures import wait_for_future
@@ -68,7 +69,7 @@ def action_triplet(ros: ROSAwareScope) -> Iterable[Tuple[Barrier, Actionable, Ac
     ]
     assert ros.node is not None
     SingleGoalMultipleActionServers(ros.node, action_parameters, nosync=True)
-    FibonacciActionable = Actionable[Fibonacci.Goal, Fibonacci.Result, Fibonacci.Feedback]
+    FibonacciActionable: TypeAlias = Actionable[Fibonacci.Goal, Fibonacci.Result, Fibonacci.Feedback]
     compute_fibonacci: FibonacciActionable = Actionable(Fibonacci, "fibonacci/compute", ros.node)
     compute_fibonacci_reversed: FibonacciActionable = Actionable(Fibonacci, "fibonacci/compute_reversed", ros.node)
 

@@ -12,6 +12,7 @@ from action_msgs.srv import CancelGoal
 from example_interfaces.action import Fibonacci
 from rclpy.action.server import ActionServer, CancelResponse, GoalResponse, ServerGoalHandle
 from rclpy.executors import SingleThreadedExecutor
+from typing_extensions import TypeAlias
 
 import bdai_ros2_wrappers.scope as ros_scope
 from bdai_ros2_wrappers.action import Actionable, ActionAborted, ActionCancelled, ActionRejected
@@ -49,7 +50,7 @@ def default_execute_callback(goal_handle: ServerGoalHandle) -> Fibonacci.Result:
     return result
 
 
-FibonacciActionable = Actionable[Fibonacci.Goal, Fibonacci.Result, Fibonacci.Feedback]
+FibonacciActionable: TypeAlias = Actionable[Fibonacci.Goal, Fibonacci.Result, Fibonacci.Feedback]
 
 
 def test_successful_synchronous_action_invocation(ros: ROSAwareScope) -> None:

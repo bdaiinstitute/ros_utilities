@@ -42,6 +42,7 @@ repos:
       - types-PyYAML
       - types-toml
       - types-six
+      - typing-extensions
 
 - repo: https://github.com/jumanjihouse/pre-commit-hooks
   rev: 3.0.0

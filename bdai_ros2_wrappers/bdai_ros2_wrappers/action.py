@@ -496,14 +496,14 @@ class Actionable(Generic[ActionGoalT, ActionResultT, ActionFeedbackT], Composabl
         Returns:
             the action future.
         """
-        feedback_tape: Optional[Tape] = None
+        feedback_tape: Optional[Tape[ActionFeedbackT]] = None
         if goal is None:
             goal = self.action_type.Goal()
         if track_feedback is not False:
             feedback_tape_length = None
             if track_feedback is not True:
                 feedback_tape_length = track_feedback
-            feedback_tape = Tape[ActionFeedbackT](feedback_tape_length)
+            feedback_tape = Tape(feedback_tape_length)
             goal_handle_future = self._action_client.send_goal_async(
                 goal,
                 lambda feedback: feedback_tape.write(feedback.feedback),
