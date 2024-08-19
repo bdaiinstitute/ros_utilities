@@ -1,20 +1,19 @@
 #  Copyright (c) 2023 Boston Dynamics AI Institute LLC. All rights reserved.
 import inspect
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple, Type
 
 from rclpy.client import Client
 from std_srvs.srv import Empty, SetBool, Trigger
 
 from bdai_ros2_wrappers.scope import ROSAwareScope
 from bdai_ros2_wrappers.service_handle import ServiceHandle
-from bdai_ros2_wrappers.type_hints import SrvTypeRequest, SrvTypeResponse
 
 
 def do_request(
     client: Client,
-    request: SrvTypeRequest,
+    request: Type,
     label: Optional[str] = None,
-) -> Tuple[bool, Optional[SrvTypeResponse]]:
+) -> Tuple[bool, Optional[Any]]:
     if label is None:
         label = inspect.stack()[1].function
     assert client.wait_for_service(timeout_sec=1.0)
@@ -38,7 +37,7 @@ def do_request(
 def test_successful_trigger(ros: ROSAwareScope) -> None:
     """Request a successful trigger. Should return a success condition with the message foo."""
 
-    def callback(req: SrvTypeRequest, resp: SrvTypeResponse) -> SrvTypeResponse:
+    def callback(req: Trigger.Request, resp: Trigger.Response) -> Trigger.Response:
         result = Trigger.Response()
         result.success = True
         result.message = "foo"
@@ -58,7 +57,7 @@ def test_successful_trigger(ros: ROSAwareScope) -> None:
 def test_failed_trigger(ros: ROSAwareScope) -> None:
     """Request a failed trigger. Should return a success condition with the message bar."""
 
-    def callback(req: SrvTypeRequest, resp: SrvTypeResponse) -> SrvTypeResponse:
+    def callback(req: Trigger.Request, resp: Trigger.Response) -> Trigger.Response:
         result = Trigger.Response()
         result.success = False
         result.message = "bar"
@@ -116,7 +115,7 @@ def test_failed_set_bool(ros: ROSAwareScope) -> None:
 def test_warning(ros: ROSAwareScope) -> None:
     """Tests that the result callback should give a warning and have no fields."""
 
-    def callback(req: SrvTypeRequest, resp: SrvTypeResponse) -> SrvTypeResponse:
+    def callback(req: Empty.Request, resp: Empty.Response) -> Empty.Response:
         return Empty.Response()
 
     assert ros.node is not None

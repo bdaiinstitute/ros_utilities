@@ -11,6 +11,7 @@
   <exec_depend>rclpy</exec_depend>
 
   <test_depend>example_interfaces</test_depend>
+  <test_depend>python3-typing-extensions</test_depend>
   <test_depend>python3-pytest</test_depend>
 
   <export>

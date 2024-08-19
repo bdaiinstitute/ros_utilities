@@ -8,12 +8,17 @@ import queue
 import threading
 import warnings
 from collections.abc import Mapping
-from typing import Any, Callable, Iterator, List, Optional, Tuple, TypeVar
+from typing import Any, Callable, Generic, Iterator, List, Optional, Tuple, TypeVar, Union
 
 import rclpy.clock
 import rclpy.duration
 import rclpy.time
 from rclpy.task import Future
+
+from bdai_ros2_wrappers.futures import FutureLike
+
+T = TypeVar("T")
+U = TypeVar("U")
 
 
 def namespace_with(*args: Optional[str]) -> str:
@@ -67,10 +72,10 @@ def bind_to_thread(callable_: Callable, thread: threading.Thread) -> Callable:
     return _wrapper
 
 
-class Tape:
+class Tape(Generic[T]):
     """A thread-safe data tape that can be written and iterated safely."""
 
-    class Stream:
+    class Stream(Generic[U]):
         """A synchronized data stream."""
 
         def __init__(self, max_size: Optional[int] = None, label: Optional[str] = None) -> None:
@@ -89,7 +94,7 @@ class Tape:
             """Get stream label."""
             return self._label
 
-        def write(self, data: Any) -> bool:
+        def write(self, data: U) -> bool:
             """Write data to the stream.
 
             Returns:
@@ -103,7 +108,7 @@ class Tape:
                 return False
             return True
 
-        def read(self, timeout_sec: Optional[float] = None) -> Optional[Any]:
+        def read(self, timeout_sec: Optional[float] = None) -> Optional[U]:
             """Read data from the stream.
 
             Args:
@@ -137,16 +142,16 @@ class Tape:
             max_length: optional maximum tape length.
         """
         self._lock = threading.Lock()
-        self._streams: List[Tape.Stream] = []
+        self._streams: List[Tape.Stream[T]] = []
         self._content: Optional[collections.deque] = None
         if max_length is None or max_length > 0:
             self._content = collections.deque(maxlen=max_length)
         self._future_write: Optional[Future] = None
-        self._future_matching_writes: List[Tuple[Callable[[Any], bool], Future]] = []
+        self._future_matching_writes: List[Tuple[Callable[[T], bool], Future]] = []
         self._closed = False
 
     @property
-    def future_write(self) -> Future:
+    def future_write(self) -> FutureLike[T]:
         """Gets the future to the next data yet to be written."""
         with self._lock:
             if self._future_write is None:
@@ -155,7 +160,7 @@ class Tape:
                     self._future_write.cancel()
             return self._future_write
 
-    def future_matching_write(self, matching_predicate: Callable[[Any], bool]) -> Future:
+    def future_matching_write(self, matching_predicate: Callable[[T], bool]) -> FutureLike[T]:
         """Gets a future to the next matching data yet to be written.
 
         Args:
@@ -177,7 +182,7 @@ class Tape:
                 future_write.cancel()
             return future_write
 
-    def write(self, data: Any) -> bool:
+    def write(self, data: T) -> bool:
         """Write the data tape."""
         with self._lock:
             if self._closed:
@@ -201,7 +206,7 @@ class Tape:
             return True
 
     @property
-    def head(self) -> Optional[Any]:
+    def head(self) -> Optional[T]:
         """Returns the data tape head, if any."""
         with self._lock:
             if self._content is None:
@@ -218,7 +223,7 @@ class Tape:
         buffer_size: Optional[int] = None,
         timeout_sec: Optional[float] = None,
         label: Optional[str] = None,
-    ) -> Iterator:
+    ) -> Iterator[T]:
         """Iterate over the data tape.
 
         When following the data tape, iteration stops when the given timeout
@@ -482,10 +487,7 @@ def localized_error_message(user_message: Optional[str] = None) -> str:
     return message
 
 
-T = TypeVar("T")
-
-
-def ensure(value: Optional[T]) -> T:
+def ensure(value: Union[T, None]) -> T:
     """Ensures `value` is not None or fails trying."""
     if value is None:
         raise ValueError(localized_error_message())

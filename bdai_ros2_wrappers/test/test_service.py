@@ -17,7 +17,7 @@ def succeeding_callback(request: Trigger.Request, response: Trigger.Response) ->
 def test_successful_synchronous_service_invocation(ros: ROSAwareScope) -> None:
     assert ros.node is not None
     ros.node.create_service(Trigger, "trigger_something", succeeding_callback)
-    trigger_something = Serviced(Trigger, "trigger_something")
+    trigger_something: Serviced[Trigger.Request, Trigger.Response] = Serviced(Trigger, "trigger_something")
     response = trigger_something(timeout_sec=5.0)
     assert response.success
 
@@ -25,7 +25,7 @@ def test_successful_synchronous_service_invocation(ros: ROSAwareScope) -> None:
 def test_successful_asynchronous_service_invocation(ros: ROSAwareScope) -> None:
     assert ros.node is not None
     ros.node.create_service(Trigger, "trigger_something", succeeding_callback)
-    trigger_something = Serviced(Trigger, "trigger_something")
+    trigger_something: Serviced[Trigger.Request, Trigger.Response] = Serviced(Trigger, "trigger_something")
     service = trigger_something.asynchronously()
     assert wait_for_future(service, timeout_sec=5.0)
     response = service.result()
@@ -42,7 +42,7 @@ def test_timed_out_synchronous_service_invocation(ros: ROSAwareScope) -> None:
         return response
 
     ros.node.create_service(Trigger, "trigger_something", callback)
-    trigger_something = Serviced(Trigger, "trigger_something")
+    trigger_something: Serviced[Trigger.Request, Trigger.Response] = Serviced(Trigger, "trigger_something")
     with pytest.raises(ServiceTimeout):
         trigger_something(timeout_sec=0.01)
 
@@ -55,7 +55,7 @@ def failing_callback(request: Trigger.Request, response: Trigger.Response) -> Tr
 def test_failing_synchronous_service_invocation(ros: ROSAwareScope) -> None:
     assert ros.node is not None
     ros.node.create_service(Trigger, "trigger_something", failing_callback)
-    trigger_something = Serviced(Trigger, "trigger_something")
+    trigger_something: Serviced[Trigger.Request, Trigger.Response] = Serviced(Trigger, "trigger_something")
     response = trigger_something(nothrow=True, timeout_sec=5.0)
     assert not response.success
     with pytest.raises(ServiceError) as exc:
@@ -67,7 +67,7 @@ def test_failing_synchronous_service_invocation(ros: ROSAwareScope) -> None:
 def test_failing_asynchronous_service_invocation(ros: ROSAwareScope) -> None:
     assert ros.node is not None
     ros.node.create_service(Trigger, "trigger_something", failing_callback)
-    trigger_something = Serviced(Trigger, "trigger_something")
+    trigger_something: Serviced[Trigger.Request, Trigger.Response] = Serviced(Trigger, "trigger_something")
     service = trigger_something.asynchronously()
     assert wait_for_future(service, timeout_sec=5.0)
     response = service.result()

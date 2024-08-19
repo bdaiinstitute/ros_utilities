@@ -1,9 +1,10 @@
 # Copyright (c) 2024 Boston Dynamics AI Institute Inc.  All rights reserved.
 
-from typing import Optional
+from typing import Optional, Tuple, cast
 
 import tf2_ros
 from geometry_msgs.msg import (
+    Point,
     PoseStamped,
     TransformStamped,
     TwistStamped,
@@ -22,8 +23,8 @@ from bdai_ros2_wrappers.utilities import ensure
 
 def test_framed_message_feed(ros: ROSAwareScope) -> None:
     tf_buffer = tf2_ros.Buffer()
-    pose_message_feed = MessageFeed(Filter())
-    framed_message_feed = FramedMessageFeed(
+    pose_message_feed = MessageFeed[PoseStamped](Filter())
+    framed_message_feed = FramedMessageFeed[Tuple[PoseStamped, TransformStamped]](
         pose_message_feed,
         target_frame_id="map",
         tf_buffer=tf_buffer,
@@ -50,8 +51,8 @@ def test_framed_message_feed(ros: ROSAwareScope) -> None:
 
 
 def test_synchronized_message_feed(ros: ROSAwareScope) -> None:
-    pose_message_feed = MessageFeed(Filter())
-    twist_message_feed = MessageFeed(Filter())
+    pose_message_feed = MessageFeed[PoseStamped](Filter())
+    twist_message_feed = MessageFeed[TwistStamped](Filter())
     synchronized_message_feed = SynchronizedMessageFeed(
         pose_message_feed,
         twist_message_feed,
@@ -72,14 +73,17 @@ def test_synchronized_message_feed(ros: ROSAwareScope) -> None:
     expected_twist_message.twist.angular.z = 1.0
     twist_message_feed.link.signalMessage(expected_twist_message)
 
-    pose_message, twist_message = ensure(synchronized_message_feed.latest)
+    pose_message, twist_message = cast(
+        Tuple[PoseStamped, TwistStamped],
+        ensure(synchronized_message_feed.latest),
+    )
     assert pose_message.pose.position.x == expected_pose_message.pose.position.x
     assert twist_message.twist.linear.x == expected_twist_message.twist.linear.x
 
 
 def test_adapted_message_feed(ros: ROSAwareScope) -> None:
-    pose_message_feed = MessageFeed(Filter())
-    position_message_feed = AdaptedMessageFeed(
+    pose_message_feed = MessageFeed[PoseStamped](Filter())
+    position_message_feed = AdaptedMessageFeed[Point](
         pose_message_feed,
         fn=lambda message: message.pose.position,
     )
@@ -92,13 +96,13 @@ def test_adapted_message_feed(ros: ROSAwareScope) -> None:
     expected_pose_message.pose.orientation.w = 1.0
     pose_message_feed.link.signalMessage(expected_pose_message)
 
-    position_message = ensure(position_message_feed.latest)
+    position_message: Point = ensure(position_message_feed.latest)
     # no copies are expected, thus an identity check is valid
     assert position_message is expected_pose_message.pose.position
 
 
 def test_message_feed_recalls(ros: ROSAwareScope) -> None:
-    pose_message_feed = MessageFeed(Filter())
+    pose_message_feed = MessageFeed[PoseStamped](Filter())
 
     latest_message: Optional[PoseStamped] = None
 
