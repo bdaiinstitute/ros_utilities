@@ -64,8 +64,8 @@ class ServicedProtocol(Protocol[ServiceRequestT, ServiceResponseT]):
             the service response.
 
         Raises:
-            ServiceTimeout: if the service request timed out and `nothrow` was not set.
-            ServiceError: if the service request failed and `nothrow` was not set.
+            ServiceTimeout: if the service request timed out.
+            ServiceError: if the service request failed.
         """
 
     @overload
@@ -89,7 +89,7 @@ class ServicedProtocol(Protocol[ServiceRequestT, ServiceResponseT]):
             the service response or None on timeout or failure.
         """
 
-    def asynchronous(self, request: Optional[ServiceRequestT] = None) -> FutureLike[ServiceResponseT]:
+    def asynchronous(self, request: Optional[ServiceRequestT] = ...) -> FutureLike[ServiceResponseT]:
         """Invoke service asynchronously.
 
         Args:
@@ -156,8 +156,8 @@ class Serviced(Generic[ServiceRequestT, ServiceResponseT], ComposableCallable, V
             the service response.
 
         Raises:
-            ServiceTimeout: if the service request timed out and `nothrow` was not set.
-            ServiceError: if the service request failed and `nothrow` was not set.
+            ServiceTimeout: if the service request timed out.
+            ServiceError: if the service request failed.
         """
 
     @overload
