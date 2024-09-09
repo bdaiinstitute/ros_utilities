@@ -7,7 +7,8 @@ import inspect
 import queue
 import threading
 import warnings
-from collections.abc import Mapping
+import weakref
+from collections.abc import Mapping, MutableSet
 from typing import Any, Callable, Generic, Iterator, List, Optional, Tuple, TypeVar, Union
 
 import rclpy.clock
@@ -142,7 +143,7 @@ class Tape(Generic[T]):
             max_length: optional maximum tape length.
         """
         self._lock = threading.Lock()
-        self._streams: List[Tape.Stream[T]] = []
+        self._streams: MutableSet[Tape.Stream[T]] = weakref.WeakSet()
         self._content: Optional[collections.deque] = None
         if max_length is None or max_length > 0:
             self._content = collections.deque(maxlen=max_length)
@@ -249,7 +250,7 @@ class Tape(Generic[T]):
             stream: Optional[Tape.Stream] = None
             if follow and not self._closed:
                 stream = Tape.Stream(buffer_size, label)
-                self._streams.append(stream)
+                self._streams.add(stream)
 
         def _generator() -> Iterator:
             nonlocal content, stream
