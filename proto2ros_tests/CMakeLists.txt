@@ -21,6 +21,8 @@ proto2ros_generate(
   CONFIG_OVERLAYS config/overlay.yaml
   INTERFACES_OUT_VAR ros_messages
   PYTHON_OUT_VAR py_sources
+  CPP_OUT_VAR cpp_sources
+  INCLUDE_OUT_VAR cpp_include_dir
   APPEND_PYTHONPATH "${PROTO_OUT_DIR}"
 )
 add_dependencies(
@@ -33,6 +35,17 @@ rosidl_generate_interfaces(
   SKIP_INSTALL
 )
 add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_messages_gen)
+
+add_library(${PROJECT_NAME}_conversions SHARED ${cpp_sources} src/manual_conversions.cpp)
+target_include_directories(${PROJECT_NAME}_conversions PUBLIC
+  "$<BUILD_INTERFACE:${cpp_include_dir}>"
+  "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+  "$<INSTALL_INTERFACE:include/${PROJECT_NAME}>"
+)
+rosidl_get_typesupport_target(${PROJECT_NAME}_cpp_msgs ${PROJECT_NAME} "rosidl_typesupport_cpp")
+target_link_libraries(${PROJECT_NAME}_conversions
+  ${${PROJECT_NAME}_cpp_msgs} ${PROJECT_NAME}_proto
+  proto2ros::proto2ros_conversions protobuf::libprotobuf)
 
 rosidl_generated_python_package_add(
   ${PROJECT_NAME}_additional_modules

@@ -16,6 +16,9 @@ Copyright (c) 2023 Boston Dynamics AI Institute LLC. All rights reserved.
   <buildtool_export_depend>rosidl_default_generators</buildtool_export_depend>
   <buildtool_export_depend>ament_cmake_mypy</buildtool_export_depend>
 
+  <depend>rclcpp</depend>
+
+  <exec_depend>rclpy</exec_depend>
   <exec_depend>protobuf</exec_depend>
   <exec_depend>protobuf-dev</exec_depend>
   <exec_depend>rosidl_adapter</exec_depend>

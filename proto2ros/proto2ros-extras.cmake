@@ -12,6 +12,7 @@ if(BUILD_TESTING)
 endif()
 include("${proto2ros_DIR}/proto2ros_generate.cmake")
 
+find_package(rclcpp REQUIRED)
 find_package(builtin_interfaces REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 include("${proto2ros_DIR}/proto2ros_vendor_package.cmake")
