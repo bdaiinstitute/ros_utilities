@@ -14,14 +14,14 @@
 
 #include <builtin_interfaces/msg/duration.hpp>
 #include <builtin_interfaces/msg/time.hpp>
+#include <std_msgs/msg/bool.hpp>
 #include <std_msgs/msg/float32.hpp>
 #include <std_msgs/msg/float64.hpp>
 #include <std_msgs/msg/int32.hpp>
 #include <std_msgs/msg/int64.hpp>
+#include <std_msgs/msg/string.hpp>
 #include <std_msgs/msg/u_int32.hpp>
 #include <std_msgs/msg/u_int64.hpp>
-#include <std_msgs/msg/bool.hpp>
-#include <std_msgs/msg/string.hpp>
 
 #include <proto2ros/msg/any.hpp>
 #include <proto2ros/msg/any_proto.hpp>
@@ -38,26 +38,26 @@ namespace conversions {
 /// \throws std::runtime_error if the given ROS message cannot be unpacked onto the given Protobuf message.
 template <typename T>
 void convert(const proto2ros::msg::AnyProto& ros_msg, T* proto_msg) {
-    proto_msg->Clear();
-    auto wrapper = google::protobuf::Any();
-    wrapper.set_type_url(ros_msg.type_url);
-    auto* value = wrapper.mutable_value();
-    value->reserve(ros_msg.value.size());
-    value->assign(ros_msg.value.begin(), ros_msg.value.end());
-    if (!wrapper.UnpackTo(proto_msg)) {
-        throw std::runtime_error("failed to unpack AnyProto message");
-    }
+  proto_msg->Clear();
+  auto wrapper = google::protobuf::Any();
+  wrapper.set_type_url(ros_msg.type_url);
+  auto* value = wrapper.mutable_value();
+  value->reserve(ros_msg.value.size());
+  value->assign(ros_msg.value.begin(), ros_msg.value.end());
+  if (!wrapper.UnpackTo(proto_msg)) {
+    throw std::runtime_error("failed to unpack AnyProto message");
+  }
 }
 
 /// Packs any Protobuf message into a proto2ros/AnyProto ROS message.
 template <typename T>
 void convert(const T& proto_msg, proto2ros::msg::AnyProto* ros_msg) {
-    auto wrapper = google::protobuf::Any();
-    wrapper.PackFrom(proto_msg);
-    ros_msg->type_url = wrapper.type_url();
-    const auto& value = wrapper.value();
-    ros_msg->value.reserve(value.size());
-    ros_msg->value.assign(value.begin(), value.end());
+  auto wrapper = google::protobuf::Any();
+  wrapper.PackFrom(proto_msg);
+  ros_msg->type_url = wrapper.type_url();
+  const auto& value = wrapper.value();
+  ros_msg->value.reserve(value.size());
+  ros_msg->value.assign(value.begin(), value.end());
 }
 
 /// Converts from proto2ros/AnyProto ROS message to google.protobuf.Any Protobuf messages.
@@ -91,7 +91,7 @@ void convert(const std_msgs::msg::Float32& ros_msg, google::protobuf::FloatValue
 void convert(const google::protobuf::FloatValue& proto_msg, std_msgs::msg::Float32* ros_msg);
 
 /// Converts from std_msgs/Int64 ROS messages to google.protobuf.Int64Value Protobuf messages.
-void convert(const std_msgs::msg::Int64& ros_msg, google::protobuf::Int64Value& proto_msg);
+void convert(const std_msgs::msg::Int64& ros_msg, google::protobuf::Int64Value* proto_msg);
 
 /// Converts from google.protobuf.Int64Value Protobuf messages to std_msgs/Int64 ROS messages.
 void convert(const google::protobuf::Int64Value& proto_msg, std_msgs::msg::Int64* ros_msg);
