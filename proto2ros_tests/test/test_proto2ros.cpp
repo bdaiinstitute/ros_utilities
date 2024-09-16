@@ -1,14 +1,11 @@
 // Copyright (c) 2024 Boston Dynamics AI Institute LLC. All rights reserved.
 
-#include <cmath>
-
-#include <gtest/gtest.h>
-
 #include <bosdyn/api/geometry.pb.h>
+#include <gtest/gtest.h>
 #include <test.pb.h>
 
+#include <cmath>
 #include <proto2ros/conversions.hpp>
-
 #include <proto2ros_tests/conversions.hpp>
 #include <proto2ros_tests/msg/any_command.hpp>
 #include <proto2ros_tests/msg/diagnostic.hpp>

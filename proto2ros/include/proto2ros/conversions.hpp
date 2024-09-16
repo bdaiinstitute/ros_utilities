@@ -4,16 +4,22 @@
 
 #pragma once
 
-#include <stdexcept>
-
 #include <google/protobuf/any.pb.h>
 #include <google/protobuf/duration.pb.h>
 #include <google/protobuf/struct.pb.h>
 #include <google/protobuf/timestamp.pb.h>
 #include <google/protobuf/wrappers.pb.h>
 
+#include <stdexcept>
+
 #include <builtin_interfaces/msg/duration.hpp>
 #include <builtin_interfaces/msg/time.hpp>
+#include <proto2ros/msg/any.hpp>
+#include <proto2ros/msg/any_proto.hpp>
+#include <proto2ros/msg/bytes.hpp>
+#include <proto2ros/msg/list.hpp>
+#include <proto2ros/msg/struct.hpp>
+#include <proto2ros/msg/value.hpp>
 #include <std_msgs/msg/bool.hpp>
 #include <std_msgs/msg/float32.hpp>
 #include <std_msgs/msg/float64.hpp>
@@ -22,13 +28,6 @@
 #include <std_msgs/msg/string.hpp>
 #include <std_msgs/msg/u_int32.hpp>
 #include <std_msgs/msg/u_int64.hpp>
-
-#include <proto2ros/msg/any.hpp>
-#include <proto2ros/msg/any_proto.hpp>
-#include <proto2ros/msg/bytes.hpp>
-#include <proto2ros/msg/list.hpp>
-#include <proto2ros/msg/struct.hpp>
-#include <proto2ros/msg/value.hpp>
 
 namespace proto2ros {
 namespace conversions {

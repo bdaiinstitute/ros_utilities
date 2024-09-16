@@ -11,7 +11,6 @@
 #include <geometry_msgs/msg/twist.hpp>
 #include <geometry_msgs/msg/vector3.hpp>
 #include <geometry_msgs/msg/wrench.hpp>
-
 #include <sensor_msgs/msg/temperature.hpp>
 
 namespace proto2ros_tests {

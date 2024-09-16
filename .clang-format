@@ -1,0 +1,15 @@
+# -*- yaml -*-
+
+# This file determines clang-format's style settings; for details, refer to
+# http://clang.llvm.org/docs/ClangFormatStyleOptions.html
+
+# See https://google.github.io/styleguide/cppguide.html for more info
+BasedOnStyle: Google
+
+Language: Cpp
+
+SortIncludes: false
+
+# https://clang.llvm.org/docs/ClangFormatStyleOptions.html#columnlimit
+# Maximum line with is 120 characters (default: 80)
+ColumnLimit : 120
