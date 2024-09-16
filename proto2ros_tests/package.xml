@@ -25,6 +25,7 @@ Copyright (c) 2023 Boston Dynamics AI Institute LLC. All rights reserved.
   <exec_depend>python3-protobuf</exec_depend>
   <exec_depend>python3-yaml</exec_depend>
 
+  <test_depend>ament_cmake_gtest</test_depend>
   <test_depend>ament_cmake_pytest</test_depend>
 
   <member_of_group>rosidl_interface_packages</member_of_group>

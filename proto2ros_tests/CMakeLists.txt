@@ -55,7 +55,9 @@ rosidl_generated_python_package_add(
 )
 
 if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
   find_package(ament_cmake_pytest REQUIRED)
+
   get_rosidl_generated_interfaces_test_setup(
     LIBRARY_DIRS additional_library_dirs
     ENV additional_env
@@ -63,11 +65,21 @@ if(BUILD_TESTING)
   list(APPEND additional_env "PYTHONPATH=${PROTO_OUT_DIR}")
 
   ament_add_pytest_test(
-    regression_tests test
+    regression_py_tests test
     APPEND_LIBRARY_DIRS ${additional_library_dirs}
     APPEND_ENV ${additional_env}
     ENV CMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}
     PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
+  )
+
+  ament_add_gtest(
+    regression_cpp_tests test/test_proto2ros.cpp
+    APPEND_LIBRARY_DIRS ${additional_library_dirs}
+    ENV CMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}
+  )
+  target_link_libraries(regression_cpp_tests
+    ${${PROJECT_NAME}_cpp_msgs} ${PROJECT_NAME}_proto
+    ${PROJECT_NAME}_conversions proto2ros::proto2ros_conversions
   )
 endif()
 

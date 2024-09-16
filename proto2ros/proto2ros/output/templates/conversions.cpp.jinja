@@ -3,6 +3,7 @@
 
 #include "{{ package_name }}/conversions.hpp"
 
+#include <cassert>
 #include <stdexcept>
 #include <sstream>
 #include <utility>
@@ -124,6 +125,7 @@ for (auto item : {{ source }}) {
     serialized_message.reserve({{ source }}.value.size());
     auto& rcl_serialized_message = serialized_message.get_rcl_serialized_message();
     std::copy({{ source }}.value.begin(), {{ source }}.value.end(), rcl_serialized_message.buffer);
+    rcl_serialized_message.buffer_length = {{ source }}.value.size();
     const auto serializer = rclcpp::Serialization<{{ spec.type | as_ros_base_type | as_ros_cpp_type }}>{};
     auto typed_ros_message = {{ spec.type | as_ros_base_type | as_ros_cpp_type }}();
     serializer.deserialize_message(&serialized_message, &typed_ros_message);
@@ -148,6 +150,7 @@ if ({{ source }}.type_name == "{{ ros_type_name }}") {
     serialized_message.reserve({{ source }}.value.size());
     auto& rcl_serialized_message = serialized_message.get_rcl_serialized_message();
     std::copy({{ source }}.value.begin(), {{ source }}.value.end(), rcl_serialized_message.buffer);
+    rcl_serialized_message.buffer_length = {{ source }}.value.size();
     const auto serializer = rclcpp::Serialization<{{ ros_type_name | as_ros_cpp_type }}>{};
     auto typed_ros_message = {{ ros_type_name | as_ros_cpp_type }}();
     serializer.deserialize_message(&serialized_message, &typed_ros_message);
@@ -349,6 +352,7 @@ using {{ namespace }}::convert;
 
 {% for spec in message_specifications if spec.annotations.get("proto-class") == "message" and not spec.annotations.get("map-entry") -%}
 void convert(const {{ spec.base_type | string | as_ros_cpp_type }}& ros_msg, {{ spec.annotations["proto-type"] | as_pb2_cpp_type }}* proto_msg) {
+    assert(proto_msg != nullptr);
     {%- if spec.fields %}
     proto_msg->Clear();
         {%- for field_spec in spec.fields if field_spec.name != "has_field" %}
@@ -369,6 +373,7 @@ void convert(const {{ spec.base_type | string | as_ros_cpp_type }}& ros_msg, {{ 
 }
 
 void convert(const {{ spec.annotations["proto-type"] | as_pb2_cpp_type }}& proto_msg, {{ spec.base_type | string | as_ros_cpp_type }}* ros_msg) {
+    assert(ros_msg != nullptr);
     {%- if spec.fields -%}
         {%- if spec.annotations["has-optionals"] %}
     ros_msg->has_field = 0u;
