@@ -5,6 +5,8 @@
 #include <test.pb.h>
 
 #include <cmath>
+#include <string_view>
+
 #include <proto2ros/conversions.hpp>
 #include <proto2ros_tests/conversions.hpp>
 #include <proto2ros_tests/msg/any_command.hpp>

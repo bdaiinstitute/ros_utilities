@@ -56,8 +56,13 @@ rosidl_generate_interfaces(
 add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_messages_gen)
 
 add_library(${PROJECT_NAME}_conversions SHARED ${cpp_sources} src/manual_conversions.cpp)
-set_target_properties(${PROJECT_NAME}_conversions
-  PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+set_target_properties(${PROJECT_NAME}_conversions PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+target_compile_options(${PROJECT_NAME}_conversions PUBLIC "$<$<CONFIG:DEBUG>:-O0>")
+target_compile_definitions(${PROJECT_NAME}_conversions
+  PUBLIC
+  "$<$<CONFIG:DEBUG>:DEBUG>"
+  "$<$<OR:$<CONFIG:RELWITHDEBINFO>,$<CONFIG:RELEASE>>:NDEBUG>"
+)
 target_include_directories(${PROJECT_NAME}_conversions PUBLIC
   "$<BUILD_INTERFACE:${cpp_include_dir}>"
   "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
@@ -106,6 +111,7 @@ if(BUILD_TESTING)
     ${${PROJECT_NAME}_cpp_msgs} ${PROJECT_NAME}_proto
     ${PROJECT_NAME}_conversions proto2ros::proto2ros_conversions
   )
+  set_target_properties(regression_cpp_tests PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
   set_target_properties(regression_cpp_tests PROPERTIES CXX_CLANG_TIDY "${CXX_CLANG_TIDY}")
 endif()
 

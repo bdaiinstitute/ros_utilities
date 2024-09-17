@@ -51,9 +51,13 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 )
 
 add_library(${PROJECT_NAME}_conversions SHARED src/conversions.cpp)
-set_target_properties(${PROJECT_NAME}_conversions
-  PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
-target_compile_features(${PROJECT_NAME}_conversions PUBLIC cxx_std_20)
+set_target_properties(${PROJECT_NAME}_conversions PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+target_compile_options(${PROJECT_NAME}_conversions PUBLIC "$<$<CONFIG:DEBUG>:-O0>")
+target_compile_definitions(${PROJECT_NAME}_conversions
+  PUBLIC
+  "$<$<CONFIG:DEBUG>:DEBUG>"
+  "$<$<OR:$<CONFIG:RELWITHDEBINFO>,$<CONFIG:RELEASE>>:NDEBUG>"
+)
 target_include_directories(${PROJECT_NAME}_conversions PUBLIC
   "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
   "$<INSTALL_INTERFACE:include/${PROJECT_NAME}>"
