@@ -51,7 +51,7 @@ TEST(Proto2RosTesting, RecursiveMessages) {
   const auto payload =
       std::string_view{reinterpret_cast<char*>(ros_fragment.payload.data()), ros_fragment.payload.size()};
   EXPECT_EQ(payload, proto_fragment.payload());
-  EXPECT_EQ(ros_fragment.nested.size(), proto_fragment.nested_size());
+  EXPECT_EQ(ros_fragment.nested.size(), static_cast<size_t>(proto_fragment.nested_size()));
 
   auto other_proto_fragment = proto2ros_tests::Fragment();
   convert(ros_fragment, &other_proto_fragment);
@@ -86,7 +86,7 @@ TEST(Proto2RosTesting, CircularlyDependentMessages) {
   EXPECT_TRUE(other_proto_items.count("range"));
   const auto& other_proto_list = other_proto_items.at("range").list();
   ASSERT_EQ(other_proto_list.values_size(), proto_list->values_size());
-  for (size_t i = 0; i < proto_list->values_size(); ++i) {
+  for (int i = 0; i < proto_list->values_size(); ++i) {
     EXPECT_EQ(other_proto_list.values(i).number(), proto_list->values(i).number());
   }
 }
@@ -170,7 +170,7 @@ TEST(Proto2RosTesting, MessagesWithMapField) {
   EXPECT_EQ(ros_diagnostic.severity.value, proto_diagnostic.severity());
   EXPECT_EQ(ros_diagnostic.reason, proto_diagnostic.reason());
   EXPECT_EQ(ros_diagnostic.reason, proto_diagnostic.reason());
-  EXPECT_EQ(ros_diagnostic.attributes.size(), 1);
+  EXPECT_EQ(ros_diagnostic.attributes.size(), static_cast<size_t>(proto_attributes.size()));
   EXPECT_EQ(ros_diagnostic.attributes[0].key, "origin");
   EXPECT_EQ(ros_diagnostic.attributes[0].value, "localization subsystem");
 
@@ -204,16 +204,18 @@ TEST(Proto2RosTesting, MessagesWithDeprecatedFields) {
 TEST(Proto2RosTesting, RedefinedMessages) {
   auto proto_remote_execution_result = proto2ros_tests::RemoteExecutionResult();
   proto_remote_execution_result.set_ok(false);
-  proto_remote_execution_result.mutable_error()->set_code(255);
-  proto_remote_execution_result.mutable_error()->set_reason("interrupted");
-  proto_remote_execution_result.mutable_error()->add_traceback("<root>");
+  auto* proto_remote_execution_error = proto_remote_execution_result.mutable_error();
+  proto_remote_execution_error->set_code(255);
+  proto_remote_execution_error->set_reason("interrupted");
+  proto_remote_execution_error->add_traceback("<root>");
 
   auto ros_remote_execution_result = proto2ros_tests::msg::RemoteExecutionResult();
   convert(proto_remote_execution_result, &ros_remote_execution_result);
   EXPECT_EQ(ros_remote_execution_result.ok, proto_remote_execution_result.ok());
   EXPECT_EQ(ros_remote_execution_result.error.code, proto_remote_execution_result.error().code());
   EXPECT_EQ(ros_remote_execution_result.error.reason, proto_remote_execution_result.error().reason());
-  EXPECT_EQ(ros_remote_execution_result.error.traceback.size(), 1);
+  EXPECT_EQ(ros_remote_execution_result.error.traceback.size(),
+            static_cast<size_t>(proto_remote_execution_error->traceback_size()));
   EXPECT_EQ(ros_remote_execution_result.error.traceback[0], proto_remote_execution_result.error().traceback(0));
 
   auto other_proto_remote_execution_result = proto2ros_tests::RemoteExecutionResult();
@@ -221,7 +223,8 @@ TEST(Proto2RosTesting, RedefinedMessages) {
   EXPECT_EQ(other_proto_remote_execution_result.ok(), proto_remote_execution_result.ok());
   EXPECT_EQ(other_proto_remote_execution_result.error().code(), proto_remote_execution_result.error().code());
   EXPECT_EQ(other_proto_remote_execution_result.error().reason(), proto_remote_execution_result.error().reason());
-  EXPECT_EQ(other_proto_remote_execution_result.error().traceback_size(), 1);
+  EXPECT_EQ(other_proto_remote_execution_result.error().traceback_size(),
+            proto_remote_execution_error->traceback_size());
   EXPECT_EQ(other_proto_remote_execution_result.error().traceback(0),
             proto_remote_execution_result.error().traceback(0));
 }
@@ -290,25 +293,25 @@ TEST(Proto2RosTesting, MessageForwarding) {
   EXPECT_EQ(ros_camera_info.width, proto_camera_info.width());
   EXPECT_EQ(ros_camera_info.k.rows, proto_camera_info.k().rows());
   EXPECT_EQ(ros_camera_info.k.cols, proto_camera_info.k().cols());
-  EXPECT_EQ(ros_camera_info.k.data.size(), proto_camera_info.k().data_size());
+  EXPECT_EQ(ros_camera_info.k.data.size(), static_cast<size_t>(proto_camera_info.k().data_size()));
   for (size_t i = 0; i < ros_camera_info.k.data.size(); ++i) {
     EXPECT_EQ(ros_camera_info.k.data[i], proto_camera_info.k().data(i));
   }
   EXPECT_EQ(ros_camera_info.r.rows, proto_camera_info.r().rows());
   EXPECT_EQ(ros_camera_info.r.cols, proto_camera_info.r().cols());
-  EXPECT_EQ(ros_camera_info.r.data.size(), proto_camera_info.r().data_size());
+  EXPECT_EQ(ros_camera_info.r.data.size(), static_cast<size_t>(proto_camera_info.r().data_size()));
   for (size_t i = 0; i < ros_camera_info.r.data.size(); ++i) {
     EXPECT_EQ(ros_camera_info.r.data[i], proto_camera_info.r().data(i));
   }
   EXPECT_EQ(ros_camera_info.p.rows, proto_camera_info.p().rows());
   EXPECT_EQ(ros_camera_info.p.cols, proto_camera_info.p().cols());
-  EXPECT_EQ(ros_camera_info.p.data.size(), proto_camera_info.p().data_size());
+  EXPECT_EQ(ros_camera_info.p.data.size(), static_cast<size_t>(proto_camera_info.p().data_size()));
   for (size_t i = 0; i < ros_camera_info.p.data.size(); ++i) {
     EXPECT_EQ(ros_camera_info.p.data[i], proto_camera_info.p().data(i));
   }
   EXPECT_EQ(ros_camera_info.distortion_model.type.value, proto_camera_info.distortion_model().type());
   EXPECT_EQ(ros_camera_info.distortion_model.coefficients.size(),
-            proto_camera_info.distortion_model().coefficients_size());
+            static_cast<size_t>(proto_camera_info.distortion_model().coefficients_size()));
   for (size_t i = 0; i < ros_camera_info.distortion_model.coefficients.size(); ++i) {
     EXPECT_EQ(ros_camera_info.distortion_model.coefficients[i], proto_camera_info.distortion_model().coefficients(i));
   }
@@ -320,25 +323,25 @@ TEST(Proto2RosTesting, MessageForwarding) {
   EXPECT_EQ(other_proto_camera_info.k().rows(), proto_camera_info.k().rows());
   EXPECT_EQ(other_proto_camera_info.k().cols(), proto_camera_info.k().cols());
   EXPECT_EQ(other_proto_camera_info.k().data_size(), proto_camera_info.k().data_size());
-  for (size_t i = 0; i < other_proto_camera_info.k().data_size(); ++i) {
+  for (int i = 0; i < other_proto_camera_info.k().data_size(); ++i) {
     EXPECT_EQ(other_proto_camera_info.k().data(i), proto_camera_info.k().data(i));
   }
   EXPECT_EQ(other_proto_camera_info.r().rows(), proto_camera_info.r().rows());
   EXPECT_EQ(other_proto_camera_info.r().cols(), proto_camera_info.r().cols());
   EXPECT_EQ(other_proto_camera_info.r().data_size(), proto_camera_info.r().data_size());
-  for (size_t i = 0; i < other_proto_camera_info.r().data_size(); ++i) {
+  for (int i = 0; i < other_proto_camera_info.r().data_size(); ++i) {
     EXPECT_EQ(other_proto_camera_info.r().data(i), proto_camera_info.r().data(i));
   }
   EXPECT_EQ(other_proto_camera_info.p().rows(), proto_camera_info.p().rows());
   EXPECT_EQ(other_proto_camera_info.p().cols(), proto_camera_info.p().cols());
   EXPECT_EQ(other_proto_camera_info.p().data_size(), proto_camera_info.p().data_size());
-  for (size_t i = 0; i < other_proto_camera_info.p().data_size(); ++i) {
+  for (int i = 0; i < other_proto_camera_info.p().data_size(); ++i) {
     EXPECT_EQ(other_proto_camera_info.p().data(i), proto_camera_info.p().data(i));
   }
   EXPECT_EQ(other_proto_camera_info.distortion_model().type(), proto_camera_info.distortion_model().type());
   EXPECT_EQ(other_proto_camera_info.distortion_model().coefficients_size(),
             proto_camera_info.distortion_model().coefficients_size());
-  for (size_t i = 0; i < other_proto_camera_info.distortion_model().coefficients_size(); ++i) {
+  for (int i = 0; i < other_proto_camera_info.distortion_model().coefficients_size(); ++i) {
     EXPECT_EQ(other_proto_camera_info.distortion_model().coefficients(i),
               proto_camera_info.distortion_model().coefficients(i));
   }
@@ -346,20 +349,21 @@ TEST(Proto2RosTesting, MessageForwarding) {
 
 TEST(Proto2RosTesting, MessagesWithSubMessageMapField) {
   auto proto_map = proto2ros_tests::Map();
-  auto* proto_submaps = proto_map.mutable_submaps();
-  auto& proto_fragment = (*proto_submaps)[13];
+  auto& proto_submaps = *proto_map.mutable_submaps();
+  auto& proto_fragment = proto_submaps[13];
   proto_fragment.set_height(20);
   proto_fragment.set_width(20);
-  proto_fragment.mutable_grid()->resize(20 * 20, '\0');
+  auto* proto_grid = proto_fragment.mutable_grid();
+  proto_grid->resize(20 * 20, '\0');
 
   auto ros_map = proto2ros_tests::msg::Map();
   convert(proto_map, &ros_map);
-  EXPECT_EQ(ros_map.submaps.size(), 1);
+  EXPECT_EQ(ros_map.submaps.size(), static_cast<size_t>(proto_submaps.size()));
   EXPECT_EQ(ros_map.submaps[0].key, 13);
   auto& ros_fragment = ros_map.submaps[0].value;
   EXPECT_EQ(ros_fragment.height, proto_fragment.height());
   EXPECT_EQ(ros_fragment.width, proto_fragment.width());
-  EXPECT_EQ(ros_fragment.grid.size(), 20 * 20);
+  EXPECT_EQ(ros_fragment.grid.size(), static_cast<size_t>(proto_grid->size()));
   const auto grid = std::string_view{reinterpret_cast<char*>(ros_fragment.grid.data()), ros_fragment.grid.size()};
   EXPECT_EQ(grid, proto_fragment.grid());
 
@@ -451,7 +455,7 @@ TEST(Proto2RosTesting, MessagesWithExpandedAnyFields) {
   auto other_proto_roi = bosdyn::api::Polygon();
   EXPECT_TRUE(other_proto_goal.roi().UnpackTo(&other_proto_roi));
   EXPECT_EQ(other_proto_roi.vertexes_size(), proto_roi.vertexes_size());
-  for (size_t i = 0; i < proto_roi.vertexes_size(); ++i) {
+  for (int i = 0; i < proto_roi.vertexes_size(); ++i) {
     EXPECT_EQ(other_proto_roi.vertexes(i).x(), proto_roi.vertexes(i).x());
     EXPECT_EQ(other_proto_roi.vertexes(i).y(), proto_roi.vertexes(i).y());
   }

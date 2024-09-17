@@ -20,18 +20,9 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set(CMAKE_BUILD_TYPE "${DEFAULT_BUILD_TYPE}" CACHE STRING "Choose the type of the build." FORCE)
   # Set the possible values of the build type for cmake-gui
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
-endif(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-
-if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-  include(CheckIPOSupported)
-  check_ipo_supported(RESULT ipo_supported OUTPUT output)
-  if(ipo_supported)
-    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
-    message(STATUS "We are in release - Successfully enabled IPO")
-  else()
-    message(WARNING "IPO not supported - Skipping reason: ${output}")
-  endif()
 endif()
+
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(ament_cmake REQUIRED)
 find_package(builtin_interfaces REQUIRED)
@@ -65,6 +56,8 @@ rosidl_generate_interfaces(
 add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_messages_gen)
 
 add_library(${PROJECT_NAME}_conversions SHARED ${cpp_sources} src/manual_conversions.cpp)
+set_target_properties(${PROJECT_NAME}_conversions
+  PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
 target_include_directories(${PROJECT_NAME}_conversions PUBLIC
   "$<BUILD_INTERFACE:${cpp_include_dir}>"
   "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
@@ -81,6 +74,10 @@ rosidl_generated_python_package_add(
   PACKAGES ${PROJECT_NAME}
   DESTINATION ${PROJECT_NAME}
 )
+
+find_program(CLANG_TIDY_EXECUTABLE NAMES "clang-tidy" REQUIRED)
+set(CXX_CLANG_TIDY "${CLANG_TIDY_EXECUTABLE}" "-header-filter=.*proto2ros.*/.*conversions.hpp")
+set_target_properties(${PROJECT_NAME}_conversions PROPERTIES CXX_CLANG_TIDY "${CXX_CLANG_TIDY}")
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
@@ -109,6 +106,7 @@ if(BUILD_TESTING)
     ${${PROJECT_NAME}_cpp_msgs} ${PROJECT_NAME}_proto
     ${PROJECT_NAME}_conversions proto2ros::proto2ros_conversions
   )
+  set_target_properties(regression_cpp_tests PROPERTIES CXX_CLANG_TIDY "${CXX_CLANG_TIDY}")
 endif()
 
 ament_package()

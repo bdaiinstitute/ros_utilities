@@ -33,6 +33,8 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebI
   endif()
 endif()
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_python REQUIRED)
@@ -49,6 +51,9 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 )
 
 add_library(${PROJECT_NAME}_conversions SHARED src/conversions.cpp)
+set_target_properties(${PROJECT_NAME}_conversions
+  PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
+target_compile_features(${PROJECT_NAME}_conversions PUBLIC cxx_std_20)
 target_include_directories(${PROJECT_NAME}_conversions PUBLIC
   "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
   "$<INSTALL_INTERFACE:include/${PROJECT_NAME}>"
@@ -56,6 +61,12 @@ target_include_directories(${PROJECT_NAME}_conversions PUBLIC
 rosidl_get_typesupport_target(${PROJECT_NAME}_cpp_msgs ${PROJECT_NAME} "rosidl_typesupport_cpp")
 target_link_libraries(${PROJECT_NAME}_conversions ${${PROJECT_NAME}_cpp_msgs} protobuf::libprotobuf)
 ament_target_dependencies(${PROJECT_NAME}_conversions builtin_interfaces rclcpp std_msgs)
+
+find_program(CLANG_TIDY_EXECUTABLE NAMES "clang-tidy" REQUIRED)
+set(CXX_CLANG_TIDY "${CLANG_TIDY_EXECUTABLE}"
+  "-header-filter=.*proto2ros/.*conversions.hpp"
+  "-checks=-clang-diagnostic-ignored-optimization-argument")
+set_target_properties(${PROJECT_NAME}_conversions PROPERTIES CXX_CLANG_TIDY "${CXX_CLANG_TIDY}")
 
 include(cmake/rosidl_helpers.cmake)
 rosidl_generated_python_package_add(
