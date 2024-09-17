@@ -15,6 +15,7 @@ from proto2ros.configuration import Configuration
 from proto2ros.dependencies import fix_dependency_cycles
 from proto2ros.descriptors.sources import read_source_descriptors
 from proto2ros.equivalences import Equivalence, all_message_specifications, extract_equivalences
+from proto2ros.output.cpp import dump_conversions_cpp_sources, to_pb2_cpp_header, to_ros_cpp_header
 from proto2ros.output.interfaces import dump_message_specification, which_message_specification
 from proto2ros.output.python import (
     dump_conversions_python_module,
@@ -40,8 +41,8 @@ def do_generate(args: argparse.Namespace) -> int:
                 source_paths = [source_descriptor.name, *source_descriptor.dependency]
                 # Add corresponding *_pb2 Python modules to configured Python imports.
                 config.python_imports.update(map(to_pb2_python_module_name, source_paths))
-                # Add target ROS package to configured Python imports.
-                config.python_imports.add(to_ros_python_module_name(args.package_name))
+                # Add corresponding *.pb.h C++ headers to configured C++ headers.
+                config.cpp_headers.update(map(to_pb2_cpp_header, source_paths))
             source_descriptors.append(source_descriptor)
 
     # Apply overlays to configuration.
@@ -56,6 +57,13 @@ def do_generate(args: argparse.Namespace) -> int:
     # Extract annotated message specifications from equivalences.
     message_specifications = list(all_message_specifications(equivalences))
     fix_dependency_cycles(message_specifications, quiet=args.dry)
+
+    if not config.skip_implicit_imports:
+        # Add target ROS package to configured Python imports.
+        config.python_imports.add(to_ros_python_module_name(args.package_name))
+        # Add target ROS package to configured C++ headers.
+        for spec in message_specifications:
+            config.cpp_headers.add(to_ros_cpp_header(spec))
 
     # Collect all known message specifications.
     known_message_specifications = list(message_specifications)
@@ -113,6 +121,21 @@ def do_generate(args: argparse.Namespace) -> int:
             dump_conversions_python_module(message_specifications, known_message_specifications, config) + "\n",
         )
     files_written.append(conversions_python_file)
+
+    # Write C++ conversion APIs source files.
+    conversions_hpp_file = args.output_directory / "conversions.hpp"
+    conversions_cpp_file = args.output_directory / "conversions.cpp"
+    if not args.dry:
+        hpp_content, cpp_content = dump_conversions_cpp_sources(
+            args.package_name,
+            message_specifications,
+            known_message_specifications,
+            config,
+        )
+        conversions_hpp_file.write_text(hpp_content + "\n")
+        conversions_cpp_file.write_text(cpp_content + "\n")
+    files_written.append(conversions_hpp_file)
+    files_written.append(conversions_cpp_file)
 
     if args.manifest_file:
         # Write generation manifest file.

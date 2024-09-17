@@ -35,6 +35,7 @@ macro(proto2ros_vendor_package target)
     CONFIG_OVERLAYS ${ARG_CONFIG_OVERLAYS}
     INTERFACES_OUT_VAR ros_messages
     PYTHON_OUT_VAR py_sources
+    CPP_OUT_VAR cpp_sources
     ${proto2ros_generate_OPTIONS}
   )
 
@@ -55,4 +56,28 @@ macro(proto2ros_vendor_package target)
     PACKAGES ${ARG_PYTHON_PACKAGES}
     DESTINATION ${target}
   )
+
+  find_package(rclcpp REQUIRED)
+  add_library(${target}_conversions ${cpp_sources})
+  rosidl_get_typesupport_target(cpp_interfaces ${target} "rosidl_typesupport_cpp")
+  target_link_libraries(${target}_conversions ${cpp_interfaces})
+  ament_target_dependencies(${target}_conversions
+    ${ARG_ROS_DEPENDENCIES} builtin_interfaces proto2ros rclcpp)
+
+  set(header_files ${cpp_sources})
+  list(FILTER header_files INCLUDE REGEX ".*\.hpp$")
+  install(
+    FILES ${header_files}
+    DESTINATION include/${PROJECT_NAME}
+  )
+  ament_export_include_directories("include/${PROJECT_NAME}")
+
+  install(
+    TARGETS ${target}_conversions
+    EXPORT export_${target}_conversions
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin
+  )
+  ament_export_targets(export_${target}_conversions)
 endmacro()

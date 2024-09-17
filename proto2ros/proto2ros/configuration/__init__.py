@@ -59,8 +59,12 @@ class Configuration:
 
     package_specifications: Set[str] = dataclasses.field(default_factory=set)
 
+    cpp_headers: Set[str] = dataclasses.field(default_factory=set)
+    inline_cpp_namespaces: Set[str] = dataclasses.field(default_factory=set)
+
     python_imports: Set[str] = dataclasses.field(default_factory=set)
     inline_python_imports: Set[str] = dataclasses.field(default_factory=set)
+
     skip_implicit_imports: bool = False
 
     def __post_init__(self) -> None:
@@ -68,7 +72,10 @@ class Configuration:
         self.any_expansions = {
             key: set(value) if not isinstance(value, str) else value for key, value in self.any_expansions.items()
         }
+        self.cpp_headers = set(self.cpp_headers)
+        self.inline_cpp_namespaces = set(self.inline_cpp_namespaces)
         self.python_imports = set(self.python_imports)
+        self.inline_python_imports = set(self.inline_python_imports)
         self.package_specifications = set(self.package_specifications)
 
     def update(self, **attributes: Any) -> None:

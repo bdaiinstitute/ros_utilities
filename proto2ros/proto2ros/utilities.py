@@ -50,6 +50,11 @@ def pairwise(iterable: Iterable[Any]) -> Iterable[Tuple[Any, Any]]:
     return zip(a, b)
 
 
+def rreplace(s: str, old: str, new: str, count: int) -> str:
+    """Replaces a number of string occurrences in reverse."""
+    return s[::-1].replace(old[::-1], new[::-1], count)[::-1]
+
+
 def to_ros_base_type(type_: Union[str, BaseType]) -> str:
     """Returns base type name for a given ROS type."""
     return BaseType.__str__(Type(str(type_)))

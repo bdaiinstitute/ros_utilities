@@ -435,6 +435,8 @@ def compute_equivalence_for_message(
     message_spec.annotations["map-entry"] = descriptor.options.map_entry
     if descriptor.options.map_entry:
         message_spec.annotations["map-inplace"] = map_inplace
+    for spec in auxiliary_message_specs:
+        spec.annotations["parent-spec"] = message_spec
     return Equivalence(
         proto_spec=descriptor,
         message_spec=message_spec,
