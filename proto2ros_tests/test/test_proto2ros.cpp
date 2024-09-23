@@ -1,5 +1,5 @@
 // Copyright (c) 2024 Boston Dynamics AI Institute LLC. All rights reserved.
-
+// NOLINTBEGIN(readability-magic-numbers,readability-function-cognitive-complexity,cppcoreguidelines-pro-type-reinterpret-cast)
 #include <bosdyn/api/geometry.pb.h>
 #include <gtest/gtest.h>
 #include <test.pb.h>
@@ -19,8 +19,8 @@
 #include <proto2ros_tests/msg/remote_execution_result.hpp>
 #include <proto2ros_tests/msg/value.hpp>
 
-using proto2ros::conversions::convert;
-using proto2ros_tests::conversions::convert;
+using proto2ros::conversions::Convert;
+using proto2ros_tests::conversions::Convert;
 
 TEST(Proto2RosTesting, MessageMapping) {
   auto proto_request = proto2ros_tests::HVACControlRequest();
@@ -30,10 +30,10 @@ TEST(Proto2RosTesting, MessageMapping) {
   setpoint->set_scale(proto2ros_tests::Temperature::FAHRENHEIT);
 
   auto ros_request = proto2ros_tests::msg::HVACControlRequest();
-  convert(proto_request, &ros_request);
+  Convert(proto_request, &ros_request);
 
   auto other_proto_request = proto2ros_tests::HVACControlRequest();
-  convert(ros_request, &other_proto_request);
+  Convert(ros_request, &other_proto_request);
 
   EXPECT_DOUBLE_EQ(proto_request.air_flow_rate(), other_proto_request.air_flow_rate());
   // sensor_msgs/Temperature messages are in the Celsius temperature scale
@@ -48,7 +48,7 @@ TEST(Proto2RosTesting, RecursiveMessages) {
   proto_subfragment->set_payload("important addendum");
 
   auto ros_fragment = proto2ros_tests::msg::Fragment();
-  convert(proto_fragment, &ros_fragment);
+  Convert(proto_fragment, &ros_fragment);
 
   const auto payload =
       std::string_view{reinterpret_cast<char*>(ros_fragment.payload.data()), ros_fragment.payload.size()};
@@ -56,7 +56,7 @@ TEST(Proto2RosTesting, RecursiveMessages) {
   EXPECT_EQ(ros_fragment.nested.size(), static_cast<size_t>(proto_fragment.nested_size()));
 
   auto other_proto_fragment = proto2ros_tests::Fragment();
-  convert(ros_fragment, &other_proto_fragment);
+  Convert(ros_fragment, &other_proto_fragment);
   EXPECT_EQ(other_proto_fragment.payload(), proto_fragment.payload());
   ASSERT_EQ(other_proto_fragment.nested_size(), proto_fragment.nested_size());
   const auto& other_proto_subfragment = other_proto_fragment.nested(0);
@@ -67,18 +67,18 @@ TEST(Proto2RosTesting, CircularlyDependentMessages) {
   auto proto_value = proto2ros_tests::Value();
   auto* proto_items = proto_value.mutable_dict()->mutable_items();
   auto* proto_pair = (*proto_items)["interval"].mutable_pair();
-  proto_pair->mutable_first()->set_number(-0.5);
-  proto_pair->mutable_second()->set_number(0.5);
+  proto_pair->mutable_first()->set_number(-0.5F);
+  proto_pair->mutable_second()->set_number(0.5F);
   auto* proto_list = (*proto_items)["range"].mutable_list();
-  for (double number : {-0.1, 0.0, 0.1, -0.7, 0.3, 0.4}) {
+  for (const float number : {-0.1F, 0.0F, 0.1F, -0.7F, 0.3F, 0.4F}) {
     proto_list->add_values()->set_number(number);
   }
 
   auto ros_value = proto2ros_tests::msg::Value();
-  convert(proto_value, &ros_value);
+  Convert(proto_value, &ros_value);
 
   auto other_proto_value = proto2ros_tests::Value();
-  convert(ros_value, &other_proto_value);
+  Convert(ros_value, &other_proto_value);
 
   const auto& other_proto_items = other_proto_value.dict().items();
   EXPECT_TRUE(other_proto_items.count("interval"));
@@ -98,12 +98,12 @@ TEST(Proto2RosTesting, MessagesWithEnums) {
   proto_motion_request.set_direction(proto2ros_tests::MotionRequest::Forward);
   proto_motion_request.set_speed(1.0);
   auto ros_motion_request = proto2ros_tests::msg::MotionRequest();
-  convert(proto_motion_request, &ros_motion_request);
+  Convert(proto_motion_request, &ros_motion_request);
   EXPECT_EQ(ros_motion_request.direction.value, proto_motion_request.direction());
   EXPECT_EQ(ros_motion_request.speed, proto_motion_request.speed());
 
   auto other_proto_motion_request = proto2ros_tests::MotionRequest();
-  convert(ros_motion_request, &other_proto_motion_request);
+  Convert(ros_motion_request, &other_proto_motion_request);
   EXPECT_EQ(other_proto_motion_request.direction(), proto_motion_request.direction());
   EXPECT_EQ(other_proto_motion_request.speed(), proto_motion_request.speed());
 }
@@ -114,12 +114,12 @@ TEST(Proto2RosTesting, MessagesWithNestedEnums) {
   proto_http_request.set_uri("https://proto2ros.xyz/post");
 
   auto ros_http_request = proto2ros_tests::msg::HTTPRequest();
-  convert(proto_http_request, &ros_http_request);
+  Convert(proto_http_request, &ros_http_request);
   EXPECT_EQ(ros_http_request.method.value, proto_http_request.method());
   EXPECT_EQ(ros_http_request.uri, proto_http_request.uri());
 
   auto other_proto_http_request = proto2ros_tests::HTTP::Request();
-  convert(ros_http_request, &other_proto_http_request);
+  Convert(ros_http_request, &other_proto_http_request);
   EXPECT_EQ(other_proto_http_request.method(), proto_http_request.method());
   EXPECT_EQ(other_proto_http_request.uri(), proto_http_request.uri());
 }
@@ -130,15 +130,15 @@ TEST(Proto2RosTesting, OneOfMessages) {
   proto_any_command.mutable_walk()->set_speed(1.0);
 
   auto ros_any_command = proto2ros_tests::msg::AnyCommand();
-  convert(proto_any_command, &ros_any_command);
-  constexpr auto kExpectedChoice = proto2ros_tests::msg::AnyCommandOneOfCommands::COMMANDS_WALK_SET;
-  EXPECT_EQ(ros_any_command.commands.which, kExpectedChoice);
-  EXPECT_EQ(ros_any_command.commands.commands_choice, kExpectedChoice);
+  Convert(proto_any_command, &ros_any_command);
+  constexpr auto expected_choice = proto2ros_tests::msg::AnyCommandOneOfCommands::COMMANDS_WALK_SET;
+  EXPECT_EQ(ros_any_command.commands.which, expected_choice);
+  EXPECT_EQ(ros_any_command.commands.commands_choice, expected_choice);
   EXPECT_EQ(ros_any_command.commands.walk.distance, proto_any_command.walk().distance());
   EXPECT_EQ(ros_any_command.commands.walk.speed, proto_any_command.walk().speed());
 
   auto other_proto_any_command = proto2ros_tests::AnyCommand();
-  convert(ros_any_command, &other_proto_any_command);
+  Convert(ros_any_command, &other_proto_any_command);
   EXPECT_TRUE(other_proto_any_command.has_walk());
   EXPECT_EQ(other_proto_any_command.walk().distance(), proto_any_command.walk().distance());
   EXPECT_EQ(other_proto_any_command.walk().speed(), proto_any_command.walk().speed());
@@ -149,14 +149,14 @@ TEST(Proto2RosTesting, OneOfEmptyMessages) {
   (void)proto_any_command.mutable_sit();
 
   auto ros_any_command = proto2ros_tests::msg::AnyCommand();
-  convert(proto_any_command, &ros_any_command);
+  Convert(proto_any_command, &ros_any_command);
 
-  constexpr auto kExpectedChoice = proto2ros_tests::msg::AnyCommandOneOfCommands::COMMANDS_SIT_SET;
-  EXPECT_EQ(ros_any_command.commands.which, kExpectedChoice);
-  EXPECT_EQ(ros_any_command.commands.commands_choice, kExpectedChoice);
+  constexpr auto expected_choice = proto2ros_tests::msg::AnyCommandOneOfCommands::COMMANDS_SIT_SET;
+  EXPECT_EQ(ros_any_command.commands.which, expected_choice);
+  EXPECT_EQ(ros_any_command.commands.commands_choice, expected_choice);
 
   auto other_proto_any_command = proto2ros_tests::AnyCommand();
-  convert(ros_any_command, &other_proto_any_command);
+  Convert(ros_any_command, &other_proto_any_command);
   EXPECT_TRUE(other_proto_any_command.has_sit());
 }
 
@@ -168,7 +168,7 @@ TEST(Proto2RosTesting, MessagesWithMapField) {
   proto_attributes["origin"] = "localization subsystem";
 
   auto ros_diagnostic = proto2ros_tests::msg::Diagnostic();
-  convert(proto_diagnostic, &ros_diagnostic);
+  Convert(proto_diagnostic, &ros_diagnostic);
   EXPECT_EQ(ros_diagnostic.severity.value, proto_diagnostic.severity());
   EXPECT_EQ(ros_diagnostic.reason, proto_diagnostic.reason());
   EXPECT_EQ(ros_diagnostic.reason, proto_diagnostic.reason());
@@ -177,7 +177,7 @@ TEST(Proto2RosTesting, MessagesWithMapField) {
   EXPECT_EQ(ros_diagnostic.attributes[0].value, "localization subsystem");
 
   auto other_proto_diagnostic = proto2ros_tests::Diagnostic();
-  convert(ros_diagnostic, &other_proto_diagnostic);
+  Convert(ros_diagnostic, &other_proto_diagnostic);
   EXPECT_EQ(other_proto_diagnostic.severity(), proto_diagnostic.severity());
   EXPECT_EQ(other_proto_diagnostic.reason(), proto_diagnostic.reason());
   EXPECT_TRUE(other_proto_diagnostic.attributes().contains("origin"));
@@ -191,13 +191,13 @@ TEST(Proto2RosTesting, MessagesWithDeprecatedFields) {
   proto_remote_execution_request.set_timeout_sec(10.0);
 
   auto ros_remote_execution_request = proto2ros_tests::msg::RemoteExecutionRequest();
-  convert(proto_remote_execution_request, &ros_remote_execution_request);
+  Convert(proto_remote_execution_request, &ros_remote_execution_request);
   EXPECT_EQ(ros_remote_execution_request.prompt, proto_remote_execution_request.prompt());
   EXPECT_EQ(ros_remote_execution_request.timeout, proto_remote_execution_request.timeout());
   EXPECT_EQ(ros_remote_execution_request.timeout_sec, proto_remote_execution_request.timeout_sec());
 
   auto other_proto_remote_execution_request = proto2ros_tests::RemoteExecutionRequest();
-  convert(ros_remote_execution_request, &other_proto_remote_execution_request);
+  Convert(ros_remote_execution_request, &other_proto_remote_execution_request);
   EXPECT_EQ(other_proto_remote_execution_request.prompt(), proto_remote_execution_request.prompt());
   EXPECT_EQ(other_proto_remote_execution_request.timeout(), proto_remote_execution_request.timeout());
   EXPECT_EQ(other_proto_remote_execution_request.timeout_sec(), proto_remote_execution_request.timeout_sec());
@@ -212,7 +212,7 @@ TEST(Proto2RosTesting, RedefinedMessages) {
   proto_remote_execution_error->add_traceback("<root>");
 
   auto ros_remote_execution_result = proto2ros_tests::msg::RemoteExecutionResult();
-  convert(proto_remote_execution_result, &ros_remote_execution_result);
+  Convert(proto_remote_execution_result, &ros_remote_execution_result);
   EXPECT_EQ(ros_remote_execution_result.ok, proto_remote_execution_result.ok());
   EXPECT_EQ(ros_remote_execution_result.error.code, proto_remote_execution_result.error().code());
   EXPECT_EQ(ros_remote_execution_result.error.reason, proto_remote_execution_result.error().reason());
@@ -221,7 +221,7 @@ TEST(Proto2RosTesting, RedefinedMessages) {
   EXPECT_EQ(ros_remote_execution_result.error.traceback[0], proto_remote_execution_result.error().traceback(0));
 
   auto other_proto_remote_execution_result = proto2ros_tests::RemoteExecutionResult();
-  convert(ros_remote_execution_result, &other_proto_remote_execution_result);
+  Convert(ros_remote_execution_result, &other_proto_remote_execution_result);
   EXPECT_EQ(other_proto_remote_execution_result.ok(), proto_remote_execution_result.ok());
   EXPECT_EQ(other_proto_remote_execution_result.error().code(), proto_remote_execution_result.error().code());
   EXPECT_EQ(other_proto_remote_execution_result.error().reason(), proto_remote_execution_result.error().reason());
@@ -232,7 +232,7 @@ TEST(Proto2RosTesting, RedefinedMessages) {
 }
 
 namespace {
-
+// NOLINTBEGIN(readability-identifier-naming)
 template <class, class = void>
 struct has_rotation_member : std::false_type {};
 
@@ -242,7 +242,7 @@ struct has_rotation_member<T, std::void_t<decltype(std::declval<T>().rotation)>>
 
 template <class T>
 constexpr bool has_rotation_member_v = has_rotation_member<T>::value;
-
+// NOLINTEND(readability-identifier-naming)
 }  // namespace
 
 TEST(Proto2RosTesting, MessagesWithReservedFields) {
@@ -252,14 +252,14 @@ TEST(Proto2RosTesting, MessagesWithReservedFields) {
   proto_displacement.mutable_translation()->set_z(3.0);
 
   auto ros_displacement = proto2ros_tests::msg::Displacement();
-  convert(proto_displacement, &ros_displacement);
+  Convert(proto_displacement, &ros_displacement);
   EXPECT_EQ(ros_displacement.translation.x, proto_displacement.translation().x());
   EXPECT_EQ(ros_displacement.translation.y, proto_displacement.translation().y());
   EXPECT_EQ(ros_displacement.translation.z, proto_displacement.translation().z());
   static_assert(!has_rotation_member_v<decltype(ros_displacement)>);
 
   auto other_proto_displacement = proto2ros_tests::Displacement();
-  convert(ros_displacement, &other_proto_displacement);
+  Convert(ros_displacement, &other_proto_displacement);
   EXPECT_EQ(other_proto_displacement.translation().x(), proto_displacement.translation().x());
   EXPECT_EQ(other_proto_displacement.translation().y(), proto_displacement.translation().y());
   EXPECT_EQ(other_proto_displacement.translation().z(), proto_displacement.translation().z());
@@ -271,26 +271,26 @@ TEST(Proto2RosTesting, MessageForwarding) {
   proto_camera_info.set_width(1280);
   proto_camera_info.mutable_k()->set_rows(3);
   proto_camera_info.mutable_k()->set_cols(3);
-  for (double number : {2000.0, 0.0, 800.0, 0.0, 2000.0, 800.0, 0.0, 0.0, 1.0}) {
+  for (const double number : {2000.0, 0.0, 800.0, 0.0, 2000.0, 800.0, 0.0, 0.0, 1.0}) {
     proto_camera_info.mutable_k()->add_data(number);
   }
   proto_camera_info.mutable_r()->set_rows(3);
   proto_camera_info.mutable_r()->set_cols(3);
-  for (double number : {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0}) {
+  for (const double number : {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0}) {
     proto_camera_info.mutable_r()->add_data(number);
   }
   proto_camera_info.mutable_p()->set_rows(3);
   proto_camera_info.mutable_p()->set_cols(4);
-  for (double number : {2000.0, 0.0, 800.0, 0.0, 0.0, 2000.0, 800.0, 0.0, 0.0, 0.0, 0.0, 1.0}) {
+  for (const double number : {2000.0, 0.0, 800.0, 0.0, 0.0, 2000.0, 800.0, 0.0, 0.0, 0.0, 0.0, 1.0}) {
     proto_camera_info.mutable_p()->add_data(number);
   }
   proto_camera_info.mutable_distortion_model()->set_type(proto2ros_tests::CameraInfo::DistortionModel::PLUMB_BOB);
-  for (double coeff : {-0.2, -0.4, -0.0001, -0.0001, 0.0}) {
+  for (const double coeff : {-0.2, -0.4, -0.0001, -0.0001, 0.0}) {
     proto_camera_info.mutable_distortion_model()->add_coefficients(coeff);
   }
 
   auto ros_camera_info = proto2ros_tests::msg::CameraInfo();
-  convert(proto_camera_info, &ros_camera_info);
+  Convert(proto_camera_info, &ros_camera_info);
   EXPECT_EQ(ros_camera_info.height, proto_camera_info.height());
   EXPECT_EQ(ros_camera_info.width, proto_camera_info.width());
   EXPECT_EQ(ros_camera_info.k.rows, proto_camera_info.k().rows());
@@ -319,7 +319,7 @@ TEST(Proto2RosTesting, MessageForwarding) {
   }
 
   auto other_proto_camera_info = proto2ros_tests::CameraInfo();
-  convert(ros_camera_info, &other_proto_camera_info);
+  Convert(ros_camera_info, &other_proto_camera_info);
   EXPECT_EQ(other_proto_camera_info.height(), proto_camera_info.height());
   EXPECT_EQ(other_proto_camera_info.width(), proto_camera_info.width());
   EXPECT_EQ(other_proto_camera_info.k().rows(), proto_camera_info.k().rows());
@@ -356,10 +356,10 @@ TEST(Proto2RosTesting, MessagesWithSubMessageMapField) {
   proto_fragment.set_height(20);
   proto_fragment.set_width(20);
   auto* proto_grid = proto_fragment.mutable_grid();
-  proto_grid->resize(20 * 20, '\0');
+  proto_grid->resize(20UL * 20UL, '\0');
 
   auto ros_map = proto2ros_tests::msg::Map();
-  convert(proto_map, &ros_map);
+  Convert(proto_map, &ros_map);
   EXPECT_EQ(ros_map.submaps.size(), static_cast<size_t>(proto_submaps.size()));
   EXPECT_EQ(ros_map.submaps[0].key, 13);
   auto& ros_fragment = ros_map.submaps[0].value;
@@ -370,7 +370,7 @@ TEST(Proto2RosTesting, MessagesWithSubMessageMapField) {
   EXPECT_EQ(grid, proto_fragment.grid());
 
   auto other_proto_map = proto2ros_tests::Map();
-  convert(ros_map, &other_proto_map);
+  Convert(ros_map, &other_proto_map);
   EXPECT_TRUE(other_proto_map.submaps().contains(13));
   const auto& other_proto_fragment = other_proto_map.submaps().at(13);
   EXPECT_EQ(other_proto_fragment.height(), proto_fragment.height());
@@ -388,10 +388,10 @@ TEST(Proto2RosTesting, MessagesWithAnyFields) {
   proto_request.mutable_msg()->PackFrom(proto_matrix);
 
   auto ros_request = proto2ros_tests::msg::RTTIQueryRequest();
-  convert(proto_request, &ros_request);
+  Convert(proto_request, &ros_request);
 
   auto other_proto_request = proto2ros_tests::RTTIQueryRequest();
-  convert(ros_request, &other_proto_request);
+  Convert(ros_request, &other_proto_request);
 
   auto other_unpacked_proto_matrix = proto2ros_tests::Matrix();
   EXPECT_TRUE(other_proto_request.msg().UnpackTo(&other_unpacked_proto_matrix));
@@ -407,14 +407,14 @@ TEST(Proto2RosTesting, MessagesWithUnknownTypeFields) {
   proto_result.mutable_type()->set_name("SomeMessage");
 
   auto ros_result = proto2ros_tests::msg::RTTIQueryResult();
-  convert(proto_result, &ros_result);
+  Convert(proto_result, &ros_result);
 
   auto unpacked_proto_type = google::protobuf::Type();
-  convert(ros_result.type, &unpacked_proto_type);
+  Convert(ros_result.type, &unpacked_proto_type);
   EXPECT_EQ(unpacked_proto_type.name(), proto_result.type().name());
 
   auto other_proto_result = proto2ros_tests::RTTIQueryResult();
-  convert(ros_result, &other_proto_result);
+  Convert(ros_result, &other_proto_result);
   EXPECT_EQ(other_proto_result.type().name(), proto_result.type().name());
 }
 
@@ -425,8 +425,8 @@ TEST(Proto2RosTesting, MessagesWithExpandedAnyFields) {
   proto_target.set_angle(M_PI);
 
   auto proto_roi = bosdyn::api::Polygon();
-  for (double dx : {-0.5, 0.5}) {
-    for (double dy : {-0.5, 0.5}) {
+  for (const double dx : {-0.5, 0.5}) {
+    for (const double dy : {-0.5, 0.5}) {
       auto* vertex = proto_roi.add_vertexes();
       vertex->set_x(proto_target.position().x() + dx);
       vertex->set_y(proto_target.position().y() + dy);
@@ -438,14 +438,14 @@ TEST(Proto2RosTesting, MessagesWithExpandedAnyFields) {
   proto_goal.mutable_roi()->PackFrom(proto_roi);
 
   auto ros_goal = proto2ros_tests::msg::Goal();
-  convert(proto_goal, &ros_goal);
+  Convert(proto_goal, &ros_goal);
 
   EXPECT_EQ(ros_goal.target.position.x, proto_target.position().x());
   EXPECT_EQ(ros_goal.target.position.y, proto_target.position().y());
   EXPECT_EQ(ros_goal.roi.type_name, "geometry_msgs/Polygon");
 
   auto other_proto_goal = proto2ros_tests::Goal();
-  convert(ros_goal, &other_proto_goal);
+  Convert(ros_goal, &other_proto_goal);
 
   auto other_proto_target = bosdyn::api::SE2Pose();
   EXPECT_TRUE(other_proto_goal.target().UnpackTo(&other_proto_target));
@@ -462,3 +462,4 @@ TEST(Proto2RosTesting, MessagesWithExpandedAnyFields) {
     EXPECT_EQ(other_proto_roi.vertexes(i).y(), proto_roi.vertexes(i).y());
   }
 }
+// NOLINTEND(readability-magic-numbers,readability-function-cognitive-complexity,cppcoreguidelines-pro-type-reinterpret-cast)
