@@ -30,7 +30,7 @@
         {%- if type_spec and type_spec.annotations.get("proto-class") == "enum" -%}
             {#- Handle enum case i.e. extract integral values from ROS wrapper messages. -#}
             {%- if spec.type.is_array -%}
-{{ destination }}->Reserve({{ source }}.size());
+{{ destination }}->Reserve(static_cast<int>({{ source }}.size()));
 for (const auto& item : {{ source }}) {
     {{ destination }}->Add(static_cast<{{ type_spec.annotations["proto-type"] | as_pb2_cpp_type }}>(item.value));
 }
@@ -65,7 +65,7 @@ for (const auto& {{ input_item }} : {{ source }}) {
 }
             {%- else -%}{#- Handle sequence case i.e. just convert sequence items. -#}
 {{ destination }}->Clear();
-{{ destination }}->Reserve({{ source }}.size());
+{{ destination }}->Reserve(static_cast<int>({{ source }}.size()));
 for (const auto& {{ input_item }} : {{ source }}) {
     auto* {{ output_item }} = {{ destination }}->Add();
     {{ ros_to_proto_composite_field_code_block(input_item, output_item, spec) | indent(4) }}
@@ -78,7 +78,7 @@ for (const auto& {{ input_item }} : {{ source }}) {
         {#- Handle bytes case. -#}
         {%- if to_ros_base_type(spec.type) == "proto2ros/Bytes" -%}
 {{ destination }}->Clear();
-{{ destination }}->Reserve({{ source }}.size());
+{{ destination }}->Reserve(static_cast<int>({{ source }}.size()));
 for (const auto& blob : {{ source }}) {
     auto* value = {{ destination }}->Add();
     value->reserve(blob.data.size());
@@ -92,9 +92,9 @@ for (const auto& blob : {{ source }}) {
     {%- else -%}{#- Handle primitive types case. -#}
         {%- if spec.type.is_array -%}
 {{ destination }}->Clear();
-{{ destination }}->Reserve({{ source }}.size());
+{{ destination }}->Reserve(static_cast<int>({{ source }}.size()));
 for (auto item : {{ source }}) {
-    {{ destination }}->Add(std::move(item));
+    {{ destination }}->Add(std::move(item));  // NOLINT(performance-move-const-arg)
 }
         {%- else -%}
 {{ destination | rreplace("mutable", "set", 1) | rreplace("()", "", 1) }}({{ source }});
@@ -129,13 +129,13 @@ for (auto item : {{ source }}) {
     const auto serializer = rclcpp::Serialization<{{ spec.type | as_ros_base_type | as_ros_cpp_type }}>{};
     auto typed_ros_message = {{ spec.type | as_ros_base_type | as_ros_cpp_type }}();
     serializer.deserialize_message(&serialized_message, &typed_ros_message);
-    convert(typed_ros_message, {{ destination }});
+    Convert(typed_ros_message, {{ destination }});
 }
     {%- elif spec.annotations.get("type-casted") -%}
         {#- ROS message must be converted and packed for assignment. -#}
 {
     auto typed_proto_message = {{ spec.annotations["proto-type"] | as_pb2_cpp_type }}();
-    convert({{ source }}, &typed_proto_message);
+    Convert({{ source }}, &typed_proto_message);
     {{ destination }}->PackFrom(typed_proto_message);
 }
     {%- elif spec.annotations.get("type-casts") -%}
@@ -155,7 +155,7 @@ if ({{ source }}.type_name == "{{ ros_type_name }}") {
     auto typed_ros_message = {{ ros_type_name | as_ros_cpp_type }}();
     serializer.deserialize_message(&serialized_message, &typed_ros_message);
     auto typed_proto_message = {{ proto_type_name | as_pb2_cpp_type }}();
-    convert(typed_ros_message, &typed_proto_message);
+    Convert(typed_ros_message, &typed_proto_message);
     {{ destination }}->PackFrom(typed_proto_message);
        {%- endfor %}
 } else {
@@ -166,7 +166,7 @@ if ({{ source }}.type_name == "{{ ros_type_name }}") {
     {%- elif type_spec and type_spec.annotations.get("tagged") -%}
         {#- Handle one-of field case i.e. determine and convert the ROS message member that is set. -#}
         {%- set tag_field_spec = type_spec.annotations["tag"] -%}
-switch ({{ source }}.{{ tag_field_spec.name }} ? {{ source }}.{{ tag_field_spec.name }} : {{ source }}.{{ tag_field_spec.annotations["alias"] }}) {
+switch ({{ source }}.{{ tag_field_spec.name }} != 0 ? {{ source }}.{{ tag_field_spec.name }} : {{ source }}.{{ tag_field_spec.annotations["alias"] }}) {
         {%- for tag_spec, member_spec in type_spec.annotations["tagged"] -%}
             {%- set source_member = source + "." + member_spec.name -%}
             {%- set destination_member = destination.rpartition("->")[0] + "->mutable_" + member_spec.annotations.get("proto-name", member_spec.name) + "()" %}
@@ -178,7 +178,7 @@ switch ({{ source }}.{{ tag_field_spec.name }} ? {{ source }}.{{ tag_field_spec.
         break;
 }
     {%- else -%}{#- Handle the generic ROS message case (because it is appropriate or because we do not know any better). -#}
-convert({{ source }}, {{ destination }});
+Convert({{ source }}, {{ destination }});
     {%- endif -%}
 {%- endmacro -%}
 
@@ -267,13 +267,13 @@ for (const auto& blob : {{ source }}) {
     {%- if spec.annotations.get("type-erased") -%}{#- ROS message must be serialized for assignment. -#}
 {
     auto typed_ros_message = {{ spec.type | as_ros_base_type | as_ros_cpp_type }}();
-    convert({{ source }}, &typed_ros_message);
+    Convert({{ source }}, &typed_ros_message);
     const auto serde = rclcpp::Serialization<{{ spec.type | as_ros_base_type | as_ros_cpp_type }}>{};
     rclcpp::SerializedMessage serialized_message;
     serde.serialize_message(&typed_ros_message, &serialized_message);
     const auto& rcl_serialized_message = serialized_message.get_rcl_serialized_message();
-    const auto begin = rcl_serialized_message.buffer;
-    const auto end = begin + rcl_serialized_message.buffer_length;
+    const auto* begin = rcl_serialized_message.buffer;
+    const auto* end = begin + rcl_serialized_message.buffer_length;
     {{ destination }}.value.assign(begin, end);
     {{ destination }}.type_name = "{{ spec.type | as_ros_base_type }}";
 }
@@ -284,7 +284,7 @@ for (const auto& blob : {{ source }}) {
     if (!{{ source }}.UnpackTo(&typed_message)) {
         throw std::runtime_error("Failed to unpack protobuf, internal error");
     }
-    convert(typed_message, &{{ destination }});
+    Convert(typed_message, &{{ destination }});
 }
     {%- elif spec.annotations.get("type-casts") -%}
         {#- Protobuf message must be unpacked according to type, then converted, then serialized for assignment. -#}
@@ -300,13 +300,13 @@ for (const auto& blob : {{ source }}) {
            throw std::runtime_error("Failed to unpack any protobuf, internal error");
         }
         auto typed_ros_message = {{ ros_type_name | as_ros_cpp_type }}();
-        convert(typed_protobuf_message, &typed_ros_message);
+        Convert(typed_protobuf_message, &typed_ros_message);
         const auto serializer = rclcpp::Serialization<{{ ros_type_name | as_ros_cpp_type }}>{};
         rclcpp::SerializedMessage serialized_message;
         serializer.serialize_message(&typed_ros_message, &serialized_message);
         const auto& rcl_serialized_message = serialized_message.get_rcl_serialized_message();
-        const auto begin = rcl_serialized_message.buffer;
-        const auto end = begin + rcl_serialized_message.buffer_length;
+        const auto* begin = rcl_serialized_message.buffer;
+        const auto* end = begin + rcl_serialized_message.buffer_length;
         {{ destination }}.value.assign(begin, end);
         {{ destination }}.type_name = "{{ ros_type_name }}";
         {%- endfor %}
@@ -338,20 +338,19 @@ switch ({{ source_case }}) {
         break;
 }
     {%- else -%}{#- Handle the generic Protobuf message case (because it is appropriate or because we do not know any better). -#}
-convert({{ source }}, &{{ destination }});
+Convert({{ source }}, &{{ destination }});
     {%- endif -%}
 {%- endmacro %}
 
-namespace {{ package_name }} {
-namespace conversions {
+namespace {{ package_name }}::conversions {
 
-using proto2ros::conversions::convert;
+using proto2ros::conversions::Convert;
 {%- for namespace in config.inline_cpp_namespaces %}
-using {{ namespace }}::convert;
+using {{ namespace }}::Convert;
 {%- endfor %}
 
 {% for spec in message_specifications if spec.annotations.get("proto-class") == "message" and not spec.annotations.get("map-entry") -%}
-void convert(const {{ spec.base_type | string | as_ros_cpp_type }}& ros_msg, {{ spec.annotations["proto-type"] | as_pb2_cpp_type }}* proto_msg) {
+void Convert(const {{ spec.base_type | string | as_ros_cpp_type }}& ros_msg, {{ spec.annotations["proto-type"] | as_pb2_cpp_type }}* proto_msg) {
     assert(proto_msg != nullptr);
     {%- if spec.fields %}
     proto_msg->Clear();
@@ -359,7 +358,7 @@ void convert(const {{ spec.base_type | string | as_ros_cpp_type }}& ros_msg, {{ 
             {%- set source = "ros_msg." + field_spec.name -%}
             {%- set destination = "proto_msg->mutable_" + field_spec.annotations.get("proto-name", field_spec.name).lower() + "()" -%}
             {%- if field_spec.annotations["optional"] %}{#- Check for field presence before use. #}
-    if (ros_msg.has_field & {{ spec.base_type | string | as_ros_cpp_type }}::{{ field_spec.name | upper }}_FIELD_SET) {
+    if ((ros_msg.has_field & {{ spec.base_type | string | as_ros_cpp_type }}::{{ field_spec.name | upper }}_FIELD_SET) != 0) {
         {{ ros_to_proto_field_code(source, destination, field_spec) | indent(8) }}
     }
             {%- else %}
@@ -367,16 +366,16 @@ void convert(const {{ spec.base_type | string | as_ros_cpp_type }}& ros_msg, {{ 
             {%- endif -%}
         {%- endfor -%}
     {% else -%}{#- Handle empty message. #}
-    (void)ros_msg;
-    (void)proto_msg;
+    std::ignore = ros_msg;
+    std::ignore = proto_msg;
     {%- endif %}
 }
 
-void convert(const {{ spec.annotations["proto-type"] | as_pb2_cpp_type }}& proto_msg, {{ spec.base_type | string | as_ros_cpp_type }}* ros_msg) {
+void Convert(const {{ spec.annotations["proto-type"] | as_pb2_cpp_type }}& proto_msg, {{ spec.base_type | string | as_ros_cpp_type }}* ros_msg) {
     assert(ros_msg != nullptr);
     {%- if spec.fields -%}
         {%- if spec.annotations["has-optionals"] %}
-    ros_msg->has_field = 0u;
+    ros_msg->has_field = 0U;
         {%- endif -%}
         {%- for field_spec in spec.fields if field_spec.name != "has_field" -%}
            {%- set source = "proto_msg." + field_spec.annotations.get("proto-name", field_spec.name).lower() + "()" -%}
@@ -391,11 +390,10 @@ void convert(const {{ spec.annotations["proto-type"] | as_pb2_cpp_type }}& proto
             {%- endif -%}
         {%- endfor -%}
     {% else -%}{#- Handle empty message. #}
-    (void)proto_msg;
-    (void)ros_msg;
+    std::ignore = proto_msg;
+    std::ignore = ros_msg;
     {%- endif %}
 }
 
 {% endfor -%}
-}  // namespace conversions
-}  // namespace {{ package_name }}
+}  // namespace {{ package_name }}::conversions
