@@ -47,9 +47,9 @@ for (const auto& {{ input_item }} : {{ source }}) {
     auto* {{ output_item }} = &(*{{ destination }})[{{ input_item }}.key];
     {% for field_spec in type_spec.fields if field_spec.name == "value" %}
         {%- if not field_spec.type.is_primitive_type() -%}
-            {%- set field_type_spec = known_message_specifications.get(to_ros_base_type(spec.type)) -%}
+            {%- set field_type_spec = known_message_specifications.get(to_ros_base_type(field_spec.type)) -%}
             {%- if field_type_spec and field_type_spec.annotations.get("proto-class") == "enum" -%}
-    *{{ output_item }} = static_cast<{{ field_type_spec.annotations["proto-type"] | as_pb2_cpp_type }}>({{ input_item }}.value);
+    *{{ output_item }} = static_cast<{{ field_type_spec.annotations["proto-type"] | as_pb2_cpp_type }}>({{ input_item }}.value.value);
             {%- else -%}{#- Handle message case. -#}
     {{ ros_to_proto_composite_field_code_block(input_item + ".value", output_item, field_spec) | indent(4) }}
             {%- endif -%}
@@ -169,7 +169,7 @@ if ({{ source }}.type_name == "{{ ros_type_name }}") {
 switch ({{ source }}.{{ tag_field_spec.name }} != 0 ? {{ source }}.{{ tag_field_spec.name }} : {{ source }}.{{ tag_field_spec.annotations["alias"] }}) {
         {%- for tag_spec, member_spec in type_spec.annotations["tagged"] -%}
             {%- set source_member = source + "." + member_spec.name -%}
-            {%- set destination_member = destination.rpartition("->")[0] + "->mutable_" + member_spec.annotations.get("proto-name", member_spec.name) + "()" %}
+            {%- set destination_member = destination.rpartition("->")[0] + "->mutable_" + to_pb2_cpp_name(member_spec.annotations.get("proto-cpp-name", member_spec.name)) + "()" %}
     case {{ type_spec.base_type | string | as_ros_cpp_type }}::{{ tag_spec.name }}:
         {{ ros_to_proto_field_code(source_member, destination_member, member_spec) | indent(8) }}
         break;
@@ -324,9 +324,9 @@ for (const auto& blob : {{ source }}) {
 switch ({{ source_case }}) {
         {%- for tag_spec, member_spec in type_spec.annotations["tagged"] %}
             {%- set parent_type_spec = type_spec.annotations["parent-spec"] -%}
-            {%- set source_member = source_parent + "." + member_spec.annotations.get("proto-name", member_spec.name) + "()" -%}
+            {%- set source_member = source_parent + "." + to_pb2_cpp_name(member_spec.annotations.get("proto-cpp-name", member_spec.name)) + "()" -%}
             {%- set destination_member = destination + "." + member_spec.name %}
-    case {{ parent_type_spec.annotations["proto-type"] | as_pb2_cpp_type }}::{{ member_spec.name | to_hungarian_notation }}:
+    case {{ parent_type_spec.annotations["proto-type"] | as_pb2_cpp_type }}::{{ member_spec.annotations.get("proto-cpp-name", member_spec.name) | to_hungarian_notation }}:
         {{ proto_to_ros_field_code(source_member, destination_member, member_spec) | indent(8) }}
         {{ destination }}.{{ tag_field_spec.name }} = {{ type_spec.base_type | string | as_ros_cpp_type }}::{{ tag_spec.name }};
         {{ destination }}.{{ tag_field_spec.annotations["alias"] }} = {{ destination }}.{{ tag_field_spec.name }};
@@ -356,7 +356,7 @@ void Convert(const {{ spec.base_type | string | as_ros_cpp_type }}& ros_msg, {{ 
     proto_msg->Clear();
         {%- for field_spec in spec.fields if field_spec.name != "has_field" %}
             {%- set source = "ros_msg." + field_spec.name -%}
-            {%- set destination = "proto_msg->mutable_" + field_spec.annotations.get("proto-name", field_spec.name).lower() + "()" -%}
+            {%- set destination = "proto_msg->mutable_" + to_pb2_cpp_name(field_spec.annotations.get("proto-cpp-name", field_spec.name)) + "()" -%}
             {%- if field_spec.annotations["optional"] %}{#- Check for field presence before use. #}
     if ((ros_msg.has_field & {{ spec.base_type | string | as_ros_cpp_type }}::{{ field_spec.name | upper }}_FIELD_SET) != 0) {
         {{ ros_to_proto_field_code(source, destination, field_spec) | indent(8) }}
@@ -378,10 +378,10 @@ void Convert(const {{ spec.annotations["proto-type"] | as_pb2_cpp_type }}& proto
     ros_msg->has_field = 0U;
         {%- endif -%}
         {%- for field_spec in spec.fields if field_spec.name != "has_field" -%}
-           {%- set source = "proto_msg." + field_spec.annotations.get("proto-name", field_spec.name).lower() + "()" -%}
+           {%- set source = "proto_msg." + to_pb2_cpp_name(field_spec.annotations.get("proto-cpp-name", field_spec.name)) + "()" -%}
            {%- set destination = "ros_msg->" + field_spec.name -%}
            {%- if field_spec.annotations["optional"] -%}{#- Check for field presence before use. #}
-    if (proto_msg.has_{{ field_spec.annotations.get("proto-name", field_spec.name).lower() }}()) {
+    if (proto_msg.has_{{ field_spec.annotations.get("proto-cpp-name", field_spec.name) | as_pb2_cpp_name }}()) {
         {{ proto_to_ros_field_code(source, destination, field_spec) | indent(8) }}
         ros_msg->has_field |= {{ spec.base_type | string | as_ros_cpp_type }}::{{ field_spec.name | upper }}_FIELD_SET;
     }

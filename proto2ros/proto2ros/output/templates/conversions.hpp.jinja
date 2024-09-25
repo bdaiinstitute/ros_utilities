@@ -2,8 +2,7 @@
 // See conversions.hpp.jinja template in the proto2ros.output.templates Python module.
 
 #pragma once
-
-{%- for header in config.cpp_headers %}
+{% for header in config.cpp_headers|sort %}
 #include <{{ header }}>
 {%- endfor %}
 
@@ -28,6 +27,5 @@ inline {{ spec.annotations["proto-type"] | as_pb2_cpp_type }} Convert(const {{ s
     Convert(ros_msg, &proto_msg);
     return proto_msg;
 }
-
-{% endfor -%}
+{% endfor %}
 }  // namespace {{ package_name }}::conversions

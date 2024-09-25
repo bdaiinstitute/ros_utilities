@@ -160,6 +160,13 @@ CPP_RESERVED_KEYWORD_SET = {
 RESERVED_KEYWORD_SET = PYTHON_RESERVED_KEYWORD_SET | CPP_RESERVED_KEYWORD_SET
 
 
+def to_protobuf_field_name(name: str) -> str:
+    """Transform a given name to be a valid Protobuf message field name."""
+    if name in RESERVED_KEYWORD_SET:
+        return name + "_"
+    return name
+
+
 def to_ros_field_name(name: str) -> str:
     """Transform a given name to be a valid ROS message field name."""
     name = name.lower()
