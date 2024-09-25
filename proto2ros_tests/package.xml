@@ -19,6 +19,7 @@ Copyright (c) 2023 Boston Dynamics AI Institute LLC. All rights reserved.
   <depend>protobuf-dev</depend>
   <depend>proto2ros</depend>
 
+  <depend>rclcpp</depend>
   <depend>builtin_interfaces</depend>
   <depend>geometry_msgs</depend>
   <depend>sensor_msgs</depend>
