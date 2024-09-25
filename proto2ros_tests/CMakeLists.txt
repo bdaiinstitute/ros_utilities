@@ -28,6 +28,8 @@ find_package(ament_cmake REQUIRED)
 find_package(builtin_interfaces REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(rclcpp REQUIRED)
+
 find_package(proto2ros REQUIRED)
 
 find_package(rosidl_default_generators REQUIRED)
@@ -70,8 +72,9 @@ target_include_directories(${PROJECT_NAME}_conversions PUBLIC
 )
 rosidl_get_typesupport_target(${PROJECT_NAME}_cpp_msgs ${PROJECT_NAME} "rosidl_typesupport_cpp")
 target_link_libraries(${PROJECT_NAME}_conversions
-  ${${PROJECT_NAME}_cpp_msgs} ${PROJECT_NAME}_proto
-  proto2ros::proto2ros_conversions protobuf::libprotobuf)
+  ${${PROJECT_NAME}_cpp_msgs} ${PROJECT_NAME}_proto protobuf::libprotobuf)
+ament_target_dependencies(${PROJECT_NAME}_conversions
+  builtin_interfaces geometry_msgs sensor_msgs proto2ros rclcpp)
 
 rosidl_generated_python_package_add(
   ${PROJECT_NAME}_additional_modules

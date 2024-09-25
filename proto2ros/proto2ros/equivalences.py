@@ -295,7 +295,8 @@ def translate_field(
         field.annotations["optional"] = descriptor.label != FieldDescriptorProto.LABEL_REPEATED
     else:
         raise ValueError(f"unknown proto syntax: {source.syntax}")
-    field.annotations["proto-name"] = descriptor.name
+    field.annotations["proto-cpp-name"] = descriptor.name.lower()
+    field.annotations["proto-py-name"] = descriptor.name
     ros_type_name = to_ros_base_type(field_type)
     if type_name != ".google.protobuf.Any" and ros_type_name == "proto2ros/AnyProto":
         type_name = "some"
@@ -404,6 +405,8 @@ def compute_equivalence_for_message(
             field = Field(oneof_type, oneof_name)
             # oneof wrapper field cannot itself be optional
             field.annotations["optional"] = False
+            field.annotations["proto-cpp-name"] = oneof_decl.name
+            field.annotations["proto-py-name"] = oneof_decl.name
             oneof_location = resolve(source, oneof_path, location)
             leading_comments = extract_leading_comments(oneof_location)
             if leading_comments:

@@ -16,7 +16,7 @@ Copyright (c) 2023 Boston Dynamics AI Institute LLC. All rights reserved.
   <buildtool_export_depend>rosidl_default_generators</buildtool_export_depend>
   <buildtool_export_depend>ament_cmake_mypy</buildtool_export_depend>
 
-  <depend>clang-tidy</depend>
+  <build_depend>clang-tidy</build_depend>
 
   <depend>protobuf</depend>
   <depend>protobuf-dev</depend>

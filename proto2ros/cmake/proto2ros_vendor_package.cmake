@@ -15,11 +15,28 @@
 macro(proto2ros_vendor_package target)
   set(options NO_LINT)
   set(one_value_keywords PACKAGE_NAME)
-  set(multi_value_keywords PROTOS IMPORT_DIRS CONFIG_OVERLAYS ROS_DEPENDENCIES PYTHON_MODULES PYTHON_PACKAGES)
+  set(multi_value_keywords PROTOS IMPORT_DIRS CONFIG_OVERLAYS ROS_DEPENDENCIES CPP_DEPENDENCIES CPP_INCLUDES CPP_SOURCES PYTHON_MODULES PYTHON_PACKAGES)
   cmake_parse_arguments(ARG "${options}" "${one_value_keywords}" "${multi_value_keywords}" ${ARGN})
 
   if(NOT ARG_PACKAGE_NAME)
     set(ARG_PACKAGE_NAME ${PROJECT_NAME})
+  endif()
+
+  get_filename_component(package_path "${ARG_PACKAGE_NAME}" ABSOLUTE)
+  if(EXISTS "${package_path}/__init__.py")
+    list(APPEND ARG_PYTHON_PACKAGES ${ARG_PACKAGE_NAME})
+  endif()
+
+  if(NOT ARG_CPP_INCLUDES)
+    if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/${ARG_PACKAGE_NAME}")
+      list(APPEND ARG_CPP_INCLUDES "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    endif()
+  endif()
+
+  if(NOT ARG_CPP_SOURCES)
+    if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/${ARG_PACKAGE_NAME}" AND IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src")
+      file(GLOB ARG_CPP_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc")
+    endif()
   endif()
 
   set(proto2ros_generate_OPTIONS)
@@ -35,7 +52,8 @@ macro(proto2ros_vendor_package target)
     CONFIG_OVERLAYS ${ARG_CONFIG_OVERLAYS}
     INTERFACES_OUT_VAR ros_messages
     PYTHON_OUT_VAR py_sources
-    CPP_OUT_VAR cpp_sources
+    CPP_OUT_VAR generated_cpp_sources
+    INCLUDE_OUT_VAR generated_cpp_include_dir
     ${proto2ros_generate_OPTIONS}
   )
 
@@ -45,11 +63,6 @@ macro(proto2ros_vendor_package target)
   )
   add_dependencies(${target} ${target}_messages_gen)
 
-  get_filename_component(package_path "${ARG_PACKAGE_NAME}" ABSOLUTE)
-  if(EXISTS "${package_path}/__init__.py")
-    list(APPEND ARG_PYTHON_PACKAGES ${ARG_PACKAGE_NAME})
-  endif()
-
   rosidl_generated_python_package_add(
     ${target}_additional_modules
     MODULES ${ARG_PYTHON_MODULES} ${py_sources}
@@ -57,27 +70,55 @@ macro(proto2ros_vendor_package target)
     DESTINATION ${target}
   )
 
-  find_package(rclcpp REQUIRED)
-  add_library(${target}_conversions ${cpp_sources})
+  add_library(${target}_conversions SHARED ${generated_cpp_sources} ${ARG_CPP_SOURCES})
+  target_compile_features(${target}_conversions PRIVATE cxx_std_17)
+  # NOTE: conversion APIs cannot ignore deprecated fields, so deprecation warnings must be disabled
+  target_compile_options(${target}_conversions PRIVATE -Wno-deprecated -Wno-deprecated-declarations)
+  list(APPEND build_include_directories "$<BUILD_INTERFACE:${generated_cpp_include_dir}>")
+  foreach(cpp_include_dir ${ARG_CPP_INCLUDES})
+    list(APPEND build_include_directories "$<BUILD_INTERFACE:${cpp_include_dir}>")
+  endforeach()
+  target_include_directories(${target}_conversions PUBLIC
+    ${build_include_directories} "$<INSTALL_INTERFACE:include/${PROJECT_NAME}>"
+  )
   rosidl_get_typesupport_target(cpp_interfaces ${target} "rosidl_typesupport_cpp")
-  target_link_libraries(${target}_conversions ${cpp_interfaces})
+  target_link_libraries(${target}_conversions ${cpp_interfaces} ${ARG_CPP_DEPENDENCIES})
   ament_target_dependencies(${target}_conversions
     ${ARG_ROS_DEPENDENCIES} builtin_interfaces proto2ros rclcpp)
 
-  set(header_files ${cpp_sources})
-  list(FILTER header_files INCLUDE REGEX ".*\.hpp$")
+  find_program(CLANG_TIDY_EXECUTABLE NAMES "clang-tidy")
+  if(BUILD_TESTING AND NOT ARG_NO_LINT AND CLANG_TIDY_EXECUTABLE)
+    list(APPEND clang_tidy_header_regexes "${generated_cpp_include_dir}/.*hpp")
+    foreach(cpp_include_dir ARG_CPP_INCLUDES)
+      list(APPEND clang_tidy_header_regexes "${cpp_include_dir}/.*hpp")
+    endforeach()
+    list(JOIN clang_tidy_header_regexes "|" clang_tidy_header_filter)
+    set(CXX_CLANG_TIDY "${CLANG_TIDY_EXECUTABLE}"
+      "-header-filter='^(${clang_tidy_header_filter})$'"
+      "-checks=-clang-diagnostic-ignored-optimization-argument")
+    set_target_properties(${target}_conversions PROPERTIES
+      CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON CXX_CLANG_TIDY "${CXX_CLANG_TIDY}")
+  endif()
+
+  set(generated_header_files ${generated_cpp_sources})
+  list(FILTER generated_header_files INCLUDE REGEX ".*\.hpp$")
   install(
-    FILES ${header_files}
-    DESTINATION include/${PROJECT_NAME}
+    FILES ${generated_header_files}
+    DESTINATION include/${PROJECT_NAME}/${ARG_PACKAGE_NAME}/
   )
-  ament_export_include_directories("include/${PROJECT_NAME}")
+  foreach(cpp_include_dir ${ARG_CPP_INCLUDES})
+    install(
+      DIRECTORY ${cpp_include_dir}/
+      DESTINATION include/${PROJECT_NAME}/
+    )
+  endforeach()
 
   install(
     TARGETS ${target}_conversions
-    EXPORT export_${target}_conversions
+    EXPORT ${PROJECT_NAME}
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin
   )
-  ament_export_targets(export_${target}_conversions)
+  ament_export_targets(${PROJECT_NAME})
 endmacro()

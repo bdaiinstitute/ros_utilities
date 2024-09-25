@@ -149,7 +149,7 @@ function(proto2ros_generate target)
   set(python_sources ${output_files})
   list(FILTER python_sources INCLUDE REGEX ".*\.py$")
   set(cpp_sources ${output_files})
-  list(FILTER cpp_sources INCLUDE REGEX ".*\.cpp$")
+  list(FILTER cpp_sources INCLUDE REGEX ".*\.[ch]pp$")
 
   if(BUILD_TESTING AND NOT ARG_NO_LINT AND ament_cmake_mypy_FOUND)
     set(MYPY_PATH "${APPEND_PYTHONPATH}:$ENV{PYTHONPATH}")

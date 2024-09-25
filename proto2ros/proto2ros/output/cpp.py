@@ -3,6 +3,7 @@
 """This module provides APIs to write C++ conversion code."""
 
 import os
+import re
 from typing import List, Optional, Tuple, Union
 
 import inflection
@@ -10,7 +11,7 @@ import jinja2
 from rosidl_adapter.parser import BaseType, MessageSpecification
 
 from proto2ros.configuration import Configuration
-from proto2ros.utilities import rreplace, to_ros_base_type
+from proto2ros.utilities import rreplace, to_protobuf_field_name, to_ros_base_type
 
 
 def to_pb2_cpp_header(source_path: os.PathLike) -> str:
@@ -62,7 +63,7 @@ def to_hungarian_notation(name: str) -> str:
 
     E.g. some_name_of_mine translates to kSomeNameOfMine.
     """
-    return "k" + inflection.camelize(name)
+    return "k" + inflection.camelize(re.sub(r"([0-9])([a-z])", r"\1_\2", name))
 
 
 def dump_conversions_cpp_sources(
@@ -85,12 +86,14 @@ def dump_conversions_cpp_sources(
         the conversion C++ header and source files' content, in that order.
     """
     env = jinja2.Environment(loader=jinja2.PackageLoader("proto2ros.output"))
+    env.globals["to_pb2_cpp_name"] = to_protobuf_field_name
     env.globals["itemize_cpp_identifier"] = itemize_cpp_identifier
     env.globals["to_ros_base_type"] = to_ros_base_type
     env.globals["rreplace"] = rreplace
     env.filters["as_ros_base_type"] = to_ros_base_type
     env.filters["as_ros_cpp_type"] = to_ros_cpp_type
     env.filters["as_pb2_cpp_type"] = to_pb2_cpp_type
+    env.filters["as_pb2_cpp_name"] = to_protobuf_field_name
     env.filters["to_hungarian_notation"] = to_hungarian_notation
     env.filters["rreplace"] = rreplace
     cpp_conversions_header_template = env.get_template("conversions.hpp.jinja")
