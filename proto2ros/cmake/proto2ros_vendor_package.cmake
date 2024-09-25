@@ -107,7 +107,10 @@ macro(proto2ros_vendor_package target)
     DESTINATION include/${PROJECT_NAME}/${ARG_PACKAGE_NAME}/
   )
   foreach(cpp_include_dir ${ARG_CPP_INCLUDES})
-    install(DIRECTORY ${cpp_include_dir}/ DESTINATION include/)
+    install(
+      DIRECTORY ${cpp_include_dir}/
+      DESTINATION include/${PROJECT_NAME}/
+    )
   endforeach()
 
   install(
