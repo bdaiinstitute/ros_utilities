@@ -113,7 +113,7 @@ class Tape(Generic[T]):
             """Try to read data from the stream.
 
             Returns:
-                data if the read is successful and ``None``
+                data if the read is successful, and ``None``
                 if there is nothing to be read or the stream
                 is interrupted.
             """
@@ -124,27 +124,25 @@ class Tape(Generic[T]):
                 return None
             return data
 
-        def read(self, timeout_sec: Optional[float] = None) -> U:
+        def read(self, timeout_sec: Optional[float] = None) -> Optional[U]:
             """Read data from the stream.
 
             Args:
                 timeout_sec: optional read timeout, in seconds.
 
             Returns:
-                data read
+                data if the read is successful, and ``None``
+                if the stream is interrupted.
 
             Raises:
-                InterruptedError if the read if the read is successful and ``None``
-                if the read times out or is interrupted.
+                TImeoutError if the read times out.
             """
             try:
                 data = self._queue.get(timeout=timeout_sec)
-                self._queue.task_done()
-                if data is None:
-                    raise InterruptedError()
-                return data
             except queue.Empty as e:
                 raise TimeoutError() from e
+            self._queue.task_done()
+            return data
 
         def interrupt(self) -> None:
             """Interrupt the stream and wake up the reader."""
