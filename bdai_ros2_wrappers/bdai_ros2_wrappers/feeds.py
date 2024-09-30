@@ -1,6 +1,6 @@
 # Copyright (c) 2024 Boston Dynamics AI Institute Inc.  All rights reserved.
 
-from typing import Any, Callable, Generic, Iterable, Iterator, List, Optional, TypeVar
+from typing import Any, Callable, Generator, Generic, Iterable, List, Literal, Optional, TypeVar, Union, overload
 
 import tf2_ros
 from rclpy.node import Node
@@ -47,7 +47,7 @@ class MessageFeed(Generic[MessageT]):
     @property
     def history(self) -> List[MessageT]:
         """Gets the entire history of messages received so far."""
-        return list(self._tape.content())
+        return self._tape.content(greedy=True)
 
     @property
     def latest(self) -> Optional[MessageT]:
@@ -80,29 +80,71 @@ class MessageFeed(Generic[MessageT]):
         tunnel.registerCallback(callback)
         return tunnel
 
+    @overload
     def stream(
         self,
         *,
         forward_only: bool = False,
+        expunge: bool = False,
         buffer_size: Optional[int] = None,
         timeout_sec: Optional[float] = None,
-    ) -> Iterator[MessageT]:
+    ) -> Generator[MessageT, None, None]:
+        """Overload for plain streaming."""
+
+    @overload
+    def stream(
+        self,
+        *,
+        greedy: Literal[True],
+        forward_only: bool = False,
+        expunge: bool = False,
+        buffer_size: Optional[int] = None,
+        timeout_sec: Optional[float] = None,
+    ) -> Generator[List[MessageT], None, None]:
+        """Overload for greedy, batched streaming."""
+
+    def stream(
+        self,
+        *,
+        greedy: bool = False,
+        forward_only: bool = False,
+        expunge: bool = False,
+        buffer_size: Optional[int] = None,
+        timeout_sec: Optional[float] = None,
+    ) -> Generator[Union[MessageT, List[MessageT]], None, None]:
         """Iterates over messages as they come.
 
         Iteration stops when the given timeout expires or when the associated context
         is shutdown. Note that iterating over the message stream is a blocking operation.
 
         Args:
+            greedy: if true, greedily batch messages as it becomes available.
             forward_only: whether to ignore previosuly received messages.
+            expunge: if true, wipe out the message history after reading
+            if it applies (i.e. non-forward only streams).
             buffer_size: optional maximum size for the incoming messages buffer.
             If none is provided, the buffer will be grow unbounded.
             timeout_sec: optional timeout, in seconds, for a new message to be received.
 
         Returns:
-            a lazy iterator over messages.
+            a lazy iterator over messages, one message at a time or in batches if greedy.
+
+        Raises:
+            TimeoutError: if streaming times out waiting for a new message.
         """
+        if greedy:
+            # use boolean literals to help mypy
+            return self._tape.content(
+                follow=True,
+                greedy=True,
+                expunge=expunge,
+                forward_only=forward_only,
+                buffer_size=buffer_size,
+                timeout_sec=timeout_sec,
+            )
         return self._tape.content(
             follow=True,
+            expunge=expunge,
             forward_only=forward_only,
             buffer_size=buffer_size,
             timeout_sec=timeout_sec,

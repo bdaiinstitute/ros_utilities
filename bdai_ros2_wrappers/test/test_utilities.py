@@ -1,10 +1,60 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 
 import argparse
+import contextlib
+import itertools
 
 import pytest
 
 from bdai_ros2_wrappers.utilities import Tape, either_or, ensure, namespace_with
+
+
+def test_tape_content_iteration() -> None:
+    tape: Tape[int] = Tape()
+    expected_sequence = list(range(10))
+    for i in expected_sequence:
+        tape.write(i)
+    assert list(tape.content()) == expected_sequence
+
+
+def test_tape_content_destructive_iteration() -> None:
+    tape: Tape[int] = Tape()
+    expected_sequence = list(range(10))
+    for i in expected_sequence:
+        tape.write(i)
+    assert list(tape.content(expunge=True)) == expected_sequence
+    assert len(list(tape.content())) == 0
+
+
+def test_tape_content_greedy_iteration() -> None:
+    tape: Tape[int] = Tape()
+    expected_sequence = list(range(10))
+    for i in expected_sequence:
+        tape.write(i)
+    assert tape.content(greedy=True) == expected_sequence
+
+
+def test_tape_content_following() -> None:
+    tape: Tape[int] = Tape()
+    expected_sequence = list(range(10))
+    for i in expected_sequence:
+        tape.write(i)
+    with contextlib.closing(tape.content(follow=True)) as stream:
+        assert list(itertools.islice(stream, 10)) == expected_sequence
+        tape.write(10)
+        assert next(stream) == 10
+
+
+def test_tape_content_greedy_following() -> None:
+    tape: Tape[int] = Tape()
+    expected_sequence = list(range(10))
+    for i in expected_sequence:
+        tape.write(i)
+    with contextlib.closing(tape.content(greedy=True, follow=True)) as stream:
+        assert next(stream) == expected_sequence
+        tape.write(10)
+        tape.write(20)
+        assert next(stream) == [10, 20]
 
 
 def test_tape_drops_unused_streams() -> None:
