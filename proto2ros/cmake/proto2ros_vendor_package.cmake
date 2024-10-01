@@ -120,5 +120,6 @@ macro(proto2ros_vendor_package target)
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin
   )
+  ament_export_dependencies(builtin_interfaces proto2ros rclcpp)
   ament_export_targets(${PROJECT_NAME})
 endmacro()
