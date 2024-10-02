@@ -1,12 +1,30 @@
 # Copyright (c) 2024 Boston Dynamics AI Institute Inc.  All rights reserved.
 
-from typing import Any, Callable, Generator, Generic, Iterable, List, Literal, Optional, TypeVar, Union, overload
+from typing import (
+    Any,
+    Callable,
+    Generator,
+    Generic,
+    Iterable,
+    List,
+    Literal,
+    Optional,
+    TypeVar,
+    Union,
+    overload,
+)
 
 import tf2_ros
 from rclpy.node import Node
 
 import bdai_ros2_wrappers.scope as scope
-from bdai_ros2_wrappers.filters import Adapter, ApproximateTimeSynchronizer, Filter, TransformFilter, Tunnel
+from bdai_ros2_wrappers.filters import (
+    Adapter,
+    ApproximateTimeSynchronizer,
+    Filter,
+    TransformFilter,
+    Tunnel,
+)
 from bdai_ros2_wrappers.futures import FutureLike
 from bdai_ros2_wrappers.utilities import Tape
 
@@ -36,7 +54,9 @@ class MessageFeed(Generic[MessageT]):
             history_length = 1
         self._link = link
         self._tape: Tape[MessageT] = Tape(history_length)
-        self._link.registerCallback(lambda *msgs: self._tape.write(msgs if len(msgs) > 1 else msgs[0]))
+        self._link.registerCallback(
+            lambda *msgs: self._tape.write(msgs if len(msgs) > 1 else msgs[0]),
+        )
         node.context.on_shutdown(self._tape.close)
 
     @property
@@ -59,7 +79,10 @@ class MessageFeed(Generic[MessageT]):
         """Gets the future to the next message yet to be received."""
         return self._tape.future_write
 
-    def matching_update(self, matching_predicate: Callable[[MessageT], bool]) -> FutureLike[MessageT]:
+    def matching_update(
+        self,
+        matching_predicate: Callable[[MessageT], bool],
+    ) -> FutureLike[MessageT]:
         """Gets a future to the next matching message yet to be received.
 
         Args:
