@@ -101,6 +101,34 @@ def test_adapted_message_feed(ros: ROSAwareScope) -> None:
     assert position_message is expected_pose_message.pose.position
 
 
+def test_masked_message_feed(ros: ROSAwareScope) -> None:
+    pose_message_feed = MessageFeed[PoseStamped](Filter())
+    position_masking_feed = AdaptedMessageFeed[Point](
+        pose_message_feed,
+        fn=lambda message: message if message.pose.position.x > 0.0 else None,
+    )
+    expected_pose_message0 = PoseStamped()
+    expected_pose_message0.header.frame_id = "odom"
+    expected_pose_message0.header.stamp.sec = 1
+    expected_pose_message0.pose.position.x = -1.0
+    expected_pose_message0.pose.position.z = -1.0
+    expected_pose_message0.pose.orientation.w = 1.0
+    pose_message_feed.link.signalMessage(expected_pose_message0)
+    assert position_masking_feed.latest is None
+
+    expected_pose_message1 = PoseStamped()
+    expected_pose_message1.header.frame_id = "odom"
+    expected_pose_message1.header.stamp.sec = 2
+    expected_pose_message1.pose.position.x = 1.0
+    expected_pose_message1.pose.position.z = -1.0
+    expected_pose_message1.pose.orientation.w = 1.0
+    pose_message_feed.link.signalMessage(expected_pose_message1)
+
+    pose_message: Point = ensure(position_masking_feed.latest)
+    # no copies are expected, thus an identity check is valid
+    assert pose_message is expected_pose_message1
+
+
 def test_message_feed_recalls(ros: ROSAwareScope) -> None:
     pose_message_feed = MessageFeed[PoseStamped](Filter())
 

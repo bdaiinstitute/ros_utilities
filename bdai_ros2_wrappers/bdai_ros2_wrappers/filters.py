@@ -98,7 +98,10 @@ class ApproximateTimeSynchronizer(Filter):
         to the underlying `message_filters.ApproximateTimeSynchronizer`.
         """
         super().__init__()
-        self._unsafe_synchronizer = message_filters.ApproximateTimeSynchronizer(*args, **kwargs)
+        self._unsafe_synchronizer = message_filters.ApproximateTimeSynchronizer(
+            *args,
+            **kwargs,
+        )
         self._unsafe_synchronizer.registerCallback(self.signalMessage)
 
     def __getattr__(self, name: str) -> Any:
@@ -175,7 +178,9 @@ class TransformFilter(Filter):
                     time,
                 )
                 self._ongoing_wait_time = time
-                self._ongoing_wait.add_done_callback(functools.partial(self._wait_callback, messages))
+                self._ongoing_wait.add_done_callback(
+                    functools.partial(self._wait_callback, messages),
+                )
             else:
                 self._ongoing_wait_time = None
                 self._ongoing_wait = None
@@ -204,7 +209,9 @@ class TransformFilter(Filter):
                     time,
                 )
                 self._ongoing_wait_time = time
-                self._ongoing_wait.add_done_callback(functools.partial(self._wait_callback, messages))
+                self._ongoing_wait.add_done_callback(
+                    functools.partial(self._wait_callback, messages),
+                )
 
 
 class Adapter(Filter):
@@ -215,7 +222,9 @@ class Adapter(Filter):
 
         Args:
             upstream: the upstream message filter.
-            fn: adapter implementation as a callable.
+            fn: a callable that takes messages as arguments and returns some
+            data to be signaled (i.e. propagated down the filter chain).
+            If none is returned, no message signaling will occur.
         """
         super().__init__()
         self.fn = fn
@@ -223,7 +232,9 @@ class Adapter(Filter):
 
     def add(self, *messages: Any) -> None:
         """Adds new `messages` to the adapter."""
-        self.signalMessage(self.fn(*messages))
+        result = self.fn(*messages)
+        if result is not None:
+            self.signalMessage(result)
 
 
 class Tunnel(Filter):
