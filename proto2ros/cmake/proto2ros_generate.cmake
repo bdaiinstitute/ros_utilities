@@ -25,7 +25,7 @@ function(proto2ros_generate target)
   cmake_parse_arguments(
     ARG "NO_LINT"
     "PACKAGE_NAME;CONFIG_FILE;INTERFACES_OUT_VAR;PYTHON_OUT_VAR;CPP_OUT_VAR;INCLUDE_OUT_VAR"
-    "PROTOS;PROTO_DESCRIPTORS;IMPORT_DIRS;CONFIG_OVERLAYS;APPEND_PYTHONPATH" ${ARGN})
+    "PROTOS;PROTO_DESCRIPTORS;IMPORT_DIRS;CONFIG_OVERLAYS;APPEND_PYTHONPATH;DEPENDS" ${ARGN})
   if(NOT ARG_PACKAGE_NAME)
     set(ARG_PACKAGE_NAME ${PROJECT_NAME})
   endif()
@@ -138,7 +138,7 @@ function(proto2ros_generate target)
       ${PYTHON_EXECUTABLE} -m proto2ros.cli.generate ${PROTO2ROS_GENERATE_OPTIONS} ${ARG_PACKAGE_NAME} ${PROTO_DESCRIPTORS}
     COMMAND ${CMAKE_COMMAND} -E compare_files "${OUTPUT_PATH}/manifest.txt" "${OUTPUT_PATH}/manifest.orig.txt"
     COMMENT "Generate Protobuf <-> ROS interop interfaces (must reconfigure if the cardinality of the output set changes)"
-    DEPENDS ${PROTO_DESCRIPTORS}
+    DEPENDS ${PROTO_DESCRIPTORS} ${ARG_DEPENDS}
     VERBATIM
   )
   add_custom_target(${target} DEPENDS ${output_files})
