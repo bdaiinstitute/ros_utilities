@@ -45,9 +45,7 @@ proto2ros_generate(
   CPP_OUT_VAR cpp_sources
   INCLUDE_OUT_VAR cpp_include_dir
   APPEND_PYTHONPATH "${PROTO_OUT_DIR}"
-)
-add_dependencies(
-  ${PROJECT_NAME}_messages_gen ${PROJECT_NAME}_proto_gen
+  DEPENDS ${PROJECT_NAME}_proto_gen
 )
 
 rosidl_generate_interfaces(

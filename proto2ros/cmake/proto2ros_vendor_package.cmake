@@ -15,7 +15,11 @@
 macro(proto2ros_vendor_package target)
   set(options NO_LINT)
   set(one_value_keywords PACKAGE_NAME)
-  set(multi_value_keywords PROTOS IMPORT_DIRS CONFIG_OVERLAYS ROS_DEPENDENCIES CPP_DEPENDENCIES CPP_INCLUDES CPP_SOURCES PYTHON_MODULES PYTHON_PACKAGES)
+  set(
+    multi_value_keywords
+    PROTOS IMPORT_DIRS CONFIG_OVERLAYS ROS_DEPENDENCIES CPP_DEPENDENCIES
+    CPP_INCLUDES CPP_SOURCES PYTHON_MODULES PYTHON_PACKAGES DEPENDS
+  )
   cmake_parse_arguments(ARG "${options}" "${one_value_keywords}" "${multi_value_keywords}" ${ARGN})
 
   if(NOT ARG_PACKAGE_NAME)
@@ -42,6 +46,9 @@ macro(proto2ros_vendor_package target)
   set(proto2ros_generate_OPTIONS)
   if(ARG_NO_LINT)
     list(APPEND proto2ros_generate_OPTIONS NO_LINT)
+  endif()
+  if(ARG_DEPENDS)
+    list(APPEND proto2ros_generate_OPTIONS DEPENDS ${ARG_DEPENDS})
   endif()
 
   proto2ros_generate(
