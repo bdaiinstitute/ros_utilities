@@ -11,7 +11,24 @@
 #   are provided. If none is given, parent directories of PROTOS are used instead.
 # :param CONFIG_OVERLAYS: optional configuration file overlays to be applied sequentially
 #   over the default base configuration file.
-#
+# :param ROS_DEPENDENCIES: optional ROS package name to depend on for message generation and builds.
+# :param CPP_DEPENDENCIES: optional C++ targets to depend on for library builds.
+# :param CPP_INCLUDES: optional, additional C++ includes to use when building C++ sources.
+#   If nont is provided and ${CMAKE_CURRENT_SOURCE_DIR}/include/${ARG_PACKAGE_NAME} exists
+#   as a directory, then it will be picked up by default.
+# :param CPP_SOURCES: optional, additional C++ sources to build alongside generated C++ sources.
+#   If none is provided and both ${CMAKE_CURRENT_SOURCE_DIR}/include/${ARG_PACKAGE_NAME} and
+#   ${CMAKE_CURRENT_SOURCE_DIR}/src exist as directories, then source files matching either
+#   ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc or ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp glob
+#   expressions will be picked up by default.
+# :param PYTHON_MODULES: optional, additional Python module sources to install
+#   alongside generated Python modules.
+# :param PYTHON_PACKAGES: optional, additional Python packages to install alongside
+#   generated Python packages. If none is provided and one is found under the
+#   ${CMAKE_CURRENT_SOURCE_DIR}/${PACKAGE_NAME}, it will be picked up by default.
+# :param DEPENDS: optional, additional dependencies to the generation command.
+#   This can be useful to depend on earlier protobuf_generate() commands.
+# :param NO_LINT: if provided, no lint tests are added for generated code.
 macro(proto2ros_vendor_package target)
   set(options NO_LINT)
   set(one_value_keywords PACKAGE_NAME)
