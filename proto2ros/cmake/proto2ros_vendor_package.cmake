@@ -14,7 +14,7 @@
 # :param ROS_DEPENDENCIES: optional ROS package name to depend on for message generation and builds.
 # :param CPP_DEPENDENCIES: optional C++ targets to depend on for library builds.
 # :param CPP_INCLUDES: optional, additional C++ includes to use when building C++ sources.
-#   If nont is provided and ${CMAKE_CURRENT_SOURCE_DIR}/include/${ARG_PACKAGE_NAME} exists
+#   If none is provided and ${CMAKE_CURRENT_SOURCE_DIR}/include/${ARG_PACKAGE_NAME} exists
 #   as a directory, then it will be picked up by default.
 # :param CPP_SOURCES: optional, additional C++ sources to build alongside generated C++ sources.
 #   If none is provided and both ${CMAKE_CURRENT_SOURCE_DIR}/include/${ARG_PACKAGE_NAME} and
