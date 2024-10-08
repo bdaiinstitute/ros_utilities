@@ -18,6 +18,12 @@
 #   Defaults to the target name with an `_interfaces` suffix.
 # :param PYTHON_OUT_VAR: the name of the variable to yield generated Python sources.
 #   Defaults to the target name with a `_python_sources` suffix.
+# :param CPP_OUT_VAR: the name of the variable to yield generated C++ sources
+#   (both .cpp and .hpp files). Defaults to the target name with a `_cpp_sources` suffix.
+# :param INCLUDE_OUT_VAR: the name of the variable to yield the path to generated
+#   C++ includes. Defaults to the target name with a `_cpp_include` suffix.
+# :param DEPENDS: optional, additional dependencies to the generation command.
+#   This can be useful to depend on earlier protobuf_generate() commands.
 # :param APPEND_PYTHONPATH: optional paths to append to the PYTHONPATH that applies
 #   to the generation process.
 # :param NO_LINT: if provided, no lint tests are added for generated code.
