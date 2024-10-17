@@ -22,13 +22,21 @@ class ServiceException(Exception):
 class ServiceTimeout(ServiceException):
     """Exception raised on service timeout."""
 
-    pass
+    def __str__(self) -> str:
+        return "service timed out"
 
 
 class ServiceError(ServiceException):
     """Exception raised on service error."""
 
-    pass
+    def __str__(self) -> str:
+        exception = self.service.exception()
+        if exception is not None:
+            return f"serviced failed due to: {exception}"
+        result = self.service.result()
+        if hasattr(result, "message"):
+            return f"service failed due to: {result.message}"
+        return "service failed"
 
 
 ServiceRequestT = TypeVar("ServiceRequestT", contravariant=True)
