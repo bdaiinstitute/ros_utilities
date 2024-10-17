@@ -21,6 +21,9 @@ class ActionException(Exception):
         super().__init__(action)
         self.action = action
 
+    def __str__(self) -> str:
+        return "unknown action error"
+
 
 class ActionTimeout(ActionException):
     """Exception raised on action timeout."""
@@ -43,7 +46,7 @@ class ActionAborted(ActionException):
         result = self.action.result
         if not hasattr(result, "message"):
             return "action aborted"
-        return f"action aborted due to: {result.message}"
+        return f"action aborted (due to {result.message})"
 
 
 class ActionCancelled(ActionException):

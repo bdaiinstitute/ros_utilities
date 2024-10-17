@@ -18,6 +18,9 @@ class ServiceException(Exception):
         super().__init__(service)
         self.service = service
 
+    def __str__(self) -> str:
+        return "unknown service error"
+
 
 class ServiceTimeout(ServiceException):
     """Exception raised on service timeout."""
@@ -32,10 +35,10 @@ class ServiceError(ServiceException):
     def __str__(self) -> str:
         exception = self.service.exception()
         if exception is not None:
-            return f"serviced failed due to: {exception}"
+            return f"service failed (due to {exception})"
         result = self.service.result()
         if hasattr(result, "message"):
-            return f"service failed due to: {result.message}"
+            return f"service failed (due to {result.message})"
         return "service failed"
 
 
