@@ -105,6 +105,11 @@ class ROSAwareProcess:
         self._lock = threading.Lock()
         functools.update_wrapper(self, self._func)
 
+    @property
+    def cli(self) -> typing.Optional[argparse.ArgumentParser]:
+        """Get the associated CLI argument parser, if any."""
+        return self._cli
+
     def __getattr__(self, name: str) -> typing.Any:
         """Gets missing attributes from the underlying scope.
 
