@@ -21,29 +21,39 @@ class ActionException(Exception):
         super().__init__(action)
         self.action = action
 
+    def __str__(self) -> str:
+        return "unknown action error"
+
 
 class ActionTimeout(ActionException):
     """Exception raised on action timeout."""
 
-    pass
+    def __str__(self) -> str:
+        return "action timed out"
 
 
 class ActionRejected(ActionException):
     """Exception raised when the action is rejected."""
 
-    pass
+    def __str__(self) -> str:
+        return "action rejected"
 
 
 class ActionAborted(ActionException):
     """Exception raised when the action is aborted."""
 
-    pass
+    def __str__(self) -> str:
+        result = self.action.result
+        if not hasattr(result, "message"):
+            return "action aborted"
+        return f"action aborted (due to {result.message})"
 
 
 class ActionCancelled(ActionException):
     """Exception raised when the action is cancelled."""
 
-    pass
+    def __str__(self) -> str:
+        return "action cancelled"
 
 
 ActionGoalT = TypeVar("ActionGoalT", contravariant=True)
@@ -570,7 +580,7 @@ class Actionable(Generic[ActionGoalT, ActionResultT, ActionFeedbackT], Composabl
             if action.aborted:
                 raise ActionAborted(action)
             if not action.succeeded:
-                raise RuntimeError("internal server error")
+                raise ActionException(action)
         return action.result
 
     def asynchronous(
