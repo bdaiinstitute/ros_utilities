@@ -28,6 +28,7 @@ SEVERITY_MAP = {
     logging.ERROR: LoggingSeverity.ERROR,
     logging.CRITICAL: LoggingSeverity.FATAL,
 }
+REVERSE_SEVERITY_MAP = {v: k for k, v in SEVERITY_MAP.items()}
 
 
 if not typing.TYPE_CHECKING:
@@ -327,6 +328,7 @@ def logs_to_ros(node: Node) -> typing.Iterator[None]:
         node: a ROS 2 node, necessary for rosout logging (if enabled).
     """
     root = logging.getLogger()
+    root.setLevel(REVERSE_SEVERITY_MAP[node.get_logger().get_effective_level()])
     handler = RcutilsLogHandler(node)
     root.addHandler(handler)
     try:
