@@ -3,6 +3,7 @@ import argparse
 import functools
 import inspect
 import os
+import signal
 import sys
 import threading
 import typing
@@ -12,6 +13,7 @@ import rclpy
 import rclpy.executors
 import rclpy.logging
 import rclpy.node
+import rclpy.utilities
 from rclpy.exceptions import InvalidNamespaceException, InvalidNodeNameException
 from rclpy.validate_namespace import validate_namespace
 from rclpy.validate_node_name import validate_node_name
@@ -50,6 +52,7 @@ class ROSAwareProcess:
         func: MainCallable,
         *,
         uses_tf: bool = False,
+        interruptible: bool = False,
         prebaked: typing.Union[bool, str] = True,
         autospin: typing.Optional[bool] = None,
         forward_logging: typing.Optional[bool] = None,
@@ -71,6 +74,9 @@ class ROSAwareProcess:
             autospin: whether to automatically equip the underlying scope with a background executor
             or not. Defaults to True for prebaked processes and to False for bare processes.
             uses_tf: whether to instantiate a tf listener bound to the process main node. Defaults to False.
+            interruptible: whether the process allows graceful interruptions i.e. SIGINT (Ctrl+C) or SIGTERM
+            signaling. An interruptible process will not shutdown any context or trigger any guard condition
+            on either but simply raise KeyboardInterrupt and SystemExit exceptions instead.
             forward_logging: whether to forward `logging` logs to the ROS 2 logging system or not.
             Defaults to True for prebaked processes and to False for bare processes (though it requires
             a process node to be set to function).
@@ -91,8 +97,11 @@ class ROSAwareProcess:
             namespace = name
         if forward_logging is None:
             forward_logging = bool(prebaked)
+        self._lock = threading.Lock()
+        self._scope: typing.Optional[ROSAwareScope] = None
         self._func = func
         self._cli = cli
+        self._interruptible = interruptible
         self._scope_kwargs = dict(
             prebaked=prebaked,
             autospin=autospin,
@@ -101,8 +110,6 @@ class ROSAwareProcess:
             forward_logging=forward_logging,
             **init_arguments,
         )
-        self._scope: typing.Optional[ROSAwareScope] = None
-        self._lock = threading.Lock()
         functools.update_wrapper(self, self._func)
 
     @property
@@ -128,6 +135,8 @@ class ROSAwareProcess:
             name: name of the attribute to be set
             value: attribute value to be set.
         """
+        if threading.current_thread() is not threading.main_thread():
+            raise RuntimeError("process attributes can only be set from the main thread")
         if not name.startswith("_") and hasattr(self._scope, name):
             setattr(self._scope, name, value)
             return
@@ -174,9 +183,19 @@ class ROSAwareProcess:
                     warnings.warn(f"'{namespace}' cannot be used as namespace, using scope default", stacklevel=1)
                     namespace = True
                 scope_kwargs["namespace"] = namespace
-            with scope.top(argv, global_=True, **scope_kwargs) as self._scope:
+            with scope.top(argv, global_=True, interruptible=self._interruptible, **scope_kwargs) as self._scope:
                 ROSAwareProcess.current = self
                 self._lock.release()
+                orig_sigterm_handler: typing.Optional[typing.Any] = None
+                if self._interruptible:
+
+                    def handle_sigterm(*args: typing.Any) -> None:
+                        nonlocal orig_sigterm_handler
+                        if orig_sigterm_handler is not None and orig_sigterm_handler != signal.SIG_DFL:
+                            orig_sigterm_handler(*args)
+                        raise SystemExit("due to SIGTERM")
+
+                    orig_sigterm_handler = signal.signal(signal.SIGTERM, handle_sigterm)
                 try:
                     sig = inspect.signature(self._func)
                     if not sig.parameters:
@@ -188,6 +207,8 @@ class ROSAwareProcess:
                     func_taking_argv = typing.cast(MainCallableTakingArgv, self._func)
                     return func_taking_argv(rclpy.utilities.remove_ros_args(argv))
                 finally:
+                    if orig_sigterm_handler is not None:
+                        signal.signal(signal.SIGTERM, orig_sigterm_handler)
                     self._lock.acquire()
                     ROSAwareProcess.current = None
                     self._scope = None
@@ -196,6 +217,41 @@ class ROSAwareProcess:
         finally:
             self._lock.release()
             ROSAwareProcess.lock.release()
+
+    def wait_for_interrupt(self, *, timeout_sec: typing.Optional[float] = None) -> None:
+        """Wait for process interruption i.e. a KeyboardInterrupt or a SystemExit.
+
+        This can only be done from the main thread. Also, note that timeouts are
+        implemented using POSIX timers and alarms.
+
+        Args:
+            timeout_sec: optional timeout for wait, wait indefinitely by default.
+        """
+        if not self._interruptible:
+            raise RuntimeError("process is not interruptible")
+        if threading.current_thread() is not threading.main_thread():
+            raise RuntimeError("interrupts can only be awaited from the main thread")
+        if self._scope is None:
+            raise RuntimeError("process is not executing")
+        interrupted = False
+        orig_sigalrm_handler = None
+        orig_itimer_setup = None
+        if timeout_sec is not None:
+
+            def handle_sigalarm(*args: typing.Any) -> None:
+                nonlocal interrupted
+                interrupted = True
+
+            orig_sigalrm_handler = signal.signal(signal.SIGALRM, handle_sigalarm)
+            orig_itimer_setup = signal.setitimer(signal.ITIMER_REAL, timeout_sec)
+        try:
+            while not interrupted:
+                signal.pause()
+        finally:
+            if orig_itimer_setup is not None:
+                signal.setitimer(signal.ITIMER_REAL, *orig_itimer_setup)
+            if orig_sigalrm_handler is not None:
+                signal.signal(signal.SIGALRM, orig_sigalrm_handler)
 
     def wait_for_shutdown(self, *, timeout_sec: typing.Optional[float] = None) -> bool:
         """Wait for shutdown of the underlying scope context.
@@ -206,17 +262,11 @@ class ROSAwareProcess:
         Returns:
             True if shutdown, False on timeout.
         """
-        with self._lock:
-            if self._scope is None:
-                raise RuntimeError("process is not executing")
-            return context.wait_for_shutdown(timeout_sec=timeout_sec, context=self._scope.context)
+        return context.wait_for_shutdown(timeout_sec=timeout_sec, context=self.context)
 
     def try_shutdown(self) -> None:
         """Atempts to shutdown the underlying scope context."""
-        with self._lock:
-            if self._scope is None:
-                raise RuntimeError("process is not executing")
-            rclpy.try_shutdown(context=self._scope.context)
+        rclpy.utilities.try_shutdown(context=self.context)
 
 
 def current() -> typing.Optional[ROSAwareProcess]:
@@ -417,3 +467,18 @@ def wait_for_shutdown(*, timeout_sec: typing.Optional[float] = None) -> bool:
     if process is None:
         raise RuntimeError("no process is executing")
     return process.wait_for_shutdown(timeout_sec=timeout_sec)
+
+
+def wait_for_interrupt(*, timeout_sec: typing.Optional[float] = None) -> None:
+    """Wait for current ROS 2 aware process interruption.
+
+    See `ROSAwareProcess.wait_for_interrupt` documentation for further reference
+    on positional and keyword arguments taken by this function.
+
+    Raises:
+        RuntimeError: if no process is executing.
+    """
+    process = current()
+    if process is None:
+        raise RuntimeError("no process is executing")
+    return process.wait_for_interrupt(timeout_sec=timeout_sec)

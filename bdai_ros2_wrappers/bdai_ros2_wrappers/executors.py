@@ -14,6 +14,7 @@ import typing
 import weakref
 
 import rclpy.executors
+import rclpy.node
 
 from bdai_ros2_wrappers.futures import FutureLike
 from bdai_ros2_wrappers.utilities import bind_to_thread, fqn

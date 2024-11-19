@@ -8,6 +8,7 @@ import rclpy
 import rclpy.executors
 import rclpy.logging
 import rclpy.node
+import rclpy.signals
 import rclpy.utilities
 
 from bdai_ros2_wrappers.executors import AutoScalingMultiThreadedExecutor, background, foreground
@@ -486,6 +487,7 @@ def top(
     *,
     context: typing.Optional[rclpy.context.Context] = None,
     global_: bool = False,
+    interruptible: bool = False,
     domain_id: typing.Optional[int] = None,
     **kwargs: typing.Any,
 ) -> typing.Iterator[ROSAwareScope]:
@@ -495,8 +497,11 @@ def top(
         args: optional command-line arguments for context initialization.
         context: optional context to manage. If none is provided, one will
         be created. For global scopes, the default context will be used.
-        global_: Whether to use the global context or a locally constructed one if one is not provided.
-        domain_id: A domain id used for initializing rclpy.
+        global_: whether to use the global context or a locally constructed one.
+        interruptible: global interruptible scopes will skip installing ROS 2
+        signal handlers and let the user deal with SIGINT and SIGTERM
+        interruptions instead.
+        domain_id: a domain id used for initializing rclpy.
         kwargs: keyword arguments to pass to `ROSAwareScope`.
 
     See `ROSAwareScope` documentation for further reference on positional
@@ -505,14 +510,31 @@ def top(
     Returns:
         a context manager.
     """
-    if context is None and not global_:
-        context = rclpy.context.Context()
-    rclpy.init(args=args, context=context, domain_id=domain_id)
+    if global_:
+        if context is not None:
+            raise ValueError("Cannot use a local context as global context")
+        default_context = rclpy.utilities.get_default_context()
+        default_context.init(args, domain_id=domain_id)
+        if not interruptible:
+            rclpy.signals.install_signal_handlers(
+                rclpy.signals.SignalHandlerOptions.ALL,
+            )
+    else:
+        if context is None:
+            context = rclpy.context.Context()
+        context.init(args, domain_id=domain_id)
     try:
         with ROSAwareScope(global_=global_, context=context, **kwargs) as scope:
             yield scope
     finally:
-        rclpy.try_shutdown(context=context)
+        if global_:
+            default_context = rclpy.utilities.get_default_context(shutting_down=True)
+            default_context.try_shutdown()
+            if not interruptible:
+                rclpy.signals.uninstall_signal_handlers()
+        else:
+            assert context is not None
+            context.try_shutdown()
 
 
 def current() -> typing.Optional[ROSAwareScope]:
