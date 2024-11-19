@@ -467,3 +467,18 @@ def wait_for_shutdown(*, timeout_sec: typing.Optional[float] = None) -> bool:
     if process is None:
         raise RuntimeError("no process is executing")
     return process.wait_for_shutdown(timeout_sec=timeout_sec)
+
+
+def wait_for_interrupt(*, timeout_sec: typing.Optional[float] = None) -> None:
+    """Wait for current ROS 2 aware process interruption.
+
+    See `ROSAwareProcess.wait_for_interrupt` documentation for further reference
+    on positional and keyword arguments taken by this function.
+
+    Raises:
+        RuntimeError: if no process is executing.
+    """
+    process = current()
+    if process is None:
+        raise RuntimeError("no process is executing")
+    return process.wait_for_interrupt(timeout_sec=timeout_sec)
