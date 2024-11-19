@@ -232,7 +232,7 @@ class Tape(Generic[T]):
                 return None
             if len(self._content) == 0:
                 return None
-            return self._content[0]
+            return self._content[-1]
 
     @overload
     def content(
