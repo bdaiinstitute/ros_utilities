@@ -18,6 +18,8 @@ python3 examples/talker_example.py chit chat --ros-args -p rate:=5.0  # Hz
 import itertools
 import typing
 
+import std_msgs.msg
+
 import bdai_ros2_wrappers.process as ros_process
 from bdai_ros2_wrappers.node import Node
 
@@ -30,10 +32,13 @@ class TalkerNode(Node):
         self.phrase = phrase
         self.counter = itertools.count(start=1)
         rate = self.declare_parameter("rate", 1.0).value
+        self.pub = self.create_publisher(std_msgs.msg.String, "chat", 1)
         self.timer = self.create_timer(1 / rate, self.callback)
 
     def callback(self) -> None:
-        self.get_logger().info(f"{self.phrase} (#{next(self.counter)})")
+        message = f"{self.phrase} (#{next(self.counter)})"
+        self.pub.publish(std_msgs.msg.String(data=message))
+        self.get_logger().info(message)
 
 
 @ros_process.main(prebaked=False)
