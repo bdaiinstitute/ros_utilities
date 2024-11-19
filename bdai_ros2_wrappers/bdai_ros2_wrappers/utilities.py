@@ -170,6 +170,23 @@ class Tape(Generic[T]):
         self._closed = False
 
     @property
+    def latest_write(self) -> FutureLike[T]:
+        """Gets the future to the latest data written or to be written."""
+        with self._lock:
+            if self._content is None:
+                raise RuntimeError("zero-length tape only writes forward")
+            if len(self._content) > 0:
+                data = self._content[-1]
+                latest_write = Future()
+                latest_write.set_result(data)
+                return latest_write
+            if self._future_write is None:
+                self._future_write = Future()
+                if self._closed:
+                    self._future_write.cancel()
+            return self._future_write
+
+    @property
     def future_write(self) -> FutureLike[T]:
         """Gets the future to the next data yet to be written."""
         with self._lock:
