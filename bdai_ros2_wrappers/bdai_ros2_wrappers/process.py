@@ -13,10 +13,12 @@ import rclpy
 import rclpy.executors
 import rclpy.logging
 import rclpy.node
+import rclpy.utilities
 from rclpy.exceptions import InvalidNamespaceException, InvalidNodeNameException
 from rclpy.validate_namespace import validate_namespace
 from rclpy.validate_node_name import validate_node_name
 
+import bdai_ros2_wrappers.context as context
 import bdai_ros2_wrappers.scope as scope
 from bdai_ros2_wrappers.scope import ROSAwareScope
 from bdai_ros2_wrappers.tf_listener_wrapper import TFListenerWrapper
@@ -260,11 +262,11 @@ class ROSAwareProcess:
         Returns:
             True if shutdown, False on timeout.
         """
-        return rclpy.wait_for_shutdown(timeout_sec=timeout_sec, context=self.context)
+        return context.wait_for_shutdown(timeout_sec=timeout_sec, context=self.context)
 
     def try_shutdown(self) -> None:
         """Atempts to shutdown the underlying scope context."""
-        rclpy.try_shutdown(context=self.context)
+        rclpy.utilities.try_shutdown(context=self.context)
 
 
 def current() -> typing.Optional[ROSAwareProcess]:
