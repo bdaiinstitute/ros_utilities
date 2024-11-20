@@ -80,6 +80,33 @@ def test_tape_drops_unused_streams() -> None:
     assert len(tape._streams) == 0
 
 
+def test_tape_future_writes() -> None:
+    tape: Tape[int] = Tape()
+    tape.write(0)
+    future = tape.future_write
+    assert not future.done()
+    tape.write(1)
+    assert future.done()
+    assert future.result() == 1
+    tape.close()
+    future = tape.future_write
+    assert future.cancelled()
+
+
+def test_tape_latest_writes() -> None:
+    tape: Tape[int] = Tape()
+    assert tape.head is None
+    future = tape.latest_write
+    assert not future.done()
+    tape.write(0)
+    assert tape.head == 0
+    assert future.done()
+    assert future.result() == tape.head
+    future = tape.latest_write
+    assert future.done()
+    assert future.result() == tape.head
+
+
 def test_either_or() -> None:
     assert either_or(None, "value", True)
     data = argparse.Namespace(value=True)
