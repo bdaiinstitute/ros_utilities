@@ -9,6 +9,15 @@ import pytest
 from bdai_ros2_wrappers.utilities import Tape, either_or, ensure, namespace_with
 
 
+def test_tape_head() -> None:
+    tape: Tape[int] = Tape()
+    assert tape.head is None
+    expected_sequence = list(range(10))
+    for i in expected_sequence:
+        tape.write(i)
+        assert tape.head == i
+
+
 def test_tape_content_iteration() -> None:
     tape: Tape[int] = Tape()
     expected_sequence = list(range(10))
