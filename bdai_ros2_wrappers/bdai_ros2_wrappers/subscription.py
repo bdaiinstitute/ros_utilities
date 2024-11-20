@@ -30,6 +30,7 @@ class Subscription(MessageFeed[MessageT]):
         qos_profile: Optional[Union[QoSProfile, int]] = None,
         history_length: Optional[int] = None,
         node: Optional[Node] = None,
+        autostart: bool = True,
         **kwargs: Any,
     ) -> None:
         """Initializes the subscription.
@@ -42,6 +43,7 @@ class Subscription(MessageFeed[MessageT]):
             history_length: optional historic data size, defaults to 1
             node: optional node for the underlying native subscription, defaults to
             the current process node.
+            autostart: whether to start feeding messages immediately or not.
             kwargs: other keyword arguments are used to create the underlying native subscription.
             See `rclpy.node.Node.create_subscription` documentation for further reference.
         """
@@ -57,6 +59,7 @@ class Subscription(MessageFeed[MessageT]):
                 message_type,
                 topic_name,
                 qos_profile=qos_profile,
+                autostart=autostart,
                 **kwargs,
             ),
             history_length=history_length,
@@ -125,11 +128,6 @@ class Subscription(MessageFeed[MessageT]):
     def topic_name(self) -> str:
         """Gets the name of the topic subscribed."""
         return self._topic_name
-
-    def close(self) -> None:
-        """Closes the subscription."""
-        self._node.destroy_subscription(self.subscriber.sub)
-        super().close()
 
     # Aliases for improved readability
     cancel = MessageFeed.close
