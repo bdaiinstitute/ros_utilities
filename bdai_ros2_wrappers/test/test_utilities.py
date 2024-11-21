@@ -9,6 +9,15 @@ import pytest
 from bdai_ros2_wrappers.utilities import Tape, either_or, ensure, namespace_with
 
 
+def test_tape_head() -> None:
+    tape: Tape[int] = Tape()
+    assert tape.head is None
+    expected_sequence = list(range(10))
+    for i in expected_sequence:
+        tape.write(i)
+        assert tape.head == i
+
+
 def test_tape_content_iteration() -> None:
     tape: Tape[int] = Tape()
     expected_sequence = list(range(10))
@@ -69,6 +78,33 @@ def test_tape_drops_unused_streams() -> None:
     del stream
 
     assert len(tape._streams) == 0
+
+
+def test_tape_future_writes() -> None:
+    tape: Tape[int] = Tape()
+    tape.write(0)
+    future = tape.future_write
+    assert not future.done()
+    tape.write(1)
+    assert future.done()
+    assert future.result() == 1
+    tape.close()
+    future = tape.future_write
+    assert future.cancelled()
+
+
+def test_tape_latest_writes() -> None:
+    tape: Tape[int] = Tape()
+    assert tape.head is None
+    future = tape.latest_write
+    assert not future.done()
+    tape.write(0)
+    assert tape.head == 0
+    assert future.done()
+    assert future.result() == tape.head
+    future = tape.latest_write
+    assert future.done()
+    assert future.result() == tape.head
 
 
 def test_either_or() -> None:

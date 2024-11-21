@@ -75,6 +75,11 @@ class MessageFeed(Generic[MessageT]):
         return self._tape.head
 
     @property
+    def latest_update(self) -> FutureLike[MessageT]:
+        """Gets the future to the latest message, which may not have been received yet."""
+        return self._tape.latest_write
+
+    @property
     def update(self) -> FutureLike[MessageT]:
         """Gets the future to the next message yet to be received."""
         return self._tape.future_write
