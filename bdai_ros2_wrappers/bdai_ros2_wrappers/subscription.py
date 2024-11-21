@@ -296,10 +296,9 @@ def wait_for_messages_async(
     sync.registerCallback(callback)
 
     def cleanup_subscribers(_: Future) -> None:
-        nonlocal node, subscribers
-        assert node is not None
+        nonlocal subscribers
         for sub in subscribers:
-            node.destroy_subscription(sub.sub)
+            sub.close()
 
     future.add_done_callback(cleanup_subscribers)
     return future

@@ -37,7 +37,7 @@ class Filter(SimpleFilterProtocol):
         Args:
             autostart: whether to start filtering on instantiation or not.
         """
-        self._active = False
+        self._stopped = self._started = False
         self._connection_lock = threading.Lock()
         self._connection_sequence = itertools.count()
         self.callbacks: Dict[int, Tuple[Callable, Tuple]] = {}
@@ -48,21 +48,33 @@ class Filter(SimpleFilterProtocol):
         """Hook for start logic customization"""
 
     def start(self) -> None:
-        """Start filtering."""
+        """Start filtering.
+
+        Raises:
+            RuntimeError: if filtering has been stopped already.
+        """
         with self._connection_lock:
-            if not self._active:
+            if self._stopped:
+                raise RuntimeError("filtering already stopped")
+            if not self._started:
                 self._start()
-                self._active = True
+                self._started = True
 
     def _stop(self) -> None:
         """Hook for stop logic customization"""
 
     def stop(self) -> None:
-        """Stop filtering."""
+        """Stop filtering.
+
+        Raises:
+            RuntimeError: if filter has not been started.
+        """
         with self._connection_lock:
-            if not self._active:
+            if not self._started:
+                raise RuntimeError("filter not started")
+            if not self._stopped:
                 self._stop()
-                self._active = False
+                self._stopped = True
 
     def registerCallback(self, fn: Callable, *args: Any) -> int:
         """Register callable to be called on filter output.
@@ -73,8 +85,13 @@ class Filter(SimpleFilterProtocol):
 
         Returns:
             a unique connection identifier.
+
+        Raises:
+            RuntimeError: if filter has been stopped.
         """
         with self._connection_lock:
+            if self._stopped:
+                raise RuntimeError("filter stopped")
             connection = next(self._connection_sequence)
             self.callbacks[connection] = (fn, args)
             return connection
@@ -95,10 +112,13 @@ class Filter(SimpleFilterProtocol):
             messages: messages to be forwarded through the filter.
 
         Raises:
-            RuntimeError: if filter has not been started yet.
+            RuntimeError: if filter is not active
+            (either not started or already stopped).
         """
         with self._connection_lock:
-            if not self._active:
+            if self._stopped:
+                raise RuntimeError("filter stopped")
+            if not self._started:
                 raise RuntimeError("filter not started")
             callbacks = list(self.callbacks.values())
 

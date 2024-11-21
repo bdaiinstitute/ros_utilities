@@ -123,6 +123,30 @@ def test_subscription_iteration(ros: ROSAwareScope) -> None:
     assert expected_sequence_numbers == historic_numbers
 
 
+def test_deferred_start_subscription(ros: ROSAwareScope) -> None:
+    """Asserts that deferred subscription start works as expected."""
+    assert ros.node is not None
+    pub = ros.node.create_publisher(Int8, "sequence", DEFAULT_QOS_PROFILE)
+    sequence = Subscription(
+        Int8,
+        "sequence",
+        DEFAULT_QOS_PROFILE,
+        node=ros.node,
+        autostart=False,
+    )
+    assert wait_for_future(sequence.publisher_matches(1), timeout_sec=5.0)
+    assert sequence.matched_publishers == 1
+
+    pub.publish(Int8(data=1))
+
+    future = sequence.update
+    assert not future.done()
+    sequence.start()
+
+    assert wait_for_future(future, timeout_sec=5.0)
+    assert cast(Int8, ensure(sequence.latest)).data == 1
+
+
 def test_subscription_cancelation(ros: ROSAwareScope) -> None:
     """Asserts that cancelling a subscription works as expected."""
     assert ros.node is not None

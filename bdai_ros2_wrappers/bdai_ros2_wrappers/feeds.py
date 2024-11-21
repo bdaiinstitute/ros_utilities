@@ -57,7 +57,7 @@ class MessageFeed(Generic[MessageT]):
         self._link.registerCallback(
             lambda *msgs: self._tape.write(msgs if len(msgs) > 1 else msgs[0]),
         )
-        node.context.on_shutdown(self._tape.close)
+        node.context.on_shutdown(self.close)
 
     @property
     def link(self) -> Filter:
@@ -180,11 +180,9 @@ class MessageFeed(Generic[MessageT]):
     def stop(self) -> None:
         """Stop the message feed."""
         self._link.stop()
-
-    def close(self) -> None:
-        """Closes the message feed."""
-        self._link.stop()
         self._tape.close()
+
+    close = stop
 
 
 class AdaptedMessageFeed(MessageFeed[MessageT]):
@@ -214,10 +212,10 @@ class AdaptedMessageFeed(MessageFeed[MessageT]):
         """Gets the upstream message feed."""
         return self._feed
 
-    def close(self) -> None:
-        """Closes this message feed and the upstream one as well."""
-        self._feed.close()
-        super().close()
+    def stop(self) -> None:
+        """Stop this message feed and the upstream one as well."""
+        self._feed.stop()
+        super().stop()
 
 
 class FramedMessageFeed(MessageFeed[MessageT]):
@@ -271,10 +269,10 @@ class FramedMessageFeed(MessageFeed[MessageT]):
         """Gets the upstream message feed."""
         return self._feed
 
-    def close(self) -> None:
-        """Closes this message feed and the upstream one as well."""
-        self._feed.close()
-        super().close()
+    def stop(self) -> None:
+        """Stop this message feed and the upstream one as well."""
+        self._feed.stop()
+        super().stop()
 
 
 class SynchronizedMessageFeed(MessageFeed):
@@ -321,8 +319,8 @@ class SynchronizedMessageFeed(MessageFeed):
         """Gets all aggregated message feeds."""
         return self._feeds
 
-    def close(self) -> None:
-        """Closes this message feed and all upstream ones as well."""
+    def stop(self) -> None:
+        """Stop this message feed and all upstream ones as well."""
         for feed in self._feeds:
-            feed.close()
-        super().close()
+            feed.stop()
+        super().stop()
