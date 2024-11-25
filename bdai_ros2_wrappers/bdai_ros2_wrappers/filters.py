@@ -8,6 +8,7 @@ from collections.abc import Sequence
 from typing import Any, Callable, Dict, Optional, Protocol, Tuple
 
 import message_filters
+import rclpy.subscription
 import tf2_ros
 from rclpy.duration import Duration
 from rclpy.node import Node
@@ -30,10 +31,50 @@ class SimpleFilterProtocol(Protocol):
 class Filter(SimpleFilterProtocol):
     """A threadsafe `message_filters.SimpleFilter` compliant message filter."""
 
-    def __init__(self) -> None:
-        self.__lock = threading.Lock()
+    def __init__(self, autostart: bool = True) -> None:
+        """Initialize filter.
+
+        Args:
+            autostart: whether to start filtering on instantiation or not.
+        """
+        self._stopped = self._started = False
+        self._connection_lock = threading.Lock()
         self._connection_sequence = itertools.count()
         self.callbacks: Dict[int, Tuple[Callable, Tuple]] = {}
+        if autostart:
+            self.start()
+
+    def _start(self) -> None:
+        """Hook for start logic customization"""
+
+    def start(self) -> None:
+        """Start filtering.
+
+        Raises:
+            RuntimeError: if filtering has been stopped already.
+        """
+        with self._connection_lock:
+            if self._stopped:
+                raise RuntimeError("filtering already stopped")
+            if not self._started:
+                self._start()
+                self._started = True
+
+    def _stop(self) -> None:
+        """Hook for stop logic customization"""
+
+    def stop(self) -> None:
+        """Stop filtering.
+
+        Raises:
+            RuntimeError: if filter has not been started.
+        """
+        with self._connection_lock:
+            if not self._started:
+                raise RuntimeError("filter not started")
+            if not self._stopped:
+                self._stop()
+                self._stopped = True
 
     def registerCallback(self, fn: Callable, *args: Any) -> int:
         """Register callable to be called on filter output.
@@ -44,8 +85,13 @@ class Filter(SimpleFilterProtocol):
 
         Returns:
             a unique connection identifier.
+
+        Raises:
+            RuntimeError: if filter has been stopped.
         """
-        with self.__lock:
+        with self._connection_lock:
+            if self._stopped:
+                raise RuntimeError("filter stopped")
             connection = next(self._connection_sequence)
             self.callbacks[connection] = (fn, args)
             return connection
@@ -56,12 +102,24 @@ class Filter(SimpleFilterProtocol):
         Args:
             connection: unique identifier for the callback.
         """
-        with self.__lock:
+        with self._connection_lock:
             del self.callbacks[connection]
 
     def signalMessage(self, *messages: Any) -> None:
-        """Feed one or more `messages` to the filter."""
-        with self.__lock:
+        """Feed one or more `messages` to the filter.
+
+        Args:
+            messages: messages to be forwarded through the filter.
+
+        Raises:
+            RuntimeError: if filter is not active
+            (either not started or already stopped).
+        """
+        with self._connection_lock:
+            if self._stopped:
+                raise RuntimeError("filter stopped")
+            if not self._started:
+                raise RuntimeError("filter not started")
             callbacks = list(self.callbacks.values())
 
         for fn, args in callbacks:
@@ -71,38 +129,78 @@ class Filter(SimpleFilterProtocol):
 class Subscriber(Filter):
     """A threadsafe `message_filters.Subscriber` equivalent."""
 
-    def __init__(self, node: Node, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, node: Node, *args: Any, autostart: bool = True, **kwargs: Any) -> None:
         """Initializes the `Subscriber` instance.
 
-        All positional and keyword arguments are forwarded
-        to `rclpy.node.Node.create_subscription`.
+        Args:
+            node: ROS 2 node to subscribe with.
+            args: positional arguments to forward to `rclpy.node.Node.create_subscription`.
+            autostart: whether to start filtering on instantiation or not.
+            kwargs: keyword arguments to forward to `rclpy.node.Node.create_subscription`.
         """
-        super().__init__()
-        self.sub = node.create_subscription(
+        self.node = node
+        self.options = (args, kwargs)
+        self._subscription: Optional[rclpy.subscription.Subscription] = None
+        super().__init__(autostart)
+
+    def _start(self) -> None:
+        if self._subscription is not None:
+            raise RuntimeError("subscriber already subscribed")
+        args, kwargs = self.options
+        self._subscription = self.node.create_subscription(
             *args,
             callback=self.signalMessage,
             **kwargs,
         )
 
+    def _stop(self) -> None:
+        if self._subscription is None:
+            raise RuntimeError("subscriber not subscribed")
+        self.node.destroy_subscription(self._subscription)
+        self._subscription = None
+
+    close = Filter.stop
+
     def __getattr__(self, name: str) -> Any:
-        return getattr(self.subscription, name)
+        return getattr(self._subscription, name)
 
 
 class ApproximateTimeSynchronizer(Filter):
     """A threadsafe `message_filters.ApproximateTimeSynchronizer` equivalent."""
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, upstreams: Sequence[Filter], *args: Any, autostart: bool = True, **kwargs: Any) -> None:
         """Initializes the `ApproximateTimeSynchronizer` instance.
 
-        All positional and keyword arguments are forwarded
-        to the underlying `message_filters.ApproximateTimeSynchronizer`.
+        Args:
+            upstreams: message filters to be synchronized.
+            args: positional arguments to forward to `message_filters.ApproximateTimeSynchronizer`.
+            autostart: whether to start filtering on instantiation or not.
+            kwargs: keyword arguments to forward to `message_filters.ApproximateTimeSynchronizer`.
         """
-        super().__init__()
+        self.upstreams = list(upstreams)
+        self.options = (args, kwargs)
+        self._unsafe_synchronizer: Optional[message_filters.ApproximateTimeSynchronizer] = None
+        super().__init__(autostart)
+
+    def _start(self) -> None:
+        if self._unsafe_synchronizer is not None:
+            raise RuntimeError("synchronizer already connected")
+        args, kwargs = self.options
         self._unsafe_synchronizer = message_filters.ApproximateTimeSynchronizer(
+            self.upstreams,
             *args,
             **kwargs,
         )
         self._unsafe_synchronizer.registerCallback(self.signalMessage)
+        for upstream in self.upstreams:
+            upstream.start()
+
+    def _stop(self) -> None:
+        if self._unsafe_synchronizer is None:
+            raise RuntimeError("synchronizer not connected")
+        for upstream in self.upstreams:
+            upstream.stop()
+        self._unsafe_synchronizer = None
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._unsafe_synchronizer, name)
@@ -123,6 +221,8 @@ class TransformFilter(Filter):
         tf_buffer: tf2_ros.Buffer,
         tolerance_sec: float,
         logger: Optional[RcutilsLogger] = None,
+        *,
+        autostart: bool = True,
     ) -> None:
         """Initializes the transform filter.
 
@@ -133,22 +233,37 @@ class TransformFilter(Filter):
             tolerance_sec: a tolerance, in seconds, to wait for late transforms
             before abandoning any waits and filtering out the corresponding messages.
             logger: an optional logger to notify the yser about any errors during filtering.
+            autostart: whether to start filtering on instantiation or not.
         """
-        super().__init__()
+        self.__lock = threading.RLock()
         self._logger = logger
-        self._lock = threading.RLock()
         self._waitqueue: collections.deque = collections.deque()
         self._ongoing_wait: Optional[Future] = None
         self._ongoing_wait_time: Optional[Time] = None
+        self._connection: Optional[int] = None
         self.target_frame_id = target_frame_id
         self.tf_buffer = tf_buffer
         self.tolerance = Duration(seconds=tolerance_sec)
-        self.connection = upstream.registerCallback(self.add)
+        self.upstream = upstream
+        super().__init__(autostart)
+
+    def _start(self) -> None:
+        if self._connection is not None:
+            raise RuntimeError("filter already connected")
+        self._connection = self.upstream.registerCallback(self.add)
+        self.upstream.start()
+
+    def _stop(self) -> None:
+        if self._connection is None:
+            raise RuntimeError("filter not connected")
+        self.upstream.stop()
+        self.upstream.unregisterCallback(self._connection)
+        self._connection = None
 
     def _wait_callback(self, messages: Sequence[Any], future: Future) -> None:
         if future.cancelled():
             return
-        with self._lock:
+        with self.__lock:
             try:
                 if future.result() is True:
                     source_frame_id = messages[0].header.frame_id
@@ -186,8 +301,8 @@ class TransformFilter(Filter):
                 self._ongoing_wait = None
 
     def add(self, *messages: Any) -> None:
-        """Adds new `messages` to the filter."""
-        with self._lock:
+        """Add `messages` to the filter."""
+        with self.__lock:
             time = Time.from_msg(messages[0].header.stamp)
             if self._ongoing_wait and not self._ongoing_wait.done() and time - self._ongoing_wait_time > self.tolerance:
                 self._ongoing_wait.cancel()
@@ -217,7 +332,7 @@ class TransformFilter(Filter):
 class Adapter(Filter):
     """A message filter for data adaptation."""
 
-    def __init__(self, upstream: Filter, fn: Callable) -> None:
+    def __init__(self, upstream: Filter, fn: Callable, *, autostart: bool = True) -> None:
         """Initializes the adapter.
 
         Args:
@@ -225,13 +340,28 @@ class Adapter(Filter):
             fn: a callable that takes messages as arguments and returns some
             data to be signaled (i.e. propagated down the filter chain).
             If none is returned, no message signaling will occur.
+            autostart: whether to start filtering on instantiation or not.
         """
-        super().__init__()
         self.fn = fn
-        self.connection = upstream.registerCallback(self.add)
+        self.upstream = upstream
+        self._connection: Optional[int] = None
+        super().__init__(autostart)
+
+    def _start(self) -> None:
+        if self._connection is not None:
+            raise RuntimeError("adapter already connected")
+        self._connection = self.upstream.registerCallback(self.add)
+        self.upstream.start()
+
+    def _stop(self) -> None:
+        if self._connection is None:
+            raise RuntimeError("adapter not connected")
+        self.upstream.stop()
+        self.upstream.unregisterCallback(self._connection)
+        self._connection = None
 
     def add(self, *messages: Any) -> None:
-        """Adds new `messages` to the adapter."""
+        """Add `messages` to the filter."""
         result = self.fn(*messages)
         if result is not None:
             self.signalMessage(result)
@@ -240,16 +370,37 @@ class Adapter(Filter):
 class Tunnel(Filter):
     """A message filter that simply forwards messages but can be detached."""
 
-    def __init__(self, upstream: Filter) -> None:
+    def __init__(self, upstream: Filter, *, autostart: bool = True) -> None:
         """Initializes the tunnel.
 
         Args:
             upstream: the upstream message filter.
+            autostart: whether to start filtering on instantiation or not.
         """
-        super().__init__()
-        self.upstream = upstream
-        self.connection = upstream.registerCallback(self.signalMessage)
+        self.upstream: Optional[Filter] = upstream
+        self._connection: Optional[int] = None
+        super().__init__(autostart)
+
+    def _start(self) -> None:
+        if self.upstream is None:
+            raise RuntimeError("tunnel closed")
+        if self._connection is not None:
+            raise RuntimeError("tunnel already connected")
+        self._connection = self.upstream.registerCallback(self.signalMessage)
+        self.upstream.start()
+
+    def _stop(self) -> None:
+        if self.upstream is None:
+            raise RuntimeError("tunnel closed")
+        if self._connection is None:
+            raise RuntimeError("tunnel not connected")
+        self.upstream.stop()
+        self.upstream.unregisterCallback(self._connection)
+        self._connection = None
 
     def close(self) -> None:
-        """Closes the tunnel, disconnecting it from upstream."""
-        self.upstream.unregisterCallback(self.connection)
+        """Closes the tunnel, simply disconnecting it from upstream."""
+        with self._connection_lock:
+            if self._connection is not None and self.upstream is not None:
+                self.upstream.unregisterCallback(self._connection)
+            self.upstream = None

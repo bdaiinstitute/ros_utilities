@@ -57,7 +57,7 @@ class MessageFeed(Generic[MessageT]):
         self._link.registerCallback(
             lambda *msgs: self._tape.write(msgs if len(msgs) > 1 else msgs[0]),
         )
-        node.context.on_shutdown(self._tape.close)
+        node.context.on_shutdown(self.close)
 
     @property
     def link(self) -> Filter:
@@ -178,9 +178,16 @@ class MessageFeed(Generic[MessageT]):
             timeout_sec=timeout_sec,
         )
 
-    def close(self) -> None:
-        """Closes the message feed."""
+    def start(self) -> None:
+        """Start the message feed."""
+        self._link.start()
+
+    def stop(self) -> None:
+        """Stop the message feed."""
+        self._link.stop()
         self._tape.close()
+
+    close = stop
 
 
 class AdaptedMessageFeed(MessageFeed[MessageT]):
@@ -190,6 +197,8 @@ class AdaptedMessageFeed(MessageFeed[MessageT]):
         self,
         feed: MessageFeed,
         fn: Callable[..., MessageT],
+        *,
+        autostart: bool = True,
         **kwargs: Any,
     ) -> None:
         """Initializes the message feed.
@@ -199,8 +208,9 @@ class AdaptedMessageFeed(MessageFeed[MessageT]):
             fn: message adapting callable.
             kwargs: all other keyword arguments are forwarded
             for `MessageFeed` initialization.
+            autostart: whether to start feeding messages immediately or not.
         """
-        super().__init__(Adapter(feed.link, fn), **kwargs)
+        super().__init__(Adapter(feed.link, fn, autostart=autostart), **kwargs)
         self._feed = feed
 
     @property
@@ -208,10 +218,10 @@ class AdaptedMessageFeed(MessageFeed[MessageT]):
         """Gets the upstream message feed."""
         return self._feed
 
-    def close(self) -> None:
-        """Closes this message feed and the upstream one as well."""
-        self._feed.close()
-        super().close()
+    def stop(self) -> None:
+        """Stop this message feed and the upstream one as well."""
+        self._feed.stop()
+        super().stop()
 
 
 class FramedMessageFeed(MessageFeed[MessageT]):
@@ -226,6 +236,7 @@ class FramedMessageFeed(MessageFeed[MessageT]):
         tf_buffer: Optional[tf2_ros.Buffer] = None,
         history_length: Optional[int] = None,
         node: Optional[Node] = None,
+        autostart: bool = True,
     ) -> None:
         """Initializes the message feed.
 
@@ -238,6 +249,7 @@ class FramedMessageFeed(MessageFeed[MessageT]):
             history_length: optional historic data size, defaults to 1.
             node: optional node for the underlying native subscription, defaults to
             the current process node.
+            autostart: whether to start feeding messages immediately or not.
         """
         if node is None:
             node = scope.ensure_node()
@@ -251,6 +263,7 @@ class FramedMessageFeed(MessageFeed[MessageT]):
                 tf_buffer,
                 tolerance_sec,
                 node.get_logger(),
+                autostart=autostart,
             ),
             history_length=history_length,
             node=node,
@@ -262,10 +275,10 @@ class FramedMessageFeed(MessageFeed[MessageT]):
         """Gets the upstream message feed."""
         return self._feed
 
-    def close(self) -> None:
-        """Closes this message feed and the upstream one as well."""
-        self._feed.close()
-        super().close()
+    def stop(self) -> None:
+        """Stop this message feed and the upstream one as well."""
+        self._feed.stop()
+        super().stop()
 
 
 class SynchronizedMessageFeed(MessageFeed):
@@ -279,6 +292,7 @@ class SynchronizedMessageFeed(MessageFeed):
         allow_headerless: bool = False,
         history_length: Optional[int] = None,
         node: Optional[Node] = None,
+        autostart: bool = True,
     ) -> None:
         """Initializes the message feed.
 
@@ -291,6 +305,7 @@ class SynchronizedMessageFeed(MessageFeed):
             history_length: optional historic data size, defaults to 1.
             node: optional node for the underlying native subscription, defaults to
             the current process node.
+            autostart: whether to start feeding messages immediately or not.
         """
         super().__init__(
             ApproximateTimeSynchronizer(
@@ -298,6 +313,7 @@ class SynchronizedMessageFeed(MessageFeed):
                 queue_size,
                 delay,
                 allow_headerless=allow_headerless,
+                autostart=autostart,
             ),
             history_length=history_length,
             node=node,
@@ -309,8 +325,8 @@ class SynchronizedMessageFeed(MessageFeed):
         """Gets all aggregated message feeds."""
         return self._feeds
 
-    def close(self) -> None:
-        """Closes this message feed and all upstream ones as well."""
+    def stop(self) -> None:
+        """Stop this message feed and all upstream ones as well."""
         for feed in self._feeds:
-            feed.close()
-        super().close()
+            feed.stop()
+        super().stop()
