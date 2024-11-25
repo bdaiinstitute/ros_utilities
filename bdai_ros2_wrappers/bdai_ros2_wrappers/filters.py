@@ -221,6 +221,7 @@ class TransformFilter(Filter):
         tf_buffer: tf2_ros.Buffer,
         tolerance_sec: float,
         logger: Optional[RcutilsLogger] = None,
+        *,
         autostart: bool = True,
     ) -> None:
         """Initializes the transform filter.
@@ -331,7 +332,7 @@ class TransformFilter(Filter):
 class Adapter(Filter):
     """A message filter for data adaptation."""
 
-    def __init__(self, upstream: Filter, fn: Callable, autostart: bool = True) -> None:
+    def __init__(self, upstream: Filter, fn: Callable, *, autostart: bool = True) -> None:
         """Initializes the adapter.
 
         Args:
@@ -369,7 +370,7 @@ class Adapter(Filter):
 class Tunnel(Filter):
     """A message filter that simply forwards messages but can be detached."""
 
-    def __init__(self, upstream: Filter, autostart: bool = True) -> None:
+    def __init__(self, upstream: Filter, *, autostart: bool = True) -> None:
         """Initializes the tunnel.
 
         Args:

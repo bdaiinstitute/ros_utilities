@@ -197,6 +197,7 @@ class AdaptedMessageFeed(MessageFeed[MessageT]):
         self,
         feed: MessageFeed,
         fn: Callable[..., MessageT],
+        *,
         autostart: bool = True,
         **kwargs: Any,
     ) -> None:
