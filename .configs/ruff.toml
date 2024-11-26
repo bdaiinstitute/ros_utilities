@@ -47,9 +47,7 @@ target-version = "py38"
 # We don't require docstrings in tests
 "**/conftest.py" = ["D"]
 "**/test_*.py" = ["D"]
-"proto2ros_tests/*" = ["D"]
-
-"bdai_ros2_wrappers/examples/*" = ["D"]
+"**/examples/*" = ["D"]
 
 [mccabe]
 # Unlike Flake8, default to a complexity level of 10.
