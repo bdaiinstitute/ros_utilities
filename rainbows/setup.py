@@ -14,13 +14,10 @@ setup(
         ("share/" + package_name, ["package.xml"]),
     ],
     install_requires=["setuptools"],
-    zip_safe=True,
     maintainer="The AI Institute",
     maintainer_email="engineering@theaiinstitute.com",
     description="The AI Institute's wrappers for ROS2",
-    license="MIT",
     tests_require=["pytest"],
-    entry_points={
-        "console_scripts": [],
-    },
+    zip_safe=True,
+    license="MIT",
 )
