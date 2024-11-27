@@ -40,15 +40,19 @@ def from_time_like(obj: Union[StampLike, TimeLike]) -> Time:
 
 
 class TFListenerWrapper:
-    """A `tf2_ros` lookup device, wrapping both a buffer and a listener.
+    """A ``tf2_ros`` lookup device, wrapping both a buffer and a listener.
 
     When using process-wide machinery:
+
+    .. code-block:: python
 
         tf_listener = TFListenerWrapper()
         tf_listener.wait_for_a_tform_b(target_frame, source_frame)
         tf_listener.lookup_a_tform_b(target_frame, source_frame)
 
     When composed by a ROS 2 node:
+
+    .. code-block:: python
 
         class MyNode(Node):
 
@@ -103,7 +107,8 @@ class TFListenerWrapper:
             frame_a: Base frame for transform. The transform returned will be frame_a_t_frame_b
             frame_b: Tip frame for transform. The transform returned will be frame_a_t_frame_b
             transform_time: The time at which to look up the transform. If left at None, the most
-                recent transform available will used.
+            recent transform available will used.
+
         Returns:
             A future that will tell if a transform between frame_a and frame_b is available at the time specified.
         """
@@ -126,10 +131,11 @@ class TFListenerWrapper:
             frame_a: Base frame for transform. The transform returned will be frame_a_t_frame_b
             frame_b: Tip frame for transform. The transform returned will be frame_a_t_frame_b
             transform_time: The time at which to look up the transform. If left at None, the most
-                recent transform available will used.
+            recent transform available will used.
             timeout_sec: The time to wait for the transform to become available if the requested time is beyond
-                the most recent transform in the buffer. If set to 0, it will not wait. If left at None, it will
-                wait indefinitely.
+            the most recent transform in the buffer. If set to 0, it will not wait. If left at None, it will
+            wait indefinitely.
+
         Returns:
             Whether a transform between frame_a and frame_b is available at the specified time.
         """
@@ -157,17 +163,19 @@ class TFListenerWrapper:
         Args:
             frame_a: Base frame for transform. The transform returned will be frame_a_t_frame_b
             frame_b: Tip frame for transform. The transform returned will be frame_a_t_frame_b
-            transform_time: The time at which to look up the transform. If left at None, the most
-                recent transform available will used.
+            transform_time: The time at which to look up the transform. If left at None,
+            the most recent transform available will used.
             timeout_sec: The time to wait for the transform to become available if the requested time is beyond
-                the most recent transform in the buffer. If set to 0, it will not wait. If left at None, it will
-                wait indefinitely.
+            the most recent transform in the buffer. If set to 0, it will not wait. If left at None, it will
+            wait indefinitely.
             wait_for_frames: If true, it will wait for a path to exist from frame_a to frame_b in the
-                buffer. If false, lookup will fail immediately if a path between frames does not exist,
-                regardless of what timeout was set. Note that wait_for_a_tform_b can also be used to
-                wait for a transform to become available.
+            buffer. If false, lookup will fail immediately if a path between frames does not exist,
+            regardless of what timeout was set. Note that wait_for_a_tform_b can also be used to
+            wait for a transform to become available.
+
         Returns:
             The transform frame_a_t_frame_b at the time specified.
+
         Raises:
             All the possible TransformExceptions.
         """
@@ -205,14 +213,16 @@ class TFListenerWrapper:
             frame_a: Base frame for transform.  The transform returned will be frame_a_t_frame_b
             frame_b: Tip frame for transform.  The transform returned will be frame_a_t_frame_b
             timeout_sec: The time to wait for the transform to become available if the requested time is beyond
-                the most recent transform in the buffer. If set to 0, it will not wait. If left at None, it will
-                wait indefinitely.
+            the most recent transform in the buffer. If set to 0, it will not wait. If left at None, it will
+            wait indefinitely.
             wait_for_frames: If true, it will wait for a path to exist from frame_a to frame_b in the
-                buffer. If false, lookup will fail immediately if a path between frames does not exist,
-                regardless of what timeout was set. Note that wait_for_a_tform_b can also be used to
-                wait for a transform to become available.
+            buffer. If false, lookup will fail immediately if a path between frames does not exist,
+            regardless of what timeout was set. Note that wait_for_a_tform_b can also be used to
+            wait for a transform to become available.
+
         Returns:
             The timestamp from the latest recorded transform frame_a_t_frame_b
+
         Raises:
             All the possible TransformExceptions.
         """

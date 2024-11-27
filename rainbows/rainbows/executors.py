@@ -411,8 +411,8 @@ class AutoScalingThreadPool(concurrent.futures.Executor):
         """Submits work to the pool.
 
         Args:
-            fn: a callable to execute. Must be immutable and hashable for
-                the pool to track concurrent submissions and apply quotas.
+            fn: a callable to execute. Must be immutable and hashable
+            for the pool to track concurrent submissions and apply quotas.
             args: optional positional arguments to forward.
             kwargs: optional keyword arguments to forward.
 

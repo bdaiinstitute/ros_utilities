@@ -283,12 +283,11 @@ These APIs wrap those in [`rclpy.client`](https://github.com/ros2/rclpy/tree/rol
 
 Actionable and serviced APIs abstract ROS 2 action and service calls behind an interface that resembles that of remote procedure calls. These can be invoked either synchronously or asynchronously. When used asynchronously, serviced APIs return plain futures whereas actionable APIs return action futures. Action futures build on the notion of a future to track actions' feedback, status, and result.
 
-Both abstractions are well integrated with [ROS 2 aware scopes and processes](Process‐wide-APIs).
+Both abstractions are well integrated with [ROS 2 aware scopes and processes](#process-wide-apis).
 
 #### Common use cases
 
-> [!NOTE]
-> The following snippets make use of standard ROS 2 [`examples`](https://index.ros.org/r/examples/github-ros2-examples) and [`example_interfaces`](https://index.ros.org/p/example_interfaces).
+The following snippets make use of standard ROS 2 [`examples`](https://index.ros.org/r/examples/github-ros2-examples) and [`example_interfaces`](https://index.ros.org/p/example_interfaces).
 
 ##### Invoking a service synchronously
 
@@ -327,8 +326,7 @@ if __name__ == "__main__":
     main()
 ```
 
-> [!NOTE]
-> You may use servers in the `examples_rclpy_minimal_service` package to test this.
+**Note**: you may use servers in the `examples_rclpy_minimal_service` package to test this.
 
 Serviced API calls are synchronous by default. This can also be made explicit by calling `synchronously()` on them instead e.g. `add_two_ints.synchronously()`.
 All service outcomes other than nominal success are signaled using exceptions. An optional timeout prevents calling (and blocking on) a service request indefinitely.
@@ -371,8 +369,7 @@ if __name__ == "__main__":
     main()
 ```
 
-> [!NOTE]
-> You may use servers in the `examples_rclpy_minimal_service` package to test this.
+**Note**: you may use servers in the `examples_rclpy_minimal_service` package to test this.
 
 Service response must be waited on, either explicitly and with a timeout or implicitly by early result request.
 Note fetching the future call result may raise.
@@ -420,8 +417,7 @@ if __name__ == "__main__":
     main()
 ```
 
-> [!NOTE]
-> You may use servers in the `examples_rclpy_minimal_action_server` package to test this.
+**Note**: you may use servers in the `examples_rclpy_minimal_action_server` package to test this.
 
 Actionable API calls are synchronous by default. This can also be made explicit by calling `synchronously()` on them instead e.g. `compute_fibonacci_sequence.synchronously()`.
 All action outcomes other than nominal success are signaled using exceptions. Action feedback is ignored unless a callback is specified on call.
@@ -478,8 +474,7 @@ if __name__ == "__main__":
     main()
 ```
 
-> [!NOTE]
-> You may use servers in the `examples_rclpy_minimal_action_server` package to test this.
+**Note**: you may use servers in the `examples_rclpy_minimal_action_server` package to test this.
 
 Action status must be checked explicitly, and timely before attempting to access an action's result or feedback (which may not be there yet).
 Action acknowledgement and finalization futures can help synchronization. Action feedback streaming simplifies (soft) real-time action monitoring.
@@ -498,15 +493,12 @@ Message feeds are the stateful generalization of standard ROS 2 message filters.
 
 Like message filters, most message feeds can be chained. This is true for all but those that externally source messages, ROS 2 topic subscriptions being the prime example of this. Other message feeds built into `rainbows` offer a vehicle for generic map-filter-reduce patterns, time synchronization across multiple message feeds, and synchronized `tf` lookups.
 
-> [!IMPORTANT]
-> While any message filter can become a feed, standard ROS 2 message filters are usually not thread-safe.
-> See [`rainbows.filters`](https://github.com/bdaiinstitute/ros_utilities/tree/main/rainbows/rainbows/filters.py) for thread-safe (re)implementations.
+On word of caution. While any message filter can become a feed, standard ROS 2 message filters are usually not thread-safe. See [`rainbows.filters`](https://github.com/bdaiinstitute/ros_utilities/tree/main/rainbows/rainbows/filters.py) for thread-safe (re)implementations.
 
 #### Common use cases
 
-> [!NOTE]
-> The following snippets make use of standard ROS 2 [`examples`](https://index.ros.org/r/examples/github-ros2-examples).
-> You may use the publishers in the `examples_rclpy_minimal_publisher` package to test these.
+The following snippets make use of standard ROS 2 [`examples`](https://index.ros.org/r/examples/github-ros2-examples).
+You may use the publishers in the `examples_rclpy_minimal_publisher` package to test these.
 
 ##### Looping over topic messages
 
@@ -769,7 +761,7 @@ Unit testing ROS 2 code is no different from unit testing any other software, bu
 
 #### Considerations for integration testing
 
-* Data transport in ROS 2 is non-deterministic. So is callback execution when multi-threaded executors are in place. This is true for ROS 2 code in general, and for [process-wide APIs](Process-wide-APIs) in particular, for which non-determinism is the price to pay for a synchronous programming model. As such, time sensitive and execution order dependent tests are bound to fail, even if only sporadically. Synchronization is necessary to avoid these issues, and fortunately the very same process-wide APIs enable safe use of synchronization primitives (e.g. via a multi-threaded executor spinning in a background thread, as provided by [`bdai_ros_wrappers.scope`](https://github.com/bdaiinstitute/ros_utilities/blob/main/rainbows/rainbows/scope.py) functionality).
+* Data transport in ROS 2 is non-deterministic. So is callback execution when multi-threaded executors are in place. This is true for ROS 2 code in general, and for [process-wide APIs](#process-wide-apis) in particular, for which non-determinism is the price to pay for a synchronous programming model. As such, time sensitive and execution order dependent tests are bound to fail, even if only sporadically. Synchronization is necessary to avoid these issues, and fortunately the very same process-wide APIs enable safe use of synchronization primitives (e.g. via a multi-threaded executor spinning in a background thread, as provided by [`bdai_ros_wrappers.scope`](https://github.com/bdaiinstitute/ros_utilities/blob/main/rainbows/rainbows/scope.py) functionality).
 * ROS 2 middlewares perform peer discovery by default. This allows distributed architectures in production but leads to cross-talk during parallelized testing. [`domain_coordinator`](https://github.com/ros2/ament_cmake_ros/tree/rolling/domain_coordinator) functionality simplifies [ROS domain ID](https://docs.ros.org/en/rolling/Concepts/Intermediate/About-Domain-ID.html) assignment enforcing host-wide uniqueness and with it, middleware isolation.
 
 Therefore, as rules of thumb consider:

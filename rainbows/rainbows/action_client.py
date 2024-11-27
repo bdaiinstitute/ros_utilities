@@ -46,8 +46,8 @@ class ActionClientWrapper(rclpy.action.ActionClient):
         Args:
             action_name (str): A representative name of the action for logging
             goal (Any): The Action Goal sent to the action server
-            timeout_sec (Optional[float]): A timeout for waiting on a response/result from the action server. Setting to
-                None creates no timeout
+            timeout_sec (Optional[float]): A timeout for waiting on a response/result
+            from the action server. Setting to None creates no timeout
 
         Returns:
             Optional[Any]:
@@ -94,12 +94,12 @@ class ActionClientWrapper(rclpy.action.ActionClient):
         Args:
             action_name (str): A representative name of the action for logging
             goal (Action.Goal): The Action Goal sent to the action server
-            result_callback (Optional[Callable[[Action.Result], None]]): A callback to process/handle the resulting
-                feedback from executing the command
-            feedback_callback (Optional[Callable[[Action.Feedback], None]]): A callback to process/handle the feedback
-                received during the execution of the command
-            on_failure_callback (Optional[Callable[[None], None]]): A callback to process/handle when the action fails
-                for various reasons
+            result_callback (Optional[Callable[[Action.Result], None]]): A callback to process/handle
+            the resulting feedback from executing the command
+            feedback_callback (Optional[Callable[[Action.Feedback], None]]): A callback to process/handle
+            the feedback received during the execution of the command
+            on_failure_callback (Optional[Callable[[None], None]]): A callback to process/handle when
+            the action fails for various reasons
 
         Returns:
             ActionHandle: An object to manage the asynchronous lifecycle of the action request

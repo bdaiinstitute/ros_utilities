@@ -404,15 +404,19 @@ def synchronized(
 
     This function can be used as a decorator, like:
 
-    @synchronized
-    def my_function(...):
-        ...
+    .. code-block:: python
 
-    or
+        @synchronized
+        def my_function(...):
+            ...
 
-    @synchronized(lock=my_lock)
-    def my_function(...):
-        ...
+    or:
+
+    .. code-block:: python
+
+        @synchronized(lock=my_lock)
+        def my_function(...):
+            ...
     """
     if lock is None:
         lock = threading.Lock()
@@ -436,21 +440,27 @@ def functional_decorator(base_decorator: Callable) -> Callable:
 
     As an example, consider the following decorator example:
 
-    @functional_decorator
-    def my_decorator(func, some_flag=None):
-        ...
+    .. code-block:: python
+
+        @functional_decorator
+        def my_decorator(func, some_flag=None):
+            ...
 
     This decorator can then be used like this:
 
-    @my_decorator
-    def my_function(*args):
-        ...
+    .. code-block:: python
+
+        @my_decorator
+        def my_function(*args):
+            ...
 
     and also like this:
 
-    @my_decorator(some_flag=True)
-    def my_function(*args):
-        ...
+    .. code-block:: python
+
+        @my_decorator(some_flag=True)
+        def my_function(*args):
+            ...
     """
 
     @functools.wraps(base_decorator)
