@@ -1,20 +1,20 @@
-# ros_utilities
-Wrappers and other utilities for ROS2
+# `ros_utilities`
 
-## Usage
+![Python Support](https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10-blue)
+![ROS Support](https://img.shields.io/badge/ROS-humble-blue)
 
-See the [`ros_utilities` wiki](https://github.com/bdaiinstitute/ros_utilities/wiki) on how to make the best out of these utilities.
+## Overview
 
-## Contribution
-To contribute, install `pre-commit` via pip, run `pre-commit install` and then run `pre-commit run --all-files` to
-verify that your code will pass inspection.
-```bash
-git clone https://github.com/bdaiinstitute/ros_utilities.git
-cd ros_utilities
-pip3 install pre-commit
-pre-commit install
-pre-commit run --all-files
-```
+`ros_utilities` enable a different, at times simpler approach to ROS 2 programming, particularly for those that come with a ROS 1 background.
 
-Now whenever you commit code to this repository, it will be checked against our `pre-commit` hooks. You can also run
-`git commit --no-verify` if you wish you commit without checking against the hooks.
+## Packages
+
+This repository contains the following packages:
+
+| Package                             | Description                                                                        |
+|-------------------------------------| -----------------------------------------------------------------------------------|
+| [`rainbows`](rainbows)              | `rclpy` wrappers to ease idiomatic, synchronous ROS 2 programming in Python.       |
+
+## Next steps
+
+See [contribution guidelines](CONTRIBUTING.md)!
