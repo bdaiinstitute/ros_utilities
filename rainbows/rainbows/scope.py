@@ -36,7 +36,7 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
 
     local = LocalStack()
 
-    def __init__(
+    def __init__(  # noqa: D417
         self,
         *,
         global_: bool = False,
@@ -47,12 +47,12 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
         namespace: typing.Optional[typing.Union[typing.Literal[True], str]] = None,
         context: typing.Optional[rclpy.context.Context] = None,
     ) -> None:
-        """Initializes the ROS 2 aware scope.
+        r"""Initializes the ROS 2 aware scope.
 
         Args:
             prebaked: whether to include an implicit main node in the scope graph or not,
             for convenience. May also specify the exact name for the implicit node.
-            global_: whether to make this scope global (ie. accessible from all threads).
+            global\_: whether to make this scope global (ie. accessible from all threads).
             Only one, outermost global scope can be entered at any given time. Global
             scopes can only be entered from the main thread.
             namespace: optional namespace for all underlying nodes. Defaults to
@@ -482,7 +482,7 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
 
 
 @contextlib.contextmanager
-def top(
+def top(  # noqa: D417
     args: typing.Optional[typing.Sequence[str]] = None,
     *,
     context: typing.Optional[rclpy.context.Context] = None,
@@ -491,13 +491,13 @@ def top(
     domain_id: typing.Optional[int] = None,
     **kwargs: typing.Any,
 ) -> typing.Iterator[ROSAwareScope]:
-    """Manages a ROS 2 aware scope, handling ROS 2 context lifecycle as well.
+    r"""Manages a ROS 2 aware scope, handling ROS 2 context lifecycle as well.
 
     Args:
         args: optional command-line arguments for context initialization.
         context: optional context to manage. If none is provided, one will
         be created. For global scopes, the default context will be used.
-        global_: whether to use the global context or a locally constructed one.
+        global\_: whether to use the global context or a locally constructed one.
         interruptible: global interruptible scopes will skip installing ROS 2
         signal handlers and let the user deal with SIGINT and SIGTERM
         interruptions instead.
