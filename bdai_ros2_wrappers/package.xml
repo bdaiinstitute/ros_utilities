@@ -4,7 +4,7 @@
   <name>bdai_ros2_wrappers</name>
   <version>1.0.0</version>
   <description>Former AI Institute's wrappers for ROS 2, an alias for rainbows</description>
-  <maintainer email="engineering@theaiinstitute.com">The AI Institute</maintainer>
+  <maintainer email="opensource@theaiinstitute.com">The AI Institute</maintainer>
   <license>MIT</license>
 
   <exec_depend>rainbows</exec_depend>

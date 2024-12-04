@@ -4,7 +4,7 @@
   <name>rainbows</name>
   <version>1.0.0</version>
   <description>The AI Institute's wrappers for ROS2</description>
-  <maintainer email="engineering@theaiinstitute.com">The AI Institute</maintainer>
+  <maintainer email="opensource@theaiinstitute.com">The AI Institute</maintainer>
   <license>MIT</license>
 
   <exec_depend>action_msgs</exec_depend>
