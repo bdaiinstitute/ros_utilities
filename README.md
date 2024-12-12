@@ -13,7 +13,7 @@ This repository contains the following packages:
 
 | Package                             | Description                                                                        |
 |-------------------------------------| -----------------------------------------------------------------------------------|
-| [`rainbows`](rainbows)              | `rclpy` wrappers to ease idiomatic, synchronous ROS 2 programming in Python.       |
+| [`synchros2`](synchros2)            | `rclpy` wrappers to ease idiomatic, synchronous ROS 2 programming in Python.       |
 
 **Note**: `proto2ros` packages for Protobuf / ROS 2 interoperability used to live in this repository but now live in https://github.com/bdaiinstitute/proto2ros.
 

@@ -2,4 +2,4 @@
 
 import sys
 
-sys.modules[__name__] = __import__("rainbows")
+sys.modules[__name__] = __import__("synchros2")
