@@ -3,7 +3,7 @@
 <package format="3">
   <name>bdai_ros2_wrappers</name>
   <version>1.0.0</version>
-  <description>Former AI Institute's wrappers for ROS 2, an alias for rainbows</description>
+  <description>Former AI Institute's wrappers for ROS 2, an alias for synchros2</description>
   <maintainer email="opensource@theaiinstitute.com">The AI Institute</maintainer>
   <license>MIT</license>
 
