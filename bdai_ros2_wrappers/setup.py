@@ -1,13 +1,13 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
 
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 package_name = "bdai_ros2_wrappers"
 
 setup(
     name=package_name,
     version="1.0.0",
-    packages=find_packages(exclude=['test']),
+    packages=find_packages(exclude=["test"]),
     package_data={package_name: ["py.typed"]},
     data_files=[
         ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
