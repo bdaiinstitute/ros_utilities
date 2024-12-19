@@ -14,8 +14,9 @@ setup(
     ],
     install_requires=["setuptools"],
     maintainer="The AI Institute",
-    maintainer_email="engineering@theaiinstitute.com",
+    maintainer_email="opensource@theaiinstitute.com",
     description="The AI Institute's wrappers for ROS2",
+    tests_require=["pytest"],
     zip_safe=True,
     license="MIT",
 )
