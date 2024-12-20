@@ -3,14 +3,16 @@
 import importlib
 import pkgutil
 import sys
+import warnings
 
-from bdai.deprecation import deprecated
-
-
-@deprecated(
-    reason="bdai_ros2_wrappers has been renamed to synchros2. Please use the renamed version",
-    alternative="synchros2",
+warnings.simplefilter("default")
+warnings.warn(
+    "bdai_ros2_wrappers has been renamed to synchros2. Please use the new name synchros2 instead",
+    DeprecationWarning,
+    stacklevel=2,
 )
+
+
 def aliased_import(name, alias):
     """Import a module or a package using an alias for it.
 
