@@ -3,6 +3,14 @@
 import importlib
 import pkgutil
 import sys
+import warnings
+
+warnings.simplefilter("default")
+warnings.warn(
+    "bdai_ros2_wrappers has been renamed to synchros2. Please use the new name synchros2 instead",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 
 def aliased_import(name, alias):
