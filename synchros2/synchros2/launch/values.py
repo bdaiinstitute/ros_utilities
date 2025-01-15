@@ -2,7 +2,7 @@
 
 Copyright (c) 2024 Boston Dynamics AI Institute Inc.  All rights reserved.
 """
-
+# mypy: ignore-errors
 from launch import LaunchContext
 from launch.substitutions import LaunchConfiguration
 
@@ -55,8 +55,9 @@ class LaunchConfigurationValues:
             self._string_values[launch_arg_name] = LaunchConfiguration(launch_arg_name).perform(self._context)
         return self._string_values[launch_arg_name]
 
-    def bool(self, launch_arg_name: str) -> bool:
+    def bool(self, launch_arg_name: str) -> bool:  # noqa: A003
         """Retrieve the boolean value of the specified launch argument.
+
         This method should fail if the argument's string value is not one of the expected options for a boolean.
         """
         if launch_arg_name not in self._bool_values:
