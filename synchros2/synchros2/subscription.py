@@ -130,8 +130,8 @@ class Subscription(MessageFeed[MessageT]):
         return self._topic_name
 
     # Aliases for improved readability
-    cancel = MessageFeed.close
-    unsubscribe = MessageFeed.close
+    cancel = MessageFeed.close  # type: ignore
+    unsubscribe = MessageFeed.close  # type: ignore
 
 
 def wait_for_message_async(
