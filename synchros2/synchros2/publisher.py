@@ -76,6 +76,6 @@ class Publisher(Generic[_MessageT]):
         """Gets the type of the message subscribed."""
         return self._publisher.msg_type
 
-    def publisher(self) -> rclpy.publisher.Publisher[_MessageT]:
+    def publisher(self) -> rclpy.publisher.Publisher:
         """Returns the internal ROS 2 publisher"""
         return self._publisher
