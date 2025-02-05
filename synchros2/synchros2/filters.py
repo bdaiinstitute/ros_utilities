@@ -164,15 +164,20 @@ class Subscriber(Filter):
     def __getattr__(self, name: str) -> Any:
         return getattr(self._subscription, name)
 
-_TimeSynchronizerType = TypeVar("_TimeSynchronizerType")
+# Representative of a type that is `message_filters.TimeSynchronizer` or inherits from it.
+_TimeSynchronizerType = TypeVar("_TimeSynchronizerType", bound=message_filters.TimeSynchronizer)
 
 class TimeSynchronizerBase(Filter, Generic[_TimeSynchronizerType]):
-    def __init__(self, time_synchronizer_type: Type, upstreams: Sequence[Filter], *args: Any, autostart: bool = True, **kwargs: Any) -> None:
+    def __init__(self,
+                 time_synchronizer_type: Type[message_filters.TimeSynchronizer],
+                 upstreams: Sequence[Filter],
+                 *args: Any,
+                 autostart: bool = True, **kwargs: Any) -> None:
         """Initializes the `ExactTimeSynchronizer` instance.
 
         Args:
             time_synchronizer_type: The type of the internal time synchronizer. Note this is the actual type not
-                an instance.
+                an instance. This type must be or inherit from `message_filters.TimeSynchronizer`
             upstreams: message filters to be synchronized.
             args: positional arguments to forward to the internal time synchronizer.
             autostart: whether to start filtering on instantiation or not.

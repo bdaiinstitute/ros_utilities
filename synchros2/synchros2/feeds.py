@@ -23,6 +23,7 @@ from synchros2.filters import (
     ApproximateTimeSynchronizer,
     ExactTimeSynchronizer,
     Filter,
+    TimeSynchronizerBase,
     TransformFilter,
     Tunnel,
 )
@@ -283,18 +284,22 @@ class FramedMessageFeed(MessageFeed[MessageT]):
 class SynchronizedMessageFeedBase(MessageFeed):
     """A based class for message feeds' aggregators."""
 
-    def __init__(self, link: Filter, *feeds: MessageFeed, history_length: Optional[int] = None, node: Optional[Node] = None) -> None:
+    def __init__(self,
+                 time_synchronizer_filter: TimeSynchronizerBase,
+                 *feeds: MessageFeed,
+                 history_length: Optional[int] = None,
+                 node: Optional[Node] = None) -> None:
         """Initializes the message feed.
 
         Args:
-            link: Wrapped message filter, connecting this message feed with its source. This should be one of
-                `synchros2.filters.ApproximateTimeSynchronizer` or `synchros2.filters.ExactTimeSynchronizer`
+            time_synchronizer_filter: This should be one of `synchros2.filters.ApproximateTimeSynchronizer` or
+                `synchros2.filters.ExactTimeSynchronizer`
             feeds: upstream message feeds to be synchronized.
             history_length: optional historic data size, defaults to 1.
             node: optional node for the underlying native subscription, defaults to
             the current process node.
         """
-        super().__init__(link, history_length=history_length, node=node)
+        super().__init__(time_synchronizer_filter, history_length=history_length, node=node)
         self._feeds = feeds
 
     @property
