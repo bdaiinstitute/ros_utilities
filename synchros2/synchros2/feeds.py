@@ -332,7 +332,7 @@ class SynchronizedMessageFeed(MessageFeed):
         super().stop()
 
 class ExactSynchronizedMessageFeed(MessageFeed):
-    """A message feeds' aggregator using a `message_filters.ApproximateTimeSynchronizer` instance."""
+    """A message feeds' aggregator using a `message_filters.TimeSynchronizer` instance."""
 
     def __init__(
         self,
