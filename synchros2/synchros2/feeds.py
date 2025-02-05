@@ -282,7 +282,7 @@ class FramedMessageFeed(MessageFeed[MessageT]):
         super().stop()
 
 class SynchronizedMessageFeedBase(MessageFeed):
-    """A based class for message feeds' aggregators."""
+    """A base class for message feeds' aggregators."""
 
     def __init__(self,
                  time_synchronizer_filter: TimeSynchronizerBase,
