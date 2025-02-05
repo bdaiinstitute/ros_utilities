@@ -79,3 +79,6 @@ class Publisher(Generic[_MessageT]):
     def publisher(self) -> rclpy.publisher.Publisher:
         """Returns the internal ROS 2 publisher"""
         return self._publisher
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._publisher, name)
