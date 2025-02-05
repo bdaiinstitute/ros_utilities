@@ -81,6 +81,7 @@ def test_synchronized_message_feed(ros: ROSAwareScope) -> None:
     assert pose_message.pose.position.x == expected_pose_message.pose.position.x
     assert twist_message.twist.linear.x == expected_twist_message.twist.linear.x
 
+
 def test_exact_synchronized_message_feed(ros: ROSAwareScope) -> None:
     pose_message_feed = MessageFeed[PoseStamped](Filter())
     twist_message_feed = MessageFeed[TwistStamped](Filter())
@@ -110,6 +111,7 @@ def test_exact_synchronized_message_feed(ros: ROSAwareScope) -> None:
     )
     assert pose_message.pose.position.x == expected_pose_message.pose.position.x
     assert twist_message.twist.linear.x == expected_twist_message.twist.linear.x
+
 
 def test_adapted_message_feed(ros: ROSAwareScope) -> None:
     pose_message_feed = MessageFeed[PoseStamped](Filter())

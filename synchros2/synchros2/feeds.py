@@ -191,6 +191,7 @@ class MessageFeed(Generic[MessageT]):
 
     close = stop
 
+
 class AdaptedMessageFeed(MessageFeed[MessageT]):
     """A message feed decorator to simplify adapter patterns."""
 
@@ -281,14 +282,17 @@ class FramedMessageFeed(MessageFeed[MessageT]):
         self._feed.stop()
         super().stop()
 
+
 class SynchronizedMessageFeedBase(MessageFeed):
     """A base class for message feeds' aggregators."""
 
-    def __init__(self,
-                 time_synchronizer_filter: TimeSynchronizerBase,
-                 *feeds: MessageFeed,
-                 history_length: Optional[int] = None,
-                 node: Optional[Node] = None) -> None:
+    def __init__(
+        self,
+        time_synchronizer_filter: TimeSynchronizerBase,
+        *feeds: MessageFeed,
+        history_length: Optional[int] = None,
+        node: Optional[Node] = None,
+    ) -> None:
         """Initializes the message feed.
 
         Args:
@@ -312,6 +316,7 @@ class SynchronizedMessageFeedBase(MessageFeed):
         for feed in self._feeds:
             feed.stop()
         super().stop()
+
 
 class SynchronizedMessageFeed(SynchronizedMessageFeedBase):
     """A message feeds' aggregator using a `message_filters.ApproximateTimeSynchronizer` instance."""
@@ -351,6 +356,7 @@ class SynchronizedMessageFeed(SynchronizedMessageFeedBase):
             history_length=history_length,
             node=node,
         )
+
 
 class ExactSynchronizedMessageFeed(SynchronizedMessageFeedBase):
     """A message feeds' aggregator using a `message_filters.TimeSynchronizer` instance."""

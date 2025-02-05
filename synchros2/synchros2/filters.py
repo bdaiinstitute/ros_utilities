@@ -5,7 +5,7 @@ import functools
 import itertools
 import threading
 from collections.abc import Sequence
-from typing import Any, Callable, Dict, Generic, Optional, Protocol, Tuple, Type, TypeVar
+from typing import Any, Callable, Dict, Generic, List, Optional, Protocol, Tuple, Type, TypeVar
 
 import message_filters
 import rclpy.subscription
@@ -164,15 +164,22 @@ class Subscriber(Filter):
     def __getattr__(self, name: str) -> Any:
         return getattr(self._subscription, name)
 
+
 # Representative of a type that is `message_filters.TimeSynchronizer` or inherits from it.
 _TimeSynchronizerType = TypeVar("_TimeSynchronizerType", bound=message_filters.TimeSynchronizer)
 
+
 class TimeSynchronizerBase(Filter, Generic[_TimeSynchronizerType]):
-    def __init__(self,
-                 time_synchronizer_type: Type[message_filters.TimeSynchronizer],
-                 upstreams: Sequence[Filter],
-                 *args: Any,
-                 autostart: bool = True, **kwargs: Any) -> None:
+    """A base class for time synchronization filters."""
+
+    def __init__(
+        self,
+        time_synchronizer_type: Type[message_filters.TimeSynchronizer],
+        upstreams: Sequence[Filter],
+        *args: Any,
+        autostart: bool = True,
+        **kwargs: Any,
+    ) -> None:
         """Initializes the `ExactTimeSynchronizer` instance.
 
         Args:
@@ -190,7 +197,7 @@ class TimeSynchronizerBase(Filter, Generic[_TimeSynchronizerType]):
         super().__init__(autostart=autostart)
 
     @property
-    def upstreams(self) -> list[Filter]:
+    def upstreams(self) -> List[Filter]:
         """Returns a list of the message filters to be synchronized"""
         return self._upstreams
 
@@ -217,6 +224,7 @@ class TimeSynchronizerBase(Filter, Generic[_TimeSynchronizerType]):
     def __getattr__(self, name: str) -> Any:
         return getattr(self._unsafe_synchronizer, name)
 
+
 class ExactTimeSynchronizer(TimeSynchronizerBase[message_filters.TimeSynchronizer]):
     """A thread-safe `message_filters.TimeSynchronizer` equivalent."""
 
@@ -231,6 +239,7 @@ class ExactTimeSynchronizer(TimeSynchronizerBase[message_filters.TimeSynchronize
         """
         super().__init__(message_filters.TimeSynchronizer, upstreams, *args, autostart=autostart, **kwargs)
 
+
 class ApproximateTimeSynchronizer(TimeSynchronizerBase[message_filters.ApproximateTimeSynchronizer]):
     """A threadsafe `message_filters.ApproximateTimeSynchronizer` equivalent."""
 
@@ -244,6 +253,7 @@ class ApproximateTimeSynchronizer(TimeSynchronizerBase[message_filters.Approxima
             kwargs: keyword arguments to forward to `message_filters.ApproximateTimeSynchronizer`.
         """
         super().__init__(message_filters.ApproximateTimeSynchronizer, upstreams, *args, autostart=autostart, **kwargs)
+
 
 class TransformFilter(Filter):
     """A :mod:`tf2_ros` driven message filter, ensuring user defined transforms' availability.
