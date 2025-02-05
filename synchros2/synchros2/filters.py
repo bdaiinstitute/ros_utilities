@@ -180,7 +180,7 @@ class TimeSynchronizerBase(Filter, Generic[_TimeSynchronizerType]):
         autostart: bool = True,
         **kwargs: Any,
     ) -> None:
-        """Initializes the `ExactTimeSynchronizer` instance.
+        """Initializes the `TimeSynchronizerBase` instance.
 
         Args:
             time_synchronizer_type: The type of the internal time synchronizer. Note this is the actual type not
