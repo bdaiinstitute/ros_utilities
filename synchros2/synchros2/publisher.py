@@ -11,6 +11,7 @@ import synchros2.scope as scope
 # Represents a ros message type
 _MessageT = TypeVar("_MessageT")
 
+
 class Publisher(Generic[_MessageT]):
     """An extension of a publisher from ROS 2."""
 
@@ -42,7 +43,7 @@ class Publisher(Generic[_MessageT]):
             a future, done if the current number of subscriptions already matches
             the specified lower bound.
         """
-        future_match = Future()
+        future_match = Future()  # type: ignore[var-annotated]
         num_matched_publishers = self._node.count_subscribers(self._publisher.topic_name)
         if num_matched_publishers < num_subscriptions:
 
