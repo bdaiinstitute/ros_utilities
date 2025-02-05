@@ -5,7 +5,7 @@ import functools
 import itertools
 import threading
 from collections.abc import Sequence
-from typing import Any, Callable, Dict, Optional, Protocol, Tuple
+from typing import Any, Callable, Dict, Generic, Optional, Protocol, Tuple, Type, TypeVar
 
 import message_filters
 import rclpy.subscription
@@ -164,21 +164,24 @@ class Subscriber(Filter):
     def __getattr__(self, name: str) -> Any:
         return getattr(self._subscription, name)
 
-class ExactTimeSynchronizer(Filter):
-    """A thread-safe `message_filters.TimeSynchronizer` equivalent."""
+_TimeSynchronizerType = TypeVar("_TimeSynchronizerType")
 
-    def __init__(self, upstreams: Sequence[Filter], *args: Any, autostart: bool = True, **kwargs: Any) -> None:
+class TimeSynchronizerBase(Filter, Generic[_TimeSynchronizerType]):
+    def __init__(self, time_synchronizer_type: Type, upstreams: Sequence[Filter], *args: Any, autostart: bool = True, **kwargs: Any) -> None:
         """Initializes the `ExactTimeSynchronizer` instance.
 
         Args:
+            time_synchronizer_type: The type of the internal time synchronizer. Note this is the actual type not
+                an instance.
             upstreams: message filters to be synchronized.
-            args: positional arguments to forward to `message_filters.TimeSynchronizer`.
+            args: positional arguments to forward to the internal time synchronizer.
             autostart: whether to start filtering on instantiation or not.
-            kwargs: keyword arguments to forward to `message_filters.TimeSynchronizer`.
+            kwargs: keyword arguments to forward to internal time synchronizer.
         """
         self._upstreams = list(upstreams)
         self._options = (args, kwargs)
-        self._unsafe_synchronizer: Optional[message_filters.TimeSynchronizer] = None
+        self._time_synchronizer_type = time_synchronizer_type
+        self._unsafe_synchronizer: Optional[_TimeSynchronizerType] = None
         super().__init__(autostart=autostart)
 
     @property
@@ -190,7 +193,7 @@ class ExactTimeSynchronizer(Filter):
         if self._unsafe_synchronizer is not None:
             raise RuntimeError("synchronizer already connected")
         args, kwargs = self._options
-        self._unsafe_synchronizer = message_filters.TimeSynchronizer(
+        self._unsafe_synchronizer = self._time_synchronizer_type(
             self._upstreams,
             *args,
             **kwargs,
@@ -209,7 +212,21 @@ class ExactTimeSynchronizer(Filter):
     def __getattr__(self, name: str) -> Any:
         return getattr(self._unsafe_synchronizer, name)
 
-class ApproximateTimeSynchronizer(Filter):
+class ExactTimeSynchronizer(TimeSynchronizerBase[message_filters.TimeSynchronizer]):
+    """A thread-safe `message_filters.TimeSynchronizer` equivalent."""
+
+    def __init__(self, upstreams: Sequence[Filter], *args: Any, autostart: bool = True, **kwargs: Any) -> None:
+        """Initializes the `ExactTimeSynchronizer` instance.
+
+        Args:
+            upstreams: message filters to be synchronized.
+            args: positional arguments to forward to `message_filters.TimeSynchronizer`.
+            autostart: whether to start filtering on instantiation or not.
+            kwargs: keyword arguments to forward to `message_filters.TimeSynchronizer`.
+        """
+        super().__init__(message_filters.TimeSynchronizer, upstreams, *args, autostart=autostart, **kwargs)
+
+class ApproximateTimeSynchronizer(TimeSynchronizerBase[message_filters.ApproximateTimeSynchronizer]):
     """A threadsafe `message_filters.ApproximateTimeSynchronizer` equivalent."""
 
     def __init__(self, upstreams: Sequence[Filter], *args: Any, autostart: bool = True, **kwargs: Any) -> None:
@@ -221,34 +238,7 @@ class ApproximateTimeSynchronizer(Filter):
             autostart: whether to start filtering on instantiation or not.
             kwargs: keyword arguments to forward to `message_filters.ApproximateTimeSynchronizer`.
         """
-        self.upstreams = list(upstreams)
-        self.options = (args, kwargs)
-        self._unsafe_synchronizer: Optional[message_filters.ApproximateTimeSynchronizer] = None
-        super().__init__(autostart)
-
-    def _start(self) -> None:
-        if self._unsafe_synchronizer is not None:
-            raise RuntimeError("synchronizer already connected")
-        args, kwargs = self.options
-        self._unsafe_synchronizer = message_filters.ApproximateTimeSynchronizer(
-            self.upstreams,
-            *args,
-            **kwargs,
-        )
-        self._unsafe_synchronizer.registerCallback(self.signalMessage)
-        for upstream in self.upstreams:
-            upstream.start()
-
-    def _stop(self) -> None:
-        if self._unsafe_synchronizer is None:
-            raise RuntimeError("synchronizer not connected")
-        for upstream in self.upstreams:
-            upstream.stop()
-        self._unsafe_synchronizer = None
-
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self._unsafe_synchronizer, name)
-
+        super().__init__(message_filters.ApproximateTimeSynchronizer, upstreams, *args, autostart=autostart, **kwargs)
 
 class TransformFilter(Filter):
     """A :mod:`tf2_ros` driven message filter, ensuring user defined transforms' availability.
