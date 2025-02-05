@@ -21,7 +21,9 @@ import synchros2.scope as scope
 from synchros2.filters import (
     Adapter,
     ApproximateTimeSynchronizer,
+    ExactTimeSynchronizer,
     Filter,
+    TimeSynchronizerBase,
     TransformFilter,
     Tunnel,
 )
@@ -281,7 +283,42 @@ class FramedMessageFeed(MessageFeed[MessageT]):
         super().stop()
 
 
-class SynchronizedMessageFeed(MessageFeed):
+class SynchronizedMessageFeedBase(MessageFeed):
+    """A base class for message feeds' aggregators."""
+
+    def __init__(
+        self,
+        time_synchronizer_filter: TimeSynchronizerBase,
+        *feeds: MessageFeed,
+        history_length: Optional[int] = None,
+        node: Optional[Node] = None,
+    ) -> None:
+        """Initializes the message feed.
+
+        Args:
+            time_synchronizer_filter: This should be one of `synchros2.filters.ApproximateTimeSynchronizer` or
+                `synchros2.filters.ExactTimeSynchronizer`
+            feeds: upstream message feeds to be synchronized.
+            history_length: optional historic data size, defaults to 1.
+            node: optional node for the underlying native subscription, defaults to
+            the current process node.
+        """
+        super().__init__(time_synchronizer_filter, history_length=history_length, node=node)
+        self._feeds = feeds
+
+    @property
+    def feeds(self) -> Iterable[MessageFeed]:
+        """Gets all aggregated message feeds."""
+        return self._feeds
+
+    def stop(self) -> None:
+        """Stop this message feed and all upstream ones as well."""
+        for feed in self._feeds:
+            feed.stop()
+        super().stop()
+
+
+class SynchronizedMessageFeed(SynchronizedMessageFeedBase):
     """A message feeds' aggregator using a `message_filters.ApproximateTimeSynchronizer` instance."""
 
     def __init__(
@@ -315,18 +352,41 @@ class SynchronizedMessageFeed(MessageFeed):
                 allow_headerless=allow_headerless,
                 autostart=autostart,
             ),
+            *feeds,
+            history_length=history_length,
+            node=node,
+        )
+
+
+class ExactSynchronizedMessageFeed(SynchronizedMessageFeedBase):
+    """A message feeds' aggregator using a `message_filters.TimeSynchronizer` instance."""
+
+    def __init__(
+        self,
+        *feeds: MessageFeed,
+        queue_size: int = 10,
+        history_length: Optional[int] = None,
+        node: Optional[Node] = None,
+        autostart: bool = True,
+    ) -> None:
+        """Initializes the message feed.
+
+        Args:
+            feeds: upstream message feeds to be synchronized.
+            queue_size: the message queue size for synchronization.
+            history_length: optional historic data size, defaults to 1.
+            node: optional node for the underlying native subscription, defaults to
+            the current process node.
+            autostart: whether to start feeding messages immediately or not.
+        """
+        super().__init__(
+            ExactTimeSynchronizer(
+                [f.link for f in feeds],
+                queue_size,
+                autostart=autostart,
+            ),
+            *feeds,
             history_length=history_length,
             node=node,
         )
         self._feeds = feeds
-
-    @property
-    def feeds(self) -> Iterable[MessageFeed]:
-        """Gets all aggregated message feeds."""
-        return self._feeds
-
-    def stop(self) -> None:
-        """Stop this message feed and all upstream ones as well."""
-        for feed in self._feeds:
-            feed.stop()
-        super().stop()
