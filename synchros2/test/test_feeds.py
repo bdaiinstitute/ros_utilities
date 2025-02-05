@@ -12,6 +12,7 @@ from geometry_msgs.msg import (
 
 from synchros2.feeds import (
     AdaptedMessageFeed,
+    ExactSynchronizedMessageFeed,
     FramedMessageFeed,
     MessageFeed,
     SynchronizedMessageFeed,
@@ -80,6 +81,35 @@ def test_synchronized_message_feed(ros: ROSAwareScope) -> None:
     assert pose_message.pose.position.x == expected_pose_message.pose.position.x
     assert twist_message.twist.linear.x == expected_twist_message.twist.linear.x
 
+def test_exact_synchronized_message_feed(ros: ROSAwareScope) -> None:
+    pose_message_feed = MessageFeed[PoseStamped](Filter())
+    twist_message_feed = MessageFeed[TwistStamped](Filter())
+    synchronized_message_feed = ExactSynchronizedMessageFeed(
+        pose_message_feed,
+        twist_message_feed,
+        node=ros.node,
+    )
+
+    expected_pose_message = PoseStamped()
+    expected_pose_message.header.frame_id = "odom"
+    expected_pose_message.header.stamp.sec = 1
+    expected_pose_message.pose.position.x = 1.0
+    expected_pose_message.pose.orientation.w = 1.0
+    pose_message_feed.link.signalMessage(expected_pose_message)
+
+    expected_twist_message = TwistStamped()
+    expected_twist_message.header.frame_id = "base_link"
+    expected_twist_message.header.stamp.sec = 1
+    expected_twist_message.twist.linear.x = 1.0
+    expected_twist_message.twist.angular.z = 1.0
+    twist_message_feed.link.signalMessage(expected_twist_message)
+
+    pose_message, twist_message = cast(
+        Tuple[PoseStamped, TwistStamped],
+        ensure(synchronized_message_feed.latest),
+    )
+    assert pose_message.pose.position.x == expected_pose_message.pose.position.x
+    assert twist_message.twist.linear.x == expected_twist_message.twist.linear.x
 
 def test_adapted_message_feed(ros: ROSAwareScope) -> None:
     pose_message_feed = MessageFeed[PoseStamped](Filter())

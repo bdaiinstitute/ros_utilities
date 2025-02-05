@@ -164,6 +164,50 @@ class Subscriber(Filter):
     def __getattr__(self, name: str) -> Any:
         return getattr(self._subscription, name)
 
+class ExactTimeSynchronizer(Filter):
+    """A thread-safe `message_filters.TimeSynchronizer` equivalent."""
+
+    def __init__(self, upstreams: Sequence[Filter], *args: Any, autostart: bool = True, **kwargs: Any) -> None:
+        """Initializes the `ExactTimeSynchronizer` instance.
+
+        Args:
+            upstreams: message filters to be synchronized.
+            args: positional arguments to forward to `message_filters.TimeSynchronizer`.
+            autostart: whether to start filtering on instantiation or not.
+            kwargs: keyword arguments to forward to `message_filters.TimeSynchronizer`.
+        """
+        self._upstreams = list(upstreams)
+        self._options = (args, kwargs)
+        self._unsafe_synchronizer: Optional[message_filters.TimeSynchronizer] = None
+        super().__init__(autostart=autostart)
+
+    @property
+    def upstreams(self) -> list[Filter]:
+        """Returns a list of the message filters to be synchronized"""
+        return self._upstreams
+
+    def _start(self) -> None:
+        if self._unsafe_synchronizer is not None:
+            raise RuntimeError("synchronizer already connected")
+        args, kwargs = self._options
+        self._unsafe_synchronizer = message_filters.TimeSynchronizer(
+            self._upstreams,
+            *args,
+            **kwargs,
+        )
+        self._unsafe_synchronizer.registerCallback(self.signalMessage)
+        for upstream in self._upstreams:
+            upstream.start()
+
+    def _stop(self) -> None:
+        if self._unsafe_synchronizer is None:
+            raise RuntimeError("synchronizer not connected")
+        for upstream in self.upstreams:
+            upstream.stop()
+        self._unsafe_synchronizer = None
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._unsafe_synchronizer, name)
 
 class ApproximateTimeSynchronizer(Filter):
     """A threadsafe `message_filters.ApproximateTimeSynchronizer` equivalent."""

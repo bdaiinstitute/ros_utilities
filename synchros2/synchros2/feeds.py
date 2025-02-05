@@ -21,6 +21,7 @@ import synchros2.scope as scope
 from synchros2.filters import (
     Adapter,
     ApproximateTimeSynchronizer,
+    ExactTimeSynchronizer,
     Filter,
     TransformFilter,
     Tunnel,
@@ -189,7 +190,6 @@ class MessageFeed(Generic[MessageT]):
 
     close = stop
 
-
 class AdaptedMessageFeed(MessageFeed[MessageT]):
     """A message feed decorator to simplify adapter patterns."""
 
@@ -313,6 +313,49 @@ class SynchronizedMessageFeed(MessageFeed):
                 queue_size,
                 delay,
                 allow_headerless=allow_headerless,
+                autostart=autostart,
+            ),
+            history_length=history_length,
+            node=node,
+        )
+        self._feeds = feeds
+
+    @property
+    def feeds(self) -> Iterable[MessageFeed]:
+        """Gets all aggregated message feeds."""
+        return self._feeds
+
+    def stop(self) -> None:
+        """Stop this message feed and all upstream ones as well."""
+        for feed in self._feeds:
+            feed.stop()
+        super().stop()
+
+class ExactSynchronizedMessageFeed(MessageFeed):
+    """A message feeds' aggregator using a `message_filters.ApproximateTimeSynchronizer` instance."""
+
+    def __init__(
+        self,
+        *feeds: MessageFeed,
+        queue_size: int = 10,
+        history_length: Optional[int] = None,
+        node: Optional[Node] = None,
+        autostart: bool = True,
+    ) -> None:
+        """Initializes the message feed.
+
+        Args:
+            feeds: upstream message feeds to be synchronized.
+            queue_size: the message queue size for synchronization.
+            history_length: optional historic data size, defaults to 1.
+            node: optional node for the underlying native subscription, defaults to
+            the current process node.
+            autostart: whether to start feeding messages immediately or not.
+        """
+        super().__init__(
+            ExactTimeSynchronizer(
+                [f.link for f in feeds],
+                queue_size,
                 autostart=autostart,
             ),
             history_length=history_length,
