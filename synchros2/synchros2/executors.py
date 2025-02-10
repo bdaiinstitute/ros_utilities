@@ -11,6 +11,7 @@ import os
 import queue
 import threading
 import typing
+import warnings
 import weakref
 
 import rclpy.executors
@@ -521,6 +522,7 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
         ) -> None:
             self.task = task
             self.entity = entity
+            self.node = node
             if node is not None and hasattr(node, "destruction_requested"):
                 self.valid = lambda: not node.destruction_requested  # type: ignore
             else:
@@ -627,11 +629,16 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
                         self._wip[task] = self._thread_pool.submit(task)
                     for task in list(self._wip):
                         if task.done():
-                            del self._wip[task]
+                            continue
+                        del self._wip[task]
 
-                            # ignore concurrent entity destruction
-                            with contextlib.suppress(rclpy.executors.InvalidHandle):
-                                task.result()
+                        if task.entity is None and task.node is None:
+                            # user-defined tasks shall be resolved by the user
+                            continue
+
+                        # ignore concurrent entity destruction
+                        with contextlib.suppress(rclpy.executors.InvalidHandle):
+                            task.result()
 
             except rclpy.executors.ConditionReachedException:
                 pass
@@ -699,7 +706,19 @@ def background(executor: rclpy.executors.Executor) -> typing.Iterator[rclpy.exec
     Returns:
         a context manager.
     """
-    background_thread = threading.Thread(target=executor.spin)
+
+    def spinloop() -> None:
+        while True:
+            try:
+                executor.spin()
+            except Exception as e:
+                w = RuntimeWarning(*e.args)
+                w.with_traceback(e.__traceback__)
+                warnings.warn(w, stacklevel=1)
+                continue
+            break
+
+    background_thread = threading.Thread(target=spinloop)
     executor.spin = bind_to_thread(executor.spin, background_thread)
     executor.spin_once = bind_to_thread(executor.spin_once, background_thread)
     executor.spin_until_future_complete = bind_to_thread(executor.spin_until_future_complete, background_thread)
