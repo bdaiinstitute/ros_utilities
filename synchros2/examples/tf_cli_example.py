@@ -1,4 +1,4 @@
-# Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
+# Copyright (c) 2023 Boston Dynamics AI Institute LLC.  All rights reserved.
 
 """An example of a ROS 2 aware command using process-wide machinery.
 

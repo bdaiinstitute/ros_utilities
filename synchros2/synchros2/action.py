@@ -1,4 +1,4 @@
-# Copyright (c) 2024 Boston Dynamics AI Institute Inc.  All rights reserved.
+# Copyright (c) 2024 Boston Dynamics AI Institute LLC.  All rights reserved.
 
 import inspect
 from typing import Any, Callable, Generator, Generic, Iterator, List, Optional, Protocol, Type, TypeVar, Union, overload

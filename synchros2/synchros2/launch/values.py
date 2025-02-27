@@ -1,6 +1,6 @@
 """Provides a helper class for accessing the values of launch arguments from a LaunchConfiguration
 
-Copyright (c) 2024 Boston Dynamics AI Institute Inc.  All rights reserved.
+Copyright (c) 2024 Boston Dynamics AI Institute LLC.  All rights reserved.
 """
 # mypy: ignore-errors
 from launch import LaunchContext

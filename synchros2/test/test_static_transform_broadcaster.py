@@ -1,4 +1,4 @@
-# Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
+# Copyright (c) 2023 Boston Dynamics AI Institute LLC.  All rights reserved.
 
 from geometry_msgs.msg import TransformStamped
 

@@ -1,4 +1,4 @@
-# Copyright (c) 2023 Boston Dynamics AI Institute Inc.  All rights reserved.
+# Copyright (c) 2023 Boston Dynamics AI Institute LLC.  All rights reserved.
 from typing import Dict, Iterable, Optional, Union, cast
 
 from geometry_msgs.msg import TransformStamped
