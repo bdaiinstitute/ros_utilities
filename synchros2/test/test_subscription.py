@@ -1,4 +1,4 @@
-# Copyright (c) 2024 Boston Dynamics AI Institute Inc.  All rights reserved.
+# Copyright (c) 2024 Boston Dynamics AI Institute LLC.  All rights reserved.
 import itertools
 import time
 from typing import Any, Iterator, cast
