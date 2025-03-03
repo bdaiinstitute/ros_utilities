@@ -64,6 +64,7 @@ class Node(BaseNode):
         for waitable in super().waitables:
             if not getattr(waitable, "__patched__", False):
                 waitable.add_to_wait_set = suppressed(InvalidHandle, waitable.add_to_wait_set)
+                waitable.is_ready = suppressed(IndexError, waitable.is_ready)
                 waitable.__patched__ = True
             yield waitable
 
