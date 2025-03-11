@@ -80,7 +80,7 @@ class Subscription(MessageFeed[MessageT]):
     def publisher_matches(self, num_publishers: int) -> Future:
         """Gets a future to next publisher matching status update.
 
-        Note that in ROS 2 Humble and ealier distributions, this method relies on
+        Note that in ROS 2 Humble and earlier distributions, this method relies on
         polling the number of known publishers for the topic subscribed, as subscription
         matching events are missing.
 
