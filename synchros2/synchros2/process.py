@@ -282,6 +282,14 @@ def node() -> typing.Optional[rclpy.node.Node]:
     return process.node
 
 
+def ensure_node() -> rclpy.node.Node:
+    """Gets a node from the current ROS 2 aware process or fails trying"""
+    current_node = node()
+    if current_node is None:
+        raise ValueError("no ROS 2 node available (did you use bdai_ros2_wrapper.process.main?)")
+    return current_node
+
+
 def executor() -> typing.Optional[rclpy.executors.Executor]:
     """Gets the executor of the current ROS 2 aware process, if any."""
     process = current()
