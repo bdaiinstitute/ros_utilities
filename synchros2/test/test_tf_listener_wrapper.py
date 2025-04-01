@@ -127,7 +127,7 @@ def test_future_transform_insufficient_wait(
     assert ros.executor is not None
     ros.executor.create_task(delayed_publish)
 
-    time.sleep(0.2)
+    time.sleep(0.5)
     timestamp = ros.node.get_clock().now() + Duration(seconds=delay)
     with pytest.raises(ExtrapolationException):
         tf_listener.lookup_a_tform_b(FRAME_ID, CHILD_FRAME_ID, timestamp, timeout_sec=0.5)
