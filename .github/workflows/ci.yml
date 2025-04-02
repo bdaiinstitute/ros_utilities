@@ -82,6 +82,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         
+      - name: Install dependencies
+        run: sudo rosdep install -y -i --from-paths synchros2
+
       - name: Build and run tests
         run: |
           source /opt/ros/humble/setup.bash
