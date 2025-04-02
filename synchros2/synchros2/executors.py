@@ -548,10 +548,11 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
             # leaving coroutines unawaited upon cancellation.
             schedule_callbacks = False
             with self.task._task_lock, self.task._lock:
-                if not self.task._done:
+                if self.task._pending:
                     if inspect.iscoroutine(self.task._handler):
                         self.task._handler.close()
-                    self.task._done = self.task._cancelled = True
+                    self.task._pending = False
+                    self.task._cancelled = True
                     schedule_callbacks = True
                 else:
                     self.task.exception()  # always retrieve exception
