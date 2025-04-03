@@ -1,5 +1,5 @@
 ARG ROS_DISTRO=humble
-FROM ros:${ROS_DISTRO}-ros-base
+FROM osrf/ros:${ROS_DISTRO}-desktop
 
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
