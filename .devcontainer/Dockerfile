@@ -7,7 +7,7 @@ ENV ROS_DISTRO=${ROS_DISTRO}
 SHELL ["/bin/bash", "-c"]
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get update -q && \
-    apt-get update -q && \
+    apt-get dist-upgrade -y --no-install-recommends && \
     apt-get install -yq --no-install-recommends \
     python3-pip \
     python-is-python3 \
