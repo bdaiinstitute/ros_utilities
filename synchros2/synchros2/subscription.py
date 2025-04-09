@@ -31,6 +31,7 @@ class Subscription(MessageFeed[MessageT]):
         history_length: Optional[int] = None,
         node: Optional[Node] = None,
         autostart: bool = True,
+        trace: bool = False,
         **kwargs: Any,
     ) -> None:
         """Initializes the subscription.
@@ -44,6 +45,7 @@ class Subscription(MessageFeed[MessageT]):
             node: optional node for the underlying native subscription, defaults to
             the current process node.
             autostart: whether to start feeding messages immediately or not.
+            trace: Whether to log when messages are received by the message feed
             kwargs: other keyword arguments are used to create the underlying native subscription.
             See `rclpy.node.Node.create_subscription` documentation for further reference.
         """
@@ -64,10 +66,14 @@ class Subscription(MessageFeed[MessageT]):
             ),
             history_length=history_length,
             node=node,
+            trace=trace,
         )
         self._message_type = message_type
         self._topic_name = topic_name
         self._node = node
+
+    def _callback_trace(self, *msgs: Any) -> None:
+        self._logger.debug(f"{self.__class__.__qualname__} to `{self._topic_name}` received {len(msgs)} messages")
 
     @property
     def subscriber(self) -> Subscriber:

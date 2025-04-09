@@ -42,6 +42,7 @@ class MessageFeed(Generic[MessageT]):
         *,
         history_length: Optional[int] = None,
         node: Optional[Node] = None,
+        trace: bool = False,
     ) -> None:
         """Initializes the message feed.
 
@@ -49,6 +50,7 @@ class MessageFeed(Generic[MessageT]):
             link: Wrapped message filter, connecting this message feed with its source.
             history_length: optional historic data size, defaults to 1
             node: optional node for lifetime control, defaults to the current process node.
+            trace: Whether to log when messages are received by the message feed
         """
         if node is None:
             node = scope.ensure_node()
@@ -56,10 +58,17 @@ class MessageFeed(Generic[MessageT]):
             history_length = 1
         self._link = link
         self._tape: Tape[MessageT] = Tape(history_length)
-        self._link.registerCallback(
-            lambda *msgs: self._tape.write(msgs if len(msgs) > 1 else msgs[0]),
-        )
+        if trace:
+            self._logger = node.get_logger()
+            self._link.registerCallback(self._callback_trace)
+        self._link.registerCallback(self._callback)
         node.context.on_shutdown(self.close)
+
+    def _callback_trace(self, *msgs: Any) -> None:
+        self._logger.debug(f"{self.__class__.__qualname__} received {len(msgs)} messages")
+
+    def _callback(self, *msgs: Any) -> None:
+        self._tape.write(msgs if len(msgs) > 1 else msgs[0])
 
     @property
     def link(self) -> Filter:
@@ -211,6 +220,7 @@ class AdaptedMessageFeed(MessageFeed[MessageT]):
             kwargs: all other keyword arguments are forwarded
             for `MessageFeed` initialization.
             autostart: whether to start feeding messages immediately or not.
+            kwargs: key word arguments to pass to the message feed
         """
         super().__init__(Adapter(feed.link, fn, autostart=autostart), **kwargs)
         self._feed = feed
@@ -239,6 +249,7 @@ class FramedMessageFeed(MessageFeed[MessageT]):
         history_length: Optional[int] = None,
         node: Optional[Node] = None,
         autostart: bool = True,
+        **kwargs: Any,
     ) -> None:
         """Initializes the message feed.
 
@@ -252,6 +263,7 @@ class FramedMessageFeed(MessageFeed[MessageT]):
             node: optional node for the underlying native subscription, defaults to
             the current process node.
             autostart: whether to start feeding messages immediately or not.
+            kwargs: key word arguments to pass to the message feed
         """
         if node is None:
             node = scope.ensure_node()
@@ -269,6 +281,7 @@ class FramedMessageFeed(MessageFeed[MessageT]):
             ),
             history_length=history_length,
             node=node,
+            **kwargs,
         )
         self._feed = feed
 
@@ -292,6 +305,7 @@ class SynchronizedMessageFeedBase(MessageFeed):
         *feeds: MessageFeed,
         history_length: Optional[int] = None,
         node: Optional[Node] = None,
+        **kwargs: Any,
     ) -> None:
         """Initializes the message feed.
 
@@ -302,8 +316,9 @@ class SynchronizedMessageFeedBase(MessageFeed):
             history_length: optional historic data size, defaults to 1.
             node: optional node for the underlying native subscription, defaults to
             the current process node.
+            kwargs: key word arguments to pass to the message feed
         """
-        super().__init__(time_synchronizer_filter, history_length=history_length, node=node)
+        super().__init__(time_synchronizer_filter, history_length=history_length, node=node, **kwargs)
         self._feeds = feeds
 
     @property
@@ -330,6 +345,7 @@ class SynchronizedMessageFeed(SynchronizedMessageFeedBase):
         history_length: Optional[int] = None,
         node: Optional[Node] = None,
         autostart: bool = True,
+        **kwargs: Any,
     ) -> None:
         """Initializes the message feed.
 
@@ -343,6 +359,7 @@ class SynchronizedMessageFeed(SynchronizedMessageFeedBase):
             node: optional node for the underlying native subscription, defaults to
             the current process node.
             autostart: whether to start feeding messages immediately or not.
+            kwargs: key word arguments to pass to the message feed
         """
         super().__init__(
             ApproximateTimeSynchronizer(
@@ -355,6 +372,7 @@ class SynchronizedMessageFeed(SynchronizedMessageFeedBase):
             *feeds,
             history_length=history_length,
             node=node,
+            **kwargs,
         )
 
 
@@ -368,6 +386,7 @@ class ExactSynchronizedMessageFeed(SynchronizedMessageFeedBase):
         history_length: Optional[int] = None,
         node: Optional[Node] = None,
         autostart: bool = True,
+        **kwargs: Any,
     ) -> None:
         """Initializes the message feed.
 
@@ -378,6 +397,7 @@ class ExactSynchronizedMessageFeed(SynchronizedMessageFeedBase):
             node: optional node for the underlying native subscription, defaults to
             the current process node.
             autostart: whether to start feeding messages immediately or not.
+            kwargs: key word arguments to pass to the message feed
         """
         super().__init__(
             ExactTimeSynchronizer(
@@ -388,5 +408,6 @@ class ExactSynchronizedMessageFeed(SynchronizedMessageFeedBase):
             *feeds,
             history_length=history_length,
             node=node,
+            **kwargs,
         )
         self._feeds = feeds
