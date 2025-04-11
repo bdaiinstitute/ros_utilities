@@ -63,7 +63,7 @@ def test_node_destruction_during_execution(ros_context: Context) -> None:
         # Check that executor wraps up early due to node destruction
         executor.spin_until_future_complete(future, timeout_sec=5.0)
         assert node.destruction_requested
-        assert executor.thread_pool.wait(timeout=5.0)
+        assert executor.default_thread_pool.wait(timeout=5.0)
         assert not future.done()  # future response will never be resolved
     finally:
         barrier.reset()
