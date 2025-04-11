@@ -1,11 +1,12 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute LLC.  All rights reserved.
+import functools
 import threading
 import time
-from typing import Generator
+from typing import Generator, List
 
 import pytest
 import rclpy
-from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
 from rclpy.context import Context
 from rclpy.executors import SingleThreadedExecutor
 from rclpy.node import Node
@@ -162,19 +163,52 @@ def test_autoscaling_executor(ros_context: Context, ros_node: Node) -> None:
     client = ros_node.create_client(Trigger, "/dummy/trigger", callback_group=MutuallyExclusiveCallbackGroup())
 
     executor = AutoScalingMultiThreadedExecutor(context=ros_context)
-    assert len(executor.thread_pool.workers) == 0
-    assert not executor.thread_pool.working
+    assert len(executor.default_thread_pool.workers) == 0
+    assert not executor.default_thread_pool.working
     executor.add_node(ros_node)
     try:
         future = executor.create_task(lambda: client.call(Trigger.Request()))
         executor.spin_until_future_complete(future, timeout_sec=5)
         response = future.result()
         assert response.success
-        assert executor.thread_pool.wait(timeout=10)
-        assert not executor.thread_pool.working
+        assert executor.default_thread_pool.wait(timeout=10)
+        assert not executor.default_thread_pool.working
     finally:
         executor.remove_node(ros_node)
         executor.shutdown()
+
+
+def test_autoscaling_executor_with_callback_group_affinity(ros_context: Context, ros_node: Node) -> None:
+    """Asserts that the autoscaling multithreaded executor handles callback group affinity properly"""
+
+    with background(AutoScalingMultiThreadedExecutor(context=ros_context)) as executor:
+        executor.add_node(ros_node)
+
+        def slow_thread_tracker(threads: List[threading.Thread]) -> None:
+            threads.append(threading.current_thread())
+            time.sleep(0.2)
+
+        timer_period_sec = 0.1
+
+        default_callback_group = ReentrantCallbackGroup()
+        default_thread_pool_threads: List[threading.Thread] = []
+        timer_callback = functools.partial(slow_thread_tracker, default_thread_pool_threads)
+        ros_node.create_timer(timer_period_sec, timer_callback, default_callback_group)
+
+        callback_group = ReentrantCallbackGroup()
+        thread_pool = executor.add_static_thread_pool(num_threads=1)
+        executor.bind(callback_group, thread_pool)
+
+        static_thread_pool_threads: List[threading.Thread] = []
+        timer_callback = functools.partial(slow_thread_tracker, static_thread_pool_threads)
+        ros_node.create_timer(timer_period_sec, timer_callback, callback_group)
+
+        time.sleep(1.0)
+
+    assert len(static_thread_pool_threads) > 0
+    assert len(default_thread_pool_threads) > len(static_thread_pool_threads)
+    assert all(thread is static_thread_pool_threads[0] for thread in static_thread_pool_threads[1:])
+    assert not any(thread is static_thread_pool_threads[0] for thread in default_thread_pool_threads)
 
 
 def test_background_executor(ros_context: Context) -> None:

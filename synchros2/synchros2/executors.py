@@ -14,6 +14,7 @@ import typing
 import warnings
 import weakref
 
+import rclpy.callback_groups
 import rclpy.executors
 import rclpy.node
 
@@ -381,26 +382,28 @@ class AutoScalingThreadPool(concurrent.futures.Executor):
         return complete
 
     def _do_submit(self, work: "AutoScalingThreadPool.Work") -> None:
-        self._logger.debug("Looking for workers...")
-        while not self._runslots.acquire(timeout=self._submission_patience):
-            self._logger.debug(f"Not enough workers to execute work '{work}'")
-            if len(self._workers) >= self._max_workers:
-                self._logger.debug("Pool already hit its maximum size, nothing to do")
-                break
-            self._logger.debug("Upscaling pool...")
-            with self._scaling_event:
-                worker = AutoScalingThreadPool.Worker(self._weak_self)
-                with AutoScalingThreadPool._lock:
-                    AutoScalingThreadPool._all_workers.add(worker)
-                self._workers.add(worker)
-                self._scaling_event.notify_all()
-            self._logger.debug("Done upscaling")
-        self._logger.debug("Got worker!")
+        if self._min_workers < self._max_workers:
+            self._logger.debug("Looking for workers...")
+            while not self._runslots.acquire(timeout=self._submission_patience):
+                self._logger.debug(f"Not enough workers to execute work '{work}'")
+                if len(self._workers) >= self._max_workers:
+                    self._logger.debug("Pool already hit its maximum size, nothing to do")
+                    break
+                self._logger.debug("Upscaling pool...")
+                with self._scaling_event:
+                    worker = AutoScalingThreadPool.Worker(self._weak_self)
+                    with AutoScalingThreadPool._lock:
+                        AutoScalingThreadPool._all_workers.add(worker)
+                    self._workers.add(worker)
+                    self._scaling_event.notify_all()
+                self._logger.debug("Done upscaling")
+            else:
+                self._logger.debug("Got worker!")
         self._logger.debug(f"Queuing work '{work}' for execution...")
         self._runqueue.put(work)
         self._logger.debug(f"Work '{work}' queued")
 
-    # NOTE(hidmic): cannot recreate type signature for method override
+    # NOTE(mhidalgo-bdai): cannot recreate type signature for method override
     # See https://github.com/python/typeshed/blob/main/stdlib/concurrent/futures/_base.pyi.
     def submit(  # type: ignore
         self,
@@ -505,8 +508,12 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
 
     Akin to the rclpy.executors.MultiThreadedExecutor class but with autoscaling capabilities.
     Moreover, a concurrency quota can be defined on a per callback + callback group basis to
-    avoid thread pool starvation and/or exhaustion of system resources (e.g. when using reentrant
-    callback groups).
+    avoid thread pool starvation and/or exhaustion of system resources (e.g. when using
+    reentrant callback groups).
+
+    To support fine grained control over callback dispatch and execution, more thread pools
+    may be added to the executor. Callback groups can then be bound to specific thread pools.
+    If not, the default thread pool will be used.
 
     See rclpy.executors.Executor documentation for further reference.
     """
@@ -575,35 +582,72 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
         """Initializes the executor.
 
         Args:
-            max_threads: optional maximum number of threads to spin at any given time.
-                See AutoScalingThreadPool documentation for reference on defaults.
-            max_thread_idle_time: optional time in seconds for a thread to wait for work
-                before shutting itself down. See AutoScalingThreadPool documentation for
-                reference on defaults.
-            max_threads_per_callback_group: optional maximum number of concurrent
-                callbacks to service for a given callback group. Useful to avoid
-                reentrant callback groups from starving the pool.
-            context: An optional instance of the ros context
-            logger: An optional logger instance
+            max_threads: optional maximum number of threads the default thread pool should
+                spin at any given time. See AutoScalingThreadPool documentation for reference
+                on defaults.
+            max_thread_idle_time: optional time in seconds for a thread in the default thread
+                pool should wait for work before shutting itself down. See AutoScalingThreadPool
+                documentation for reference on defaults.
+            max_threads_per_callback_group: optional maximum number of concurrent callbacks the
+                default thread pool should service for a given callback group. Useful to avoid
+                reentrant callback groups from starving the default thread pool.
+            context: An optional instance of the ros context.
+            logger: An optional logger instance.
         """
         super().__init__(context=context)
         if logger is None:
             logger = rclpy.logging.get_logger(fqn(self.__class__))
+        self._logger = logger
         self._is_shutdown = False
         self._spin_lock = threading.Lock()
         self._shutdown_lock = threading.RLock()
-        self._thread_pool = AutoScalingThreadPool(
-            max_workers=max_threads,
-            max_idle_time=max_thread_idle_time,
-            submission_quota=max_threads_per_callback_group,
-            logger=logger,
-        )
-        self._wip: typing.Dict[AutoScalingMultiThreadedExecutor.Task, concurrent.futures.Future] = {}
+        self._thread_pools = [
+            AutoScalingThreadPool(
+                max_workers=max_threads,
+                max_idle_time=max_thread_idle_time,
+                submission_quota=max_threads_per_callback_group,
+                logger=self._logger,
+            ),
+        ]
+        self._callback_group_affinity: weakref.WeakKeyDictionary[
+            rclpy.callback_groups.CallbackGroup,
+            AutoScalingThreadPool,
+        ] = weakref.WeakKeyDictionary()
+        self._work_in_progress: typing.Dict[
+            AutoScalingMultiThreadedExecutor.Task,
+            concurrent.futures.Future,
+        ] = {}
 
     @property
-    def thread_pool(self) -> AutoScalingThreadPool:
-        """Autoscaling thread pool in use."""
-        return self._thread_pool
+    def default_thread_pool(self) -> AutoScalingThreadPool:
+        """Default autoscaling thread pool."""
+        return self._thread_pools[0]
+
+    @property
+    def thread_pools(self) -> typing.List[AutoScalingThreadPool]:
+        """Autoscaling thread pools in use."""
+        return list(self._thread_pools)
+
+    def add_static_thread_pool(self, num_threads: typing.Optional[int] = None) -> AutoScalingThreadPool:
+        """Add a thread pool that keeps a steady number of workers."""
+        with self._shutdown_lock:
+            thread_pool = AutoScalingThreadPool(
+                min_workers=num_threads,
+                max_workers=num_threads,
+                logger=self._logger,
+            )
+            self._thread_pools.append(thread_pool)
+        return thread_pool
+
+    def bind(self, callback_group: rclpy.callback_groups.CallbackGroup, thread_pool: AutoScalingThreadPool) -> None:
+        """Bind a callback group so that it is dispatched to the given thread pool.
+
+        Thread pool must be known to the executor. That is, instantiated through add_*_thread_pool() methods.
+        """
+        with self._shutdown_lock:
+            if thread_pool not in self._thread_pools:
+                raise ValueError("thread pool unknown to executor")
+            self._callback_group_affinity[callback_group] = thread_pool
 
     def _do_spin_once(self, *args: typing.Any, **kwargs: typing.Any) -> None:
         with self._spin_lock:
@@ -626,12 +670,18 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
                     # submission future is done. That is, a task could be legitimately ready for
                     # dispatch and be missed. Fortunately, this will only delay dispatch until the
                     # next spin cycle.
-                    if task not in self._wip or (self._wip[task].done() and not task.done()):
-                        self._wip[task] = self._thread_pool.submit(task)
-                    for task in list(self._wip):
+                    if task not in self._work_in_progress or (self._work_in_progress[task].done() and not task.done()):
+                        if task.callback_group is not None:
+                            if task.callback_group not in self._callback_group_affinity:
+                                self._callback_group_affinity[task.callback_group] = self._thread_pools[0]
+                            thread_pool = self._callback_group_affinity[task.callback_group]
+                        else:
+                            thread_pool = self._thread_pools[0]
+                        self._work_in_progress[task] = thread_pool.submit(task)
+                    for task in list(self._work_in_progress):
                         if task.done():
                             continue
-                        del self._wip[task]
+                        del self._work_in_progress[task]
 
                         if task.entity is None and task.node is None:
                             # user-defined tasks shall be resolved by the user
@@ -679,10 +729,12 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
             # must be waited on. Work tracking in rclpy.executors.Executor
             # base implementation is subject to races, so block thread pool
             # submissions and wait for all futures to finish. Then shutdown.
-            done = self._thread_pool.wait(timeout_sec)
+            for thread_pool in self._thread_pools:
+                done = thread_pool.wait(timeout_sec)
             if done:
                 assert super().shutdown(timeout_sec=0)
-                self._thread_pool.shutdown()
+                for thread_pool in self._thread_pools:
+                    thread_pool.shutdown()
                 self._is_shutdown = True
         if done:
             with self._spin_lock:
