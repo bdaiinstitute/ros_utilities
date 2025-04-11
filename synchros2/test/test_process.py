@@ -1,11 +1,15 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute LLC.  All rights reserved.
 import argparse
+import threading
 import unittest.mock as mock
 
+import pytest
 from geometry_msgs.msg import TransformStamped
+from rclpy.task import Future
 from std_srvs.srv import Trigger
 
 import synchros2.process as process
+from synchros2.futures import wait_for_future
 from synchros2.static_transform_broadcaster import StaticTransformBroadcaster
 
 
@@ -29,6 +33,26 @@ def test_process_wrapping() -> None:
         return 0
 
     assert main() == 0
+
+
+def test_process_exception_propagates() -> None:
+    """Asserts that any exception raised within the main thread propagates."""
+
+    barrier = threading.Barrier(2)
+
+    def wait_forever() -> None:
+        barrier.wait()
+        wait_for_future(Future())
+
+    @process.main()
+    def main() -> int:
+        assert main.executor is not None
+        main.executor.create_task(wait_forever)
+        barrier.wait()
+        raise RuntimeError("probe")
+
+    with pytest.raises(RuntimeError, match="probe"):
+        main()
 
 
 def test_process_using_tf() -> None:
