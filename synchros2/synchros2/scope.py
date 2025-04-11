@@ -164,11 +164,11 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
             if self._tf_listener is not None:
                 self._tf_listener.shutdown()
                 self._tf_listener = None
-            assert self._executor is not None
-            for node in self._graph:
-                self._executor.remove_node(node)
-                node.destroy_node()
-            self._graph.clear()
+            if self._executor is not None:
+                for node in self._graph:
+                    self._executor.remove_node(node)
+                    node.destroy_node()
+                self._graph.clear()
             self._executor = None
             self._node = None
 
@@ -523,10 +523,14 @@ def top(  # noqa: D417
         if context is None:
             context = rclpy.context.Context()
         context.init(args, domain_id=domain_id)
+    stack = contextlib.ExitStack()
     try:
-        with ROSAwareScope(global_=global_, context=context, **kwargs) as scope:
-            yield scope
+        scope = ROSAwareScope(global_=global_, context=context, **kwargs)
+        yield stack.enter_context(scope)
     finally:
+        # Ensure context is shutdown **before** leaving scope as there may be
+        # executor tasks waiting on a condition that is (should be) context
+        # aware, and thus a shutdown will unblock them.
         if global_:
             default_context = rclpy.utilities.get_default_context(shutting_down=True)
             default_context.try_shutdown()
@@ -535,6 +539,7 @@ def top(  # noqa: D417
         else:
             assert context is not None
             context.try_shutdown()
+        stack.close()
 
 
 def current() -> typing.Optional[ROSAwareScope]:
