@@ -533,12 +533,16 @@ def top(  # noqa: D417
         # aware, and thus a shutdown will unblock them.
         if global_:
             default_context = rclpy.utilities.get_default_context(shutting_down=True)
-            default_context.try_shutdown()
+            with contextlib.suppress(RuntimeError):
+                default_context.try_shutdown()
+
             if not interruptible:
                 rclpy.signals.uninstall_signal_handlers()
         else:
             assert context is not None
-            context.try_shutdown()
+            with contextlib.suppress(RuntimeError):
+                context.try_shutdown()
+
         stack.close()
 
 
