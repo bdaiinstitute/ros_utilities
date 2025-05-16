@@ -1,0 +1,73 @@
+# MODULE.bazel
+
+module(
+    name = "ros_utilities",
+    version = "1.0.0",
+)
+
+############### BAZEL DEPS ########################
+# Please keep this list sorted alphabetically.
+# (in vim: select lines and apply :'<,'>sort)
+# (in emacs: select lines and M-x sort-lines)
+bazel_dep(name = "aspect_rules_py", version = "1.3.2")
+bazel_dep(name = "caseyduquettesc_rules_python_pytest", version = "1.1.1", repo_name = "rules_python_pytest")
+bazel_dep(name = "gazelle", version = "0.42.0", repo_name = "bazel_gazelle")
+bazel_dep(name = "googletest", version = "1.16.0")
+bazel_dep(name = "rules_cc", version = "0.1.1")
+bazel_dep(name = "rules_distroless", version = "0.5.1")
+bazel_dep(name = "rules_multirun", version = "0.11.0")
+bazel_dep(name = "rules_python", version = "1.4.0-rc4")
+bazel_dep(name = "rules_python_gazelle_plugin", version = "1.2.0")
+bazel_dep(name = "rules_uv", version = "0.68.0")
+
+# Until we have our own Bazel registry, this will need to be an override
+bazel_dep(name = "rules_rai_ros")
+git_override(
+    module_name = "rules_rai_ros",
+    commit = "f684f3291bd90411aaa04335ae59565d46d937d9",
+    remote = "https://github.com/bdaiinstitute/rules_rai_ros.git",
+)
+
+############### PYTHON SETUP ######################
+
+PYTHON_VERSION = "3.10"
+ARCHITECTURES = ("x86_64", "aarch64")
+
+python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+python.toolchain(
+    configure_coverage_tool = True,
+    is_default = True,
+    python_version = PYTHON_VERSION,
+)
+use_repo(python, "python_3_10")
+
+pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
+pip.parse(
+    enable_implicit_namespace_pkgs = True,  # disable automatic __init__.py creation
+    hub_name = "pip",
+    python_version = PYTHON_VERSION,
+    requirements_by_platform = {
+        "//deps/python/locks:requirements_{}.lock".format(arch): "linux_{}".format(arch)
+        for arch in ARCHITECTURES
+    },
+)
+use_repo(pip, "pip")
+
+############### DISTROLESS SETUP ##################
+
+apt = use_extension("@rules_distroless//apt:extensions.bzl", "apt")
+apt.install(
+    name = "jammy",
+    lock = "//:jammy.lock.json",
+    manifest = "//:jammy.yaml",
+)
+use_repo(apt, "jammy")
+
+############### ROS SETUP #########################
+
+ros = use_extension("@rules_rai_ros//ros:extensions.bzl", "ros")
+ros.parse(
+    name = "humble",
+    lock = "//:jammy.lock.json",
+)
+use_repo(ros, "humble")

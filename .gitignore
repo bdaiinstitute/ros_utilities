@@ -163,3 +163,6 @@ wandb/
 
 # Gitman-tracked external repos
 external
+
+# Bazel
+/bazel-*
