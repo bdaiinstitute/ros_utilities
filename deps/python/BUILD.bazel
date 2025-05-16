@@ -1,0 +1,30 @@
+# deps/python/BUILD.bazel
+
+load("@rules_multirun//:defs.bzl", "multirun")
+load("@rules_uv//uv:pip.bzl", "pip_compile")
+
+# There is only a single context here
+ARCHITECTURES = ("x86_64", "aarch64")
+
+[
+    pip_compile(
+        name = "generate_locks_{}".format(arch),
+        extra_args = [
+            "--quiet",
+        ],
+        python_platform = "{}-manylinux_2_40".format(arch),
+        requirements_in = "requirements.in",
+        requirements_txt = "//deps/python/locks:requirements_{}.lock".format(arch),
+    )
+    for arch in ARCHITECTURES
+]
+
+multirun(
+    name = "generate_locks_all",
+    commands = [
+        ":generate_locks_{}".format(arch)
+        for arch in ARCHITECTURES
+    ],
+)
+
+exports_files(["requirements.in"])

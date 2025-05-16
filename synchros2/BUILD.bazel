@@ -1,0 +1,75 @@
+# synchros2/BUILD.bazel
+
+load("@aspect_rules_py//py:defs.bzl", "py_library")
+load("@humble//ros:defs.bzl", "ros")
+
+package(default_visibility = ["//visibility:public"])
+
+ros.package_manifest(
+    name = "pkg",
+    package_name = "synchros2",
+)
+
+py_library(
+    name = "synchros2",
+    srcs = [
+        "synchros2/action.py",
+        "synchros2/action_client.py",
+        "synchros2/action_handle.py",
+        "synchros2/callables.py",
+        "synchros2/callback_groups.py",
+        "synchros2/context.py",
+        "synchros2/executors.py",
+        "synchros2/feeds.py",
+        "synchros2/filters.py",
+        "synchros2/futures.py",
+        "synchros2/graph.py",
+        "synchros2/logging.py",
+        "synchros2/node.py",
+        "synchros2/process.py",
+        "synchros2/publisher.py",
+        "synchros2/py.typed",
+        "synchros2/scope.py",
+        "synchros2/service.py",
+        "synchros2/service_handle.py",
+        "synchros2/single_goal_action_server.py",
+        "synchros2/single_goal_multiple_action_servers.py",
+        "synchros2/static_transform_broadcaster.py",
+        "synchros2/subscription.py",
+        "synchros2/tf_listener_wrapper.py",
+        "synchros2/time.py",
+        "synchros2/type_hints.py",
+        "synchros2/utilities.py",
+    ],
+    imports = ["."],
+    deps = [
+        "@humble//:ros-humble-action-msgs",
+        "@humble//:ros-humble-geometry-msgs",
+        "@humble//:ros-humble-message-filters",
+        "@humble//:ros-humble-rclpy",
+        "@humble//:ros-humble-tf2-ros-py",
+        "@pip//numpy",
+    ],
+)
+
+[
+    ros.py_test(
+        name = test_py.replace("test/", "").replace(".py", ""),
+        srcs = [
+            "test/conftest.py",
+            test_py
+        ],
+        env = {
+            "RMW_IMPLEMENTATION": "rmw_fastrtps_cpp",
+        },
+        deps = [
+            ":synchros2",
+            "@humble//:ros-humble-example-interfaces",
+            "@humble//:ros-humble-std-srvs",
+            "@pip//pytest",
+            "@pip//typing_extensions",
+        ],
+        timeout = "short",
+    )
+    for test_py in glob(["test/test_*.py"])
+]
