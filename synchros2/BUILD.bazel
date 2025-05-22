@@ -49,6 +49,7 @@ py_library(
         "@humble//:ros-humble-rclpy",
         "@humble//:ros-humble-tf2-ros-py",
         "@pip//numpy",
+        "@pip//packaging",
     ],
 )
 
