@@ -1,7 +1,8 @@
 # synchros2/BUILD.bazel
 
-load("@aspect_rules_py//py:defs.bzl", "py_library")
+load("@aspect_rules_py//py:defs.bzl", "py_library", "resolutions")
 load("@humble//ros:defs.bzl", "ros")
+load("@pip//:requirements.bzl", "all_whl_requirements_by_package", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -48,8 +49,10 @@ py_library(
         "@humble//:ros-humble-message-filters",
         "@humble//:ros-humble-rclpy",
         "@humble//:ros-humble-tf2-ros-py",
-        "@pip//numpy",
-        "@pip//packaging",
+    ],
+    virtual_deps = [
+        "numpy",
+        "packaging",
     ],
 )
 
@@ -70,6 +73,7 @@ py_library(
             "@pip//pytest",
             "@pip//typing_extensions",
         ],
+        resolutions = resolutions.from_requirements(all_whl_requirements_by_package, requirement),
         timeout = "short",
     )
     for test_py in glob(["test/test_*.py"])
