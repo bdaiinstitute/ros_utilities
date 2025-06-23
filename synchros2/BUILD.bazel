@@ -53,6 +53,7 @@ py_library(
     deps = [
         "@humble//:ros-humble-action-msgs",
         "@humble//:ros-humble-geometry-msgs",
+        "@humble//:ros-humble-launch",
         "@humble//:ros-humble-message-filters",
         "@humble//:ros-humble-rclpy",
         "@humble//:ros-humble-tf2-ros-py",
