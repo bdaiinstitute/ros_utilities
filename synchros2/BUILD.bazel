@@ -14,6 +14,7 @@ ros.package_manifest(
 py_library(
     name = "synchros2",
     srcs = [
+        "synchros2/__init__.py",
         "synchros2/action.py",
         "synchros2/action_client.py",
         "synchros2/action_handle.py",
