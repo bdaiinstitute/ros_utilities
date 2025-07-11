@@ -31,6 +31,7 @@ packages:
   - "ros-humble-action-msgs"        # synchros2[exec]
   - "ros-humble-example-interfaces" # synchros2[test]
   - "ros-humble-geometry-msgs"      # synchros2[exec]
+  - "ros-humble-launch"             # synchros2[exec]
   - "ros-humble-message-filters"    # synchros2[exec]
   - "ros-humble-rclpy"              # synchros2[exec]
   - "ros-humble-std-srvs"           # synchros2[test]
