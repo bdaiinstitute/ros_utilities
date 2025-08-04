@@ -1,6 +1,6 @@
 # synchros2/BUILD.bazel
 
-load("@aspect_rules_py//py:defs.bzl", "py_library", "resolutions")
+load("@aspect_rules_py//py:defs.bzl", "resolutions")
 load("@humble//ros:defs.bzl", "ros")
 load("@pip//:requirements.bzl", "all_whl_requirements_by_package", "requirement")
 
@@ -11,7 +11,7 @@ ros.package_manifest(
     package_name = "synchros2",
 )
 
-py_library(
+ros.py_library(
     name = "synchros2",
     srcs = [
         "synchros2/action.py",
@@ -47,6 +47,7 @@ py_library(
         "synchros2/launch/values.py",
     ],
     imports = ["."],
+    package = ":pkg",
     deps = [
         "@humble//:ros-humble-action-msgs",
         "@humble//:ros-humble-geometry-msgs",
