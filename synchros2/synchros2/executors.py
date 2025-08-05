@@ -690,8 +690,8 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
                             thread_pool = self._callback_group_affinity[task.callback_group]
                         else:
                             thread_pool = self._thread_pools[0]
-                        thred_pool_index = self._thread_pools.index(thread_pool)
-                        self._logger.debug(f"Task '{task}' submitted to thread pool #{thred_pool_index}")
+                        thread_pool_index = self._thread_pools.index(thread_pool)
+                        self._logger.debug(f"Task '{task}' submitted to thread pool #{thread_pool_index}")
                         self._work_in_progress[task] = thread_pool.submit(task)
                     for task in list(self._work_in_progress):
                         if not task.done():
