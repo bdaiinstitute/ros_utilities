@@ -107,7 +107,7 @@ class AutoScalingThreadPool(concurrent.futures.Executor):
             self.future.set_running_or_notify_cancel()
 
         def __str__(self) -> str:
-            return f"{fqn(self.fn) or fqn(type(self.fn))} ({hash(self.fn)})"
+            return f"{fqn(self.fn) or fqn(type(self.fn))}@{id(self.fn)} (instance {id(self.future)})"
 
     class Worker(threading.Thread):
         """A worker in its own daemonized OS thread."""
@@ -348,10 +348,14 @@ class AutoScalingThreadPool(concurrent.futures.Executor):
             True if all work completed, False if the wait timed out.
         """
         with self._submit_lock:
-            futures = [work.future for runlist in self._runlists.values() for work in runlist]
-            futures += [work.future for waitqueue in self._waitqueues.values() for work in waitqueue]
-        done, not_done = concurrent.futures.wait(futures, timeout=timeout)
-        return len(not_done) == 0
+            pending_work = [work for runlist in self._runlists.values() for work in runlist]
+            pending_work += [work for waitqueue in self._waitqueues.values() for work in waitqueue]
+        futures = [work.future for work in pending_work]
+        _, pending_futures = concurrent.futures.wait(futures, timeout=timeout)
+        for future in pending_futures:
+            work = pending_work[futures.index(future)]
+            self._logger.debug(f"Work '{work}' still pending after {timeout} seconds")
+        return len(pending_futures) == 0
 
     def _cleanup_after(self, work: "AutoScalingThreadPool.Work") -> bool:
         complete = True
@@ -431,9 +435,7 @@ class AutoScalingThreadPool(concurrent.futures.Executor):
                 raise RuntimeError("cannot submit to a shutdown pool")
             future: concurrent.futures.Future = concurrent.futures.Future()
             work = AutoScalingThreadPool.Work(future, fn, args, kwargs)
-            self._logger.debug(
-                f"Submitting work '{work}'...",
-            )
+            self._logger.debug(f"Submitting work '{work}'...")
             if self._submission_quota > len(self._runlists[work.fn]):
                 if work.fn in self._waitqueues and self._waitqueues[work.fn]:  # prioritize pending work
                     self._logger.debug("Have similar work pending")
@@ -566,6 +568,10 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
             if schedule_callbacks:
                 self.task._schedule_or_invoke_done_callbacks()
 
+        def __str__(self) -> str:
+            qualifier = fqn(type(self.entity)) if self.entity is not None else fqn(type(self.task))
+            return f"{fqn(type(self))}@{id(self)} ({qualifier})"
+
         def __hash__(self) -> int:
             # Ignore the task itself, as it changes from execution to execution
             return hash((self.entity, self.callback_group))
@@ -631,12 +637,14 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
     def add_static_thread_pool(self, num_threads: typing.Optional[int] = None) -> AutoScalingThreadPool:
         """Add a thread pool that keeps a steady number of workers."""
         with self._shutdown_lock:
+            self._logger.debug(f"Adding static thread pool with {num_threads}...")
             thread_pool = AutoScalingThreadPool(
                 min_workers=num_threads,
                 max_workers=num_threads,
                 logger=self._logger,
             )
             self._thread_pools.append(thread_pool)
+            self._logger.debug(f"Added static thread pool #{len(self._thread_pools) - 1}")
         return thread_pool
 
     def bind(self, callback_group: rclpy.callback_groups.CallbackGroup, thread_pool: AutoScalingThreadPool) -> None:
@@ -647,6 +655,9 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
         with self._shutdown_lock:
             if thread_pool not in self._thread_pools:
                 raise ValueError("thread pool unknown to executor")
+            thread_pool_index = self._thread_pools.index(thread_pool)
+            callback_group_name = f"{fqn(type(callback_group))}@{id(callback_group)}"
+            self._logger.debug(f"Binding {callback_group_name} to thread pool #{thread_pool_index}...")
             self._callback_group_affinity[callback_group] = thread_pool
 
     def _do_spin_once(self, *args: typing.Any, **kwargs: typing.Any) -> None:
@@ -654,9 +665,11 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
             try:
                 task, entity, node = self.wait_for_ready_callbacks(*args, **kwargs)
                 task = AutoScalingMultiThreadedExecutor.Task(task, entity, node)
+                self._logger.debug(f"Got task '{task}' for execution...")
                 with self._shutdown_lock:
                     if self._is_shutdown:
-                        # Ignore task, let shutdown clean it up.
+                        self._logger.debug(f"Executor shutdown, '{task}' cancelled")
+                        task.cancel()
                         return
                     # The following guards against a TOCTOU race between rclpy.executors.Executor
                     # base implementation checking for executing tasks and tasks actually executing
@@ -677,19 +690,31 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
                             thread_pool = self._callback_group_affinity[task.callback_group]
                         else:
                             thread_pool = self._thread_pools[0]
+                        thread_pool_index = self._thread_pools.index(thread_pool)
+                        self._logger.debug(f"Task '{task}' submitted to thread pool #{thread_pool_index}")
                         self._work_in_progress[task] = thread_pool.submit(task)
                     for task in list(self._work_in_progress):
-                        if task.done():
+                        if not task.done():
                             continue
+                        self._logger.debug(f"Task '{task}' completed")
                         del self._work_in_progress[task]
 
                         if task.entity is None and task.node is None:
                             # user-defined tasks shall be resolved by the user
                             continue
 
-                        # ignore concurrent entity destruction
-                        with contextlib.suppress(rclpy.executors.InvalidHandle):
+                        try:
                             task.result()
+                        except rclpy.executors.InvalidHandle:
+                            # ignore concurrent entity destruction
+                            pass
+                        except BaseException:
+                            import textwrap
+                            import traceback
+
+                            trace = textwrap.indent(traceback.format_exc(), "  ")
+                            self._logger.debug(f"Task '{task}' threw an exception: \n{trace}")
+                            raise
 
             except rclpy.executors.ConditionReachedException:
                 pass
@@ -729,8 +754,7 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
             # must be waited on. Work tracking in rclpy.executors.Executor
             # base implementation is subject to races, so block thread pool
             # submissions and wait for all futures to finish. Then shutdown.
-            for thread_pool in self._thread_pools:
-                done = thread_pool.wait(timeout_sec)
+            done = all(thread_pool.wait(timeout_sec) for thread_pool in self._thread_pools)
             if done:
                 assert super().shutdown(timeout_sec=0)
                 for thread_pool in self._thread_pools:
@@ -740,8 +764,10 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
             with self._spin_lock:
                 # rclpy.executors.Executor base implementation leaves tasks
                 # unawaited upon shutdown. Do the housekeepng.
-                for task, entity, node in self._tasks:
-                    task = AutoScalingMultiThreadedExecutor.Task(task, entity, node)
+                known_tasks = [
+                    AutoScalingMultiThreadedExecutor.Task(task, entity, node) for task, entity, node in self._tasks
+                ] + list(self._work_in_progress)
+                for task in known_tasks:
                     task.cancel()
         return done
 
@@ -764,10 +790,13 @@ def background(executor: rclpy.executors.Executor) -> typing.Iterator[rclpy.exec
         while True:
             try:
                 executor.spin()
-            except Exception as e:
-                w = RuntimeWarning(*e.args)
-                w.with_traceback(e.__traceback__)
-                warnings.warn(w, stacklevel=1)
+            except BaseException:
+                import textwrap
+                import traceback
+
+                trace = textwrap.indent(traceback.format_exc(), "  ")
+                message = f"Background executor threw an exception:\n{trace}"
+                warnings.warn(message, RuntimeWarning, stacklevel=1)
                 continue
             break
 
@@ -783,6 +812,9 @@ def background(executor: rclpy.executors.Executor) -> typing.Iterator[rclpy.exec
     try:
         yield executor
     finally:
+        if not executor.shutdown(timeout_sec=5.0):
+            message = "Background executor is taking too long to shutdown"
+            warnings.warn(message, RuntimeWarning, stacklevel=1)
         executor.shutdown()
         background_thread.join()
 
@@ -802,6 +834,9 @@ def foreground(executor: rclpy.executors.Executor) -> typing.Iterator[rclpy.exec
     try:
         yield executor
     finally:
+        if not executor.shutdown(timeout_sec=5.0):
+            message = "Executor is taking too long to shutdown"
+            warnings.warn(message, RuntimeWarning, stacklevel=1)
         executor.shutdown()
 
 

@@ -1,5 +1,6 @@
 # Copyright (c) 2023 Boston Dynamics AI Institute LLC.  All rights reserved.
 import functools
+import logging
 import threading
 import time
 from typing import Generator, List
@@ -12,8 +13,8 @@ from rclpy.executors import SingleThreadedExecutor
 from rclpy.node import Node
 from std_srvs.srv import Trigger
 
-from synchros2.executors import AutoScalingMultiThreadedExecutor, AutoScalingThreadPool, background
-from synchros2.futures import wait_for_future
+from synchros2.executors import AutoScalingMultiThreadedExecutor, AutoScalingThreadPool, background, foreground
+from synchros2.futures import unwrap_future, wait_for_future
 
 
 @pytest.fixture
@@ -39,7 +40,7 @@ def ros_node(ros_context: Context) -> Generator[Node, None, None]:
 
 def test_autoscaling_thread_pool() -> None:
     """Asserts that the autoscaling thread pool scales and de-scales on demand."""
-    with AutoScalingThreadPool(max_idle_time=2.0) as pool:
+    with AutoScalingThreadPool(max_idle_time=2.0, logger=logging.root) as pool:
         assert len(pool.workers) == 0
         assert not bool(pool.working)
 
@@ -91,7 +92,7 @@ def test_autoscaling_thread_pool_when_shutdown() -> None:
 
 def test_autoscaling_thread_pool_with_limits() -> None:
     """Asserts that the autoscaling thread pool enforces the user-defined range on the number of workers."""
-    with AutoScalingThreadPool(min_workers=2, max_workers=5, max_idle_time=0.1) as pool:
+    with AutoScalingThreadPool(min_workers=2, max_workers=5, max_idle_time=0.1, logger=logging.root) as pool:
         assert len(pool.workers) == 2
         assert bool(not pool.working)
 
@@ -114,7 +115,12 @@ def test_autoscaling_thread_pool_with_limits() -> None:
 
 def test_autoscaling_thread_pool_with_quota() -> None:
     """Asserts that the autoscaling thread pool respects submission quotas."""
-    with AutoScalingThreadPool(submission_quota=5, submission_patience=1.0, max_idle_time=2.0) as pool:
+    with AutoScalingThreadPool(
+        submission_quota=5,
+        submission_patience=1.0,
+        max_idle_time=2.0,
+        logger=logging.root,
+    ) as pool:
         assert len(pool.workers) == 0
         assert not bool(pool.working)
 
@@ -145,7 +151,7 @@ def test_autoscaling_thread_pool_with_quota() -> None:
 
 def test_autoscaling_executor(ros_context: Context, ros_node: Node) -> None:
     """Asserts that the autoscaling multithreaded executor scales to attend a
-    synchronous service call from a "one-shot" timer callback, serviced by
+    synchronous service call from a "one-shot" task callback, serviced by
     the same executor.
     """
 
@@ -162,26 +168,31 @@ def test_autoscaling_executor(ros_context: Context, ros_node: Node) -> None:
 
     client = ros_node.create_client(Trigger, "/dummy/trigger", callback_group=MutuallyExclusiveCallbackGroup())
 
-    executor = AutoScalingMultiThreadedExecutor(context=ros_context)
-    assert len(executor.default_thread_pool.workers) == 0
-    assert not executor.default_thread_pool.working
-    executor.add_node(ros_node)
-    try:
-        future = executor.create_task(lambda: client.call(Trigger.Request()))
-        executor.spin_until_future_complete(future, timeout_sec=5)
-        response = future.result()
-        assert response.success
-        assert executor.default_thread_pool.wait(timeout=10)
+    with foreground(AutoScalingMultiThreadedExecutor(context=ros_context, logger=logging.root)) as executor:
+        assert len(executor.default_thread_pool.workers) == 0
         assert not executor.default_thread_pool.working
-    finally:
-        executor.remove_node(ros_node)
-        executor.shutdown()
+        executor.add_node(ros_node)
+        try:
+            future = executor.create_task(
+                lambda: unwrap_future(
+                    client.call_async(Trigger.Request()),
+                    timeout_sec=2.0,
+                    context=ros_context,
+                ),
+            )
+            executor.spin_until_future_complete(future, timeout_sec=5)
+            response = future.result()
+            assert response.success
+            assert executor.default_thread_pool.wait(timeout=10)
+            assert not executor.default_thread_pool.working
+        finally:
+            executor.remove_node(ros_node)
 
 
 def test_autoscaling_executor_with_callback_group_affinity(ros_context: Context, ros_node: Node) -> None:
     """Asserts that the autoscaling multithreaded executor handles callback group affinity properly"""
 
-    with background(AutoScalingMultiThreadedExecutor(context=ros_context)) as executor:
+    with background(AutoScalingMultiThreadedExecutor(context=ros_context, logger=logging.root)) as executor:
         executor.add_node(ros_node)
 
         def slow_thread_tracker(threads: List[threading.Thread]) -> None:
@@ -228,3 +239,23 @@ def test_background_executor(ros_context: Context) -> None:
 
         assert wait_for_future(future, timeout_sec=10.0, context=ros_context)
         assert future.result()
+
+
+@pytest.mark.filterwarnings("ignore")
+def test_background_executor_shows_errors(ros_context: Context, ros_node: Node) -> None:
+    """Asserts that an background executor does not swallow callback exceptions."""
+    with background(
+        AutoScalingMultiThreadedExecutor(
+            context=ros_context,
+            logger=logging.root,
+        ),
+    ) as executor:
+        executor.add_node(ros_node)
+
+        def callback() -> None:
+            raise RuntimeError("failed timer")
+
+        ros_node.create_timer(0.1, callback)
+
+        with pytest.warns(RuntimeWarning):
+            time.sleep(1.0)
