@@ -2,8 +2,12 @@
 from threading import Event
 from typing import Any, Awaitable, Callable, Optional, Protocol, TypeVar, Union, runtime_checkable
 
+from rclpy.clock import Clock
 from rclpy.context import Context
 from rclpy.utilities import get_default_context
+
+import synchros2.scope as ros_scope
+from synchros2.clock import wait_for
 
 T = TypeVar("T", covariant=True)
 
@@ -62,6 +66,7 @@ def wait_for_future(
     future: AnyFuture,
     timeout_sec: Optional[float] = None,
     *,
+    clock: Optional[Clock] = None,
     context: Optional[Context] = None,
 ) -> bool:
     """Block while waiting for a future to become done
@@ -69,6 +74,8 @@ def wait_for_future(
     Args:
         future (Future): The future to be waited on
         timeout_sec (Optional[float]): An optional timeout for how long to wait
+        clock (Optional[Clock]): An optional clock to use for timeout waits,
+        defaults to the clock of the current scope if any, otherwise the system clock
         context (Optional[Context]): Current context (will use the default if none is given)
 
     Returns:
@@ -76,13 +83,15 @@ def wait_for_future(
     """
     if context is None:
         context = get_default_context()
+    if clock is None:
+        clock = ros_scope.clock()
     event = Event()
     context.on_shutdown(event.set)
     proper_future = as_proper_future(future)
     proper_future.add_done_callback(lambda _: event.set())
     if proper_future.cancelled():
         event.set()
-    event.wait(timeout=timeout_sec)
+    wait_for(event, clock=clock, timeout_sec=timeout_sec)
     return proper_future.done()
 
 
@@ -90,6 +99,7 @@ def unwrap_future(
     future: AnyFuture,
     timeout_sec: Optional[float] = None,
     *,
+    clock: Optional[Clock] = None,
     context: Optional[Context] = None,
 ) -> Any:
     """Fetch future result when it is done.
@@ -99,6 +109,6 @@ def unwrap_future(
     arguments taken.
     """
     proper_future = as_proper_future(future)
-    if not wait_for_future(proper_future, timeout_sec, context=context):
+    if not wait_for_future(proper_future, timeout_sec, clock=clock, context=context):
         raise ValueError("cannot unwrap future that is not done")
     return proper_future.result()
