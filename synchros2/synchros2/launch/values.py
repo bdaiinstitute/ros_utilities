@@ -13,30 +13,30 @@ class LaunchConfigurationValues:
     """Helper class for accessing the values of launch arguments from a LaunchConfiguration.
 
     This helper serves the following purposes:
-    1. Avoid spending a line of code on each of a potentially large number of values retrieved from the launch config
-    2. Enable easily accessing the values of boolean arguments as actual `bool` types when needed,
-       while still normally treating them as `str` the way downstream launch operations usually expect.
+        1. Avoid spending a line of code on each of a potentially large number of values
+           retrieved from the launch config
+        2. Enable easily accessing the values of boolean arguments as actual `bool` types
+           when needed, while still normally treating them as `str` the way downstream
+           launch operations usually expect.
 
     Example:
-    ----------------------------------------------------------------
-    def launch_setup(context: LaunchContext):
-        launch_elements = []
-        vals = LaunchConfigurationValues(context)
-        vals["robot_name"]  # str
-        vals.bool("use_afterburner")  # bool
+        >>> def launch_setup(context: LaunchContext):
+        ...     launch_elements = []
+        ...     vals = LaunchConfigurationValues(context)
+        ...     vals["robot_name"]  # str
+        ...     vals.bool("use_afterburner")  # bool
+        ...     # The "condition" kwarg expects a launch operation on a string-type boolean, not an actual bool
+        ...     launch_elements.append(
+        ...         Node(
+        ...             # ...
+        ...             # Argument is in ["true", "false"], not [True, False]
+        ...             condition=IfCondition(vals["use_afterburner"]),
+        ...         ),
+        ...     )
+        ...     if vals.bool("use_afterburner"):  # Access value as one of [True, False]
+        ...         # Add an additional launch element
+        ...     # ...
 
-        # The "condition" kwarg expects a launch operation on a string-type boolean, not an actual bool
-        launch_elements.append(
-            Node(
-                [...]
-                condition=IfCondition(vals["use_afterburner"]),  # Argument is in ["true", "false"], not [True, False]
-            ),
-        )
-
-        if vals.bool("use_afterburner"):  # Access value as one of [True, False]
-            # Add an additional launch element
-            [...]
-    ----------------------------------------------------------------
     """
 
     def __init__(self, context: LaunchContext):

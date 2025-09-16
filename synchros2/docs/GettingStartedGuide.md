@@ -1,15 +1,15 @@
 # Getting Started Guide
 
-# Installation
+## Installation
 
-## Prerequisites
+### Prerequisites
 
 These links are to Humble tutorials but `synchros2` should be compatible with any current ROS2 distro.
 
 1. [Configure a ROS2 environment](https://docs.ros.org/en/humble/Tutorials/Beginner-CLI-Tools/Configuring-ROS2-Environment.html)
 2. [Create a ROS2 workspace](https://docs.ros.org/en/humble/Tutorials/Beginner-Client-Libraries/Colcon-Tutorial.html)
 
-## Install and Build `synchros2`
+### Install and Build `synchros2`
 
 1. Download the git repository into your existing ROS workspace:
     
@@ -27,7 +27,7 @@ These links are to Humble tutorials but `synchros2` should be compatible with an
     ```
     
 
-# Overview
+## Overview
 
 `synchros2` is a framework that allows blocking in callbacks without the user needing to worry about the threading.  The simplest way to use it is to:
 
@@ -52,7 +52,7 @@ These links are to Humble tutorials but `synchros2` should be compatible with an
     ```
     
 
-# Your First `synchros2` Code
+## Your First `synchros2` Code
 
 We’ll now create and run example `synchros2` code.  We’ll analyze the code in the next section.
 
@@ -131,7 +131,7 @@ We’ll now create and run example `synchros2` code.  We’ll analyze the code i
     ```
     
 
-# Analyzing the Code
+### Analyzing the Code
 
 Let’s first look at what the `listener.py` code is intended to do and then we’ll show why it outputs what it does.
 
@@ -194,7 +194,7 @@ Inside the main we create an instance of the listener class and then we wait for
 
 `ros_process.wait_for_shutdown` just waits until ROS2 is shut down.  Note that **there is no spin call**.  Spinning happens in the background and is taken care of by the `synchros2` mechanisms.
 
-# Analyzing the Output
+### Analyzing the Output
 
 Your output should have looked something like:
 
