@@ -559,6 +559,14 @@ def node() -> typing.Optional[rclpy.node.Node]:
     return scope.node
 
 
+def clock() -> typing.Optional[rclpy.clock.Clock]:
+    """Gets the clock of the current ROS 2 aware scope node, if any."""
+    current_node = node()
+    if current_node is None:
+        return None
+    return current_node.get_clock()
+
+
 def ensure_node() -> rclpy.node.Node:
     """Gets a node from the current ROS 2 aware scope or fails trying"""
     current_node = node()
