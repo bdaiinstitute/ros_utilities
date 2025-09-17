@@ -25,16 +25,16 @@ def wait_for(
     Returns:
         True if event is set, False on timeout.
     """
-    if timeout_sec is None:
-        return event.wait()
-
-    if clock is None:
-        clock = Clock()
-
-    if clock.clock_type != ClockType.ROS_TIME:
-        return event.wait(timeout_sec)
-
     if not event.is_set():
+        if timeout_sec is None:
+            return event.wait()
+
+        if clock is None:
+            clock = Clock()
+
+        if clock.clock_type != ClockType.ROS_TIME or not clock.ros_time_is_active:
+            return event.wait(timeout_sec)
+
         timeout_event = threading.Event()
         deadline = clock.now() + Duration(seconds=timeout_sec)
 
@@ -54,6 +54,7 @@ def wait_for(
             on_clock_change=True,
         )
         with clock.create_jump_callback(threshold, post_callback=on_time_jump):
-            timeout_event.wait()
+            if not event.is_set():
+                timeout_event.wait()
 
     return event.is_set()
