@@ -6,7 +6,6 @@ from rclpy.clock import Clock
 from rclpy.context import Context
 from rclpy.utilities import get_default_context
 
-import synchros2.scope as ros_scope
 from synchros2.clock import wait_for
 
 T = TypeVar("T", covariant=True)
@@ -84,7 +83,9 @@ def wait_for_future(
     if context is None:
         context = get_default_context()
     if clock is None:
-        clock = ros_scope.clock()
+        import synchros2.scope
+
+        clock = synchros2.scope.clock()
     event = Event()
     context.on_shutdown(event.set)
     proper_future = as_proper_future(future)
