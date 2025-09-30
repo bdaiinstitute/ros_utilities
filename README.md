@@ -5,7 +5,7 @@
 
 ## Overview
 
-`ros_utilities` enable a different, at times simpler approach to ROS 2 programming, particularly for those that come with a ROS 1 background.
+`ros_utilities` enable a different, at times simpler approach to ROS 2 programming, particularly for those that come with a ROS 1 background.  See the [synchros2 README](synchros2/README.md) for more information.
 
 ## Packages
 

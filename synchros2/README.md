@@ -2,6 +2,8 @@
 
 At its core, `synchros2` is nothing but a collection of utilities and wrappers built on top of [`rclpy`](https://github.com/ros2/rclpy). When used in concert, these utilities and wrappers simplify ROS 2 usage by enabling standard, idiomatic, synchronous Python programming. To that end, `synchros2` relies on heavy yet implicit concurrency and thus there is overhead in its simplicity.
 
+If you want to dive right in, check out the [Getting Started Guide](docs/GettingStartedGuide.md).
+
 ## Table of contents
 
 - [Features](#features)
