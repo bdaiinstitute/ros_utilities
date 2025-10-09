@@ -56,50 +56,118 @@ These links are to Humble tutorials but `synchros2` should be compatible with an
 
 We’ll now create and run example `synchros2` code.  We’ll analyze the code in the next section.
 
-1. Create a package called `synchros2_tutorials` that depends on `synchros2` (by specifying `--dependencies synchros2` the package creation will automatically add a dependency on `synchros2` to the created `package.xml`): 
+## Interface
+
+We'll start by creating a custom message for us to publish and listen to.
+
+1. Create a package called `synchros2_tutorials_interfaces` for holding our custom messages:
     
     ```bash
     cd <workspace>/src
-    ros2 pkg create --build-type ament_python --license Apache-2.0 synchros2_tutorials  --dependencies synchros2
+    ros2 pkg create synchros2_tutorials_interfaces --license MIT
+    ```
+
+2. Create a `msg` directory inside the package:
+
+   ```bash
+   mkdir <workspace>/src/synchros2_tutorials_interfaces/msg
+    ```
+
+3. Create a file `<workspace>/src/synchros2_tutorials_interfaces/msg/String.msg` with the following text:
+
+    ```
+    string data
+    ```
+    (This is the same as `std_msgs/String` but it's been deprecated.  Additionally, we'll use this interfaces packages in later tutorials.)
+
+4. Add the following lines to `<workspace>/src/synchros2_tutorials_interfaces/CMakeLists.txt` under the existing `find_package`:
+
+   ```make
+   find_package(rosidl_default_generators REQUIRED)
+
+   rosidl_generate_interfaces(${PROJECT_NAME}
+     "msg/String.msg"
+   )
+   ```
+
+5. Add the following lines to `package.xml` after the existing `<buildtool_depend>`
+
+   ```xml
+   <buildtool_depend>rosidl_default_generators</buildtool_depend>
+   <exec_depend>rosidl_default_runtime</exec_depend>
+   <member_of_group>rosidl_interface_packages</member_of_group>
+   ```
+
+5. Build the interfaces packages:
+
+    ```bash
+    cd <workspace>
+    colcon build --packages-select synchros2_tutorials_interfaces
+    source install/setup.bash
+    ```
+
+6. Check we're aware of the message by having `ros2 interface` show it:
+
+    ```bash
+    ros2 interface show synchros2_tutorials_interfaces_example/msg/String
+    ```
+    should print
+
+    ```bash
+    string data
+    ```
+
+## Writing and Running the Code
+
+1. Create a package called `synchros2_tutorials` that depends on `synchros2` (by specifying `--dependencies rclpy synchros2 synchros2_tutorials_interfaces` the package creation will automatically add these dependencies to the created `package.xml`): 
+    
+    ```bash
+    cd <workspace>/src
+    ros2 pkg create --build-type ament_python synchros2_tutorials  --dependencies rclpy synchros2 synchros2_tutorials_interfaces --license MIT
     ```
     
-2. Create the file `<workspace>/src/synchros2_tutorials/synchros2_tutorials/listener.py` and add the following code to it:
+3. Create the file `<workspace>/src/synchros2_tutorials/synchros2_tutorials/listener.py` and add the following code to it:
     
     ```python
-    import std_msgs.msg
     import time
-    
+
+    import synchros2_tutorials_interfaces.msg
+
     import synchros2.process as ros_process
     import synchros2.scope as ros_scope
-    
+
+
     class Listener:
+        """Example class that has two subscribers."""
+
         def __init__(self):
             self._node = ros_scope.ensure_node()
-            self._sub1 = self._node.create_subscription(std_msgs.msg.String, "chat", self._callback1, 1)
-            self._sub2 = self._node.create_subscription(std_msgs.msg.String, "chat", self._callback2, 1)
+            self._sub1 = self._node.create_subscription(synchros2_tutorials_interfaces.msg.String, "chat", self._callback1, 1)
+            self._sub2 = self._node.create_subscription(synchros2_tutorials_interfaces.msg.String, "chat", self._callback2, 1)
             self._node.get_logger().info("Listening!")
-    
-        def _callback1(self, msg: std_msgs.msg.String) -> None:
+
+        def _callback1(self, msg: synchros2_tutorials_interfaces.msg.String) -> None:
             self._node.get_logger().info(f"Callback 1 received message {msg} and will now sleep for 10 seconds")
             time.sleep(10)
             self._node.get_logger().info(f"Callback 1 is done sleeping after receiving {msg}")
-    
-        def _callback2(self, msg: std_msgs.msg.String) -> None:
+
+        def _callback2(self, msg: synchros2_tutorials_interfaces.msg.String) -> None:
             self._node.get_logger().info(f"Callback 2 received message {msg} and will now sleep for 5 seconds")
             time.sleep(5)
             self._node.get_logger().info(f"Callback 2 is done sleeping after receiving {msg}")
-    
+
+
     @ros_process.main()
     def main() -> None:
+        """Main function that just creates the listener class and waits for Ctrl+C"""
         _ = Listener()
         ros_process.wait_for_shutdown()
-    
+
     if __name__ == '__main__':
         main()
-    
     ```
     
-3. Run the code:
+4. Run the code (make sure you've sourced `<workspace>/install/setup.bash` in your current terminal):
     
     ```bash
     cd <workspace>/src/synchros2_tutorials/synchros2_tutorials
@@ -108,25 +176,25 @@ We’ll now create and run example `synchros2` code.  We’ll analyze the code i
     
     You should see the print out `Listening!` 
     
-4. Now we’ll publish some messages to the `/chat` topic.  For the best example, create a new terminal to do this and make sure you can see the terminal in which the listener is running.  Run the two commands in quick succession:
+5. Now we’ll publish some messages to the `/chat` topic.  For the best example, create a new terminal to do this (make sure to source `<workspace/install/setup.bash`) and make sure you can see the terminal in which the listener is running.  Run the two commands in quick succession:
     
     ```bash
-    ros2 topic pub /chat std_msgs/msg/String "data: 'This is the first message'" -1
-    ros2 topic pub /chat std_msgs/msg/String "data: 'This is the second message'" -1
+    ros2 topic pub /chat synchros2_tutorials_interfaces/msg/String "data: 'This is the first message'" -1
+    ros2 topic pub /chat synchros2_tutorials_interfaces/msg/String "data: 'This is the second message'" -1
     ```
     
-5. The final output in your listener terminal should look something like the following:
+6. The final output in your listener terminal should look something like the following:
     
-    ```bash
+    ```
     [INFO] [1759264514.587662269] [listener]: Listening!
-    [INFO] [1759264519.873956826] [listener]: Callback 1 received message std_msgs.msg.String(data='This is the first message') and will now sleep for 10 seconds
-    [INFO] [1759264519.976236531] [listener]: Callback 2 received message std_msgs.msg.String(data='This is the first message') and will now sleep for 5 seconds
-    [INFO] [1759264524.997429745] [listener]: Callback 2 is done sleeping after receiving std_msgs.msg.String(data='This is the first message')
-    [INFO] [1759264524.998650337] [listener]: Callback 2 received message std_msgs.msg.String(data='This is the second message') and will now sleep for 5 seconds
-    [INFO] [1759264529.884469744] [listener]: Callback 1 is done sleeping after receiving std_msgs.msg.String(data='This is the first message')
-    [INFO] [1759264529.885723251] [listener]: Callback 1 received message std_msgs.msg.String(data='This is the second message') and will now sleep for 10 seconds
-    [INFO] [1759264530.003322694] [listener]: Callback 2 is done sleeping after receiving std_msgs.msg.String(data='This is the second message')
-    [INFO] [1759264539.896067303] [listener]: Callback 1 is done sleeping after receiving std_msgs.msg.String(data='This is the second message')
+    [INFO] [1759264519.873956826] [listener]: Callback 1 received message synchros2_tutorials_interfaces.msg.String(data='This is the first message') and will now sleep for 10 seconds
+    [INFO] [1759264519.976236531] [listener]: Callback 2 received message synchros2_tutorials_interfaces.msg.String(data='This is the first message') and will now sleep for 5 seconds
+    [INFO] [1759264524.997429745] [listener]: Callback 2 is done sleeping after receiving synchros2_tutorials_interfaces.msg.String(data='This is the first message')
+    [INFO] [1759264524.998650337] [listener]: Callback 2 received message synchros2_tutorials_interfaces.msg.String(data='This is the second message') and will now sleep for 5 seconds
+    [INFO] [1759264529.884469744] [listener]: Callback 1 is done sleeping after receiving synchros2_tutorials_interfaces.msg.String(data='This is the first message')
+    [INFO] [1759264529.885723251] [listener]: Callback 1 received message synchros2_tutorials_interfaces.msg.String(data='This is the second message') and will now sleep for 10 seconds
+    [INFO] [1759264530.003322694] [listener]: Callback 2 is done sleeping after receiving synchros2_tutorials_interfaces.msg.String(data='This is the second message')
+    [INFO] [1759264539.896067303] [listener]: Callback 1 is done sleeping after receiving synchros2_tutorials_interfaces.msg.String(data='This is the second message')
     
     ```
     
@@ -157,19 +225,19 @@ Side note: We both create a class and store the node as part of the class becaus
 Once we’ve got the node we attach two callbacks to it that listen for a string on the `/chat` topic.  See [here](https://docs.ros.org/en/humble/Tutorials/Beginner-CLI-Tools/Understanding-ROS2-Topics/Understanding-ROS2-Topics.html) for more information about topics.
 
 ```python
-        self._sub1 = self._node.create_subscription(std_msgs.msg.String, "chat", self._callback1, 1)
-        self._sub2 = self._node.create_subscription(std_msgs.msg.String, "chat", self._callback2, 1)
+        self._sub1 = self._node.create_subscription(synchros2_tutorials_interfaces.msg.String, "chat", self._callback1, 1)
+        self._sub2 = self._node.create_subscription(synchros2_tutorials_interfaces.msg.String, "chat", self._callback2, 1)
 ```
 
 The two callbacks both print the message received, then sleep (callback 1 for 10s and callback 2 for 5s) and print again.  The intention of the sleeping here is to show that we can take significant time in both callbacks without affecting the other.  In user code, the sleep would be replaced with processing the message.
 
 ```python
-    def _callback1(self, msg: std_msgs.msg.String) -> None:
+    def _callback1(self, msg: synchros2_tutorials_interfaces.msg.String) -> None:
         self._node.get_logger().info(f"Callback 1 received message {msg} and will now sleep for 10 seconds")
         time.sleep(10)
         self._node.get_logger().info(f"Callback 1 is done sleeping after receiving {msg}")
 
-    def _callback2(self, msg: std_msgs.msg.String) -> None:
+    def _callback2(self, msg: synchros2_tutorials_interfaces.msg.String) -> None:
         self._node.get_logger().info(f"Callback 2 received message {msg} and will now sleep for 5 seconds")
         time.sleep(5)
         self._node.get_logger().info(f"Callback 2 is done sleeping after receiving {msg}")
@@ -198,16 +266,16 @@ Inside the main we create an instance of the listener class and then we wait for
 
 Your output should have looked something like:
 
-```bash
+```
 [INFO] [1759264514.587662269] [listener]: Listening!
-[INFO] [1759264519.873956826] [listener]: Callback 1 received message std_msgs.msg.String(data='This is the first message') and will now sleep for 10 seconds
-[INFO] [1759264519.976236531] [listener]: Callback 2 received message std_msgs.msg.String(data='This is the first message') and will now sleep for 5 seconds
-[INFO] [1759264524.997429745] [listener]: Callback 2 is done sleeping after receiving std_msgs.msg.String(data='This is the first message')
-[INFO] [1759264524.998650337] [listener]: Callback 2 received message std_msgs.msg.String(data='This is the second message') and will now sleep for 5 seconds
-[INFO] [1759264529.884469744] [listener]: Callback 1 is done sleeping after receiving std_msgs.msg.String(data='This is the first message')
-[INFO] [1759264529.885723251] [listener]: Callback 1 received message std_msgs.msg.String(data='This is the second message') and will now sleep for 10 seconds
-[INFO] [1759264530.003322694] [listener]: Callback 2 is done sleeping after receiving std_msgs.msg.String(data='This is the second message')
-[INFO] [1759264539.896067303] [listener]: Callback 1 is done sleeping after receiving std_msgs.msg.String(data='This is the second message')
+[INFO] [1759264519.873956826] [listener]: Callback 1 received message synchros2_tutorials_interfaces.msg.String(data='This is the first message') and will now sleep for 10 seconds
+[INFO] [1759264519.976236531] [listener]: Callback 2 received message synchros2_tutorials_interfaces.msg.String(data='This is the first message') and will now sleep for 5 seconds
+[INFO] [1759264524.997429745] [listener]: Callback 2 is done sleeping after receiving synchros2_tutorials_interfaces.msg.String(data='This is the first message')
+[INFO] [1759264524.998650337] [listener]: Callback 2 received message synchros2_tutorials_interfaces.msg.String(data='This is the second message') and will now sleep for 5 seconds
+[INFO] [1759264529.884469744] [listener]: Callback 1 is done sleeping after receiving synchros2_tutorials_interfaces.msg.String(data='This is the first message')
+[INFO] [1759264529.885723251] [listener]: Callback 1 received message synchros2_tutorials_interfaces.msg.String(data='This is the second message') and will now sleep for 10 seconds
+[INFO] [1759264530.003322694] [listener]: Callback 2 is done sleeping after receiving synchros2_tutorials_interfaces.msg.String(data='This is the second message')
+[INFO] [1759264539.896067303] [listener]: Callback 1 is done sleeping after receiving synchros2_tutorials_interfaces.msg.String(data='This is the second message')
 
 ```
 
