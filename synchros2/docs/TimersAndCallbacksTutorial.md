@@ -496,3 +496,7 @@ def main() -> None:
 ```
 
 This creates a timer that calls `_print_callback` every second.  The `wait_for_shutdown` is now necessary so that the program doesn’t immediately exit.
+
+# Next Steps
+
+Now try the [actions tutorial](./ActionsWithSynchros2.md).
