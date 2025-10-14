@@ -118,3 +118,15 @@ def test_cli_configuration() -> None:  # type: ignore
     with mock.patch("synchros2.scope.logs_to_ros") as logs_to_ros:
         assert main(["test_command", "spot", "--quiet"]) == 0
     assert not logs_to_ros.called
+
+
+def test_process_with_custom_name() -> None:
+    """Asserts that the process can be given a custom name."""
+
+    @process.main(name="my_node")
+    def main() -> int:
+        assert main.node is not None
+        assert main.node.get_fully_qualified_name() == "/my_node"
+        return 0
+
+    assert main() == 0

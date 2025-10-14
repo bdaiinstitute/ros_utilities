@@ -53,9 +53,10 @@ class ROSAwareProcess:
         *,
         uses_tf: bool = False,
         interruptible: bool = False,
-        prebaked: typing.Union[bool, str] = True,
+        prebaked: bool = True,
         autospin: typing.Optional[bool] = None,
         forward_logging: typing.Optional[bool] = None,
+        name: typing.Optional[str] = None,
         namespace: typing.Optional[typing.Union[typing.Literal[True], str]] = None,
         cli: typing.Optional[argparse.ArgumentParser] = None,
         **init_arguments: typing.Any,
@@ -66,11 +67,9 @@ class ROSAwareProcess:
             func: a ``main``-like function to wrap ie. a callable taking a sequence of strings,
             an `argparse.Namespace` (if a CLI is specified), or nothing, and returning a integer
             exit code or nothing.
-            prebaked: whether to instantiate a prebaked or a bare process i.e. a process bearing
-            an implicit node and executor, or not. May also specificy the exact name for the implicit
-            node, or, if True, the current executable basename without its extension (or CLI program
-            name if one is specified) will be used. Note that completely bare processes do not bear a
-            node nor spin an executor, which brings them closest to standard ROS 2 idioms.
+            prebaked: whether to instantiate a prebaked or a bare process. A prebaked process bears
+            an implicit node and spins an executor in the background. A bare process does neither,
+            which brings them the closest to standard ROS 2 idioms.
             autospin: whether to automatically equip the underlying scope with a background executor
             or not. Defaults to True for prebaked processes and to False for bare processes.
             uses_tf: whether to instantiate a tf listener bound to the process main node. Defaults to False.
@@ -80,9 +79,11 @@ class ROSAwareProcess:
             forward_logging: whether to forward `logging` logs to the ROS 2 logging system or not.
             Defaults to True for prebaked processes and to False for bare processes (though it requires
             a process node to be set to function).
+            name: optional name for the implicit main node, if any. Defaults to the current executable
+            basename without its extension or the CLI program name if one is specified, unless it is
+            already used as a namespace, in which case name defaults to "node".
             namespace: an optional namespace for this process. If True, the current executable basename
-            without its extension (or CLI program name if one is specified) will be used. Defaults to
-            True for prebaked processes.
+            without its extension (or CLI program name if one is specified) will be used.
             cli: optional command-line interface argument parser.
             init_arguments: Keyword arguments for the scope.
 
@@ -90,13 +91,15 @@ class ROSAwareProcess:
             ValueError: if a prebaked process is configured without autospin.
         """
         program_name = os.path.basename(sys.argv[0]) if cli is None else cli.prog
-        name, _ = os.path.splitext(program_name)
-        if prebaked is True:
-            prebaked = name
+        program_basename, _ = os.path.splitext(program_name)
         if namespace is True:
-            namespace = name
+            namespace = program_basename
+            if name is None:
+                name = "node"
+        elif name is None:
+            name = program_basename
         if forward_logging is None:
-            forward_logging = bool(prebaked)
+            forward_logging = prebaked
         self._lock = threading.Lock()
         self._scope: typing.Optional[ROSAwareScope] = None
         self._func = func
@@ -106,6 +109,7 @@ class ROSAwareProcess:
             prebaked=prebaked,
             autospin=autospin,
             uses_tf=uses_tf,
+            name=name,
             namespace=namespace,
             forward_logging=forward_logging,
             **init_arguments,

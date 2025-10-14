@@ -42,8 +42,9 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
         global_: bool = False,
         uses_tf: bool = False,
         forward_logging: bool = False,
-        prebaked: typing.Union[bool, str] = True,
+        prebaked: bool = True,
         autospin: typing.Optional[bool] = None,
+        name: typing.Optional[str] = None,
         namespace: typing.Optional[typing.Union[typing.Literal[True], str]] = None,
         context: typing.Optional[rclpy.context.Context] = None,
     ) -> None:
@@ -51,10 +52,12 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
 
         Args:
             prebaked: whether to include an implicit main node in the scope graph or not,
-            for convenience. May also specify the exact name for the implicit node.
+            for convenience.
             global\_: whether to make this scope global (ie. accessible from all threads).
             Only one, outermost global scope can be entered at any given time. Global
             scopes can only be entered from the main thread.
+            name: optional name for the implicit main node, if any. Defaults to "node"
+            if none is provided and the scope is prebaked.
             namespace: optional namespace for all underlying nodes. Defaults to
             a unique hidden namespace.
             autospin: whether to automatically instantiate and push an executor
@@ -66,11 +69,12 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
             context: optional context for the underlying executor and nodes.
         """
         if autospin is None:
-            autospin = bool(prebaked)
-        if prebaked is True:
-            prebaked = "node"
+            autospin = prebaked
+        if prebaked and name is None:
+            name = "node"
         if namespace is True:
             namespace = f"_ros_aware_scope_{os.getpid()}_{id(self)}"
+        self._name = name
         self._namespace = namespace
         self._context = context
         self._prebaked = prebaked
@@ -127,7 +131,7 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
                     self._executor = self._stack.enter_context(foreground(executor))
 
                 if self._prebaked:
-                    node = Node(self._prebaked, namespace=self._namespace, context=self._context)
+                    node = Node(self._name, namespace=self._namespace, context=self._context)
                     self._executor.add_node(node)
                     self._graph.append(node)
                     if self._uses_tf:
