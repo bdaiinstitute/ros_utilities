@@ -15,7 +15,7 @@ from rclpy.executors import SingleThreadedExecutor
 from typing_extensions import TypeAlias
 
 import synchros2.scope as ros_scope
-from synchros2.action import Actionable, ActionAborted, ActionCancelled, ActionRejected
+from synchros2.action import Actionable, ActionAborted, ActionCancelled, ActionFuture, ActionRejected
 from synchros2.executors import foreground
 from synchros2.futures import wait_for_future
 from synchros2.node import Node
@@ -221,6 +221,65 @@ def test_successful_asynchronous_action_invocation_with_limited_feedback(ros: RO
     assert action.feedback[-1].sequence == last_feedback.sequence
 
 
+def test_successful_asynchronous_action_invocation_with_feedback_callback(ros: ROSAwareScope) -> None:
+    ActionServer(ros.node, Fibonacci, "fibonacci/compute", default_execute_callback)
+    compute_fibonacci: FibonacciActionable = Actionable(Fibonacci, "fibonacci/compute", ros.node)
+    assert compute_fibonacci.wait_for_server(timeout_sec=2.0)
+
+    action = compute_fibonacci.asynchronously(Fibonacci.Goal(order=5), track_feedback=True)
+
+    def verify_feedback(
+        action: ActionFuture[Fibonacci.Result, Fibonacci.Feedback],
+        feedback: Fibonacci.Feedback,
+    ) -> bool:
+        if len(feedback.sequence) == 1:
+            return not action.feedback and list(feedback.sequence) == [0]
+        last_feedback = action.feedback[-1]
+        if len(feedback.sequence) == 2:
+            return list(last_feedback.sequence) == [0] and list(feedback.sequence) == [0, 1]
+        return (
+            feedback.sequence[-1] == (last_feedback.sequence[-1] + last_feedback.sequence[-2])
+            and last_feedback.sequence == feedback.sequence[:-1]
+        )
+
+    verified_feedback = []
+
+    def callback(action: ActionFuture[Fibonacci.Result, Fibonacci.Feedback], feedback: Fibonacci.Feedback) -> None:
+        if verify_feedback(action, feedback):
+            verified_feedback.append(feedback)
+
+    action.add_feedback_callback(callback)
+
+    assert wait_for_future(action.finalization, timeout_sec=10.0)
+    assert action.finalized
+    assert action.succeeded
+    assert not action.aborted
+    assert not action.cancelled
+
+    for f, vf in zip(action.feedback, verified_feedback):
+        assert f.sequence == vf.sequence
+
+
+def test_successful_asynchronous_action_invocation_with_callback(ros: ROSAwareScope) -> None:
+    ActionServer(ros.node, Fibonacci, "fibonacci/compute", default_execute_callback)
+    compute_fibonacci: FibonacciActionable = Actionable(Fibonacci, "fibonacci/compute", ros.node)
+    assert compute_fibonacci.wait_for_server(timeout_sec=2.0)
+    action = compute_fibonacci.asynchronously(Fibonacci.Goal(order=5))
+
+    semaphore = threading.Semaphore(0)
+    mock_callback = Mock(side_effect=lambda _: semaphore.release())
+    action.add_done_callback(mock_callback)
+    semaphore.acquire(timeout=10.0)
+    assert mock_callback.called
+
+    assert action.acknowledged
+    assert action.accepted
+    assert action.finalized
+    assert not action.aborted
+    assert not action.cancelled
+    assert action.succeeded
+
+
 def test_successful_asynchronous_action_invocation_with_ephemeral_feedback(ros: ROSAwareScope) -> None:
     semaphore = threading.Semaphore(0)
 
@@ -391,3 +450,41 @@ def test_cancelled_asynchronous_action_invocation(ros: ROSAwareScope) -> None:
     assert action.cancelled
     assert not action.aborted
     assert not action.succeeded
+
+
+def test_cancelled_asynchronous_action_invocation_on_feedback(ros: ROSAwareScope) -> None:
+    def execute_callback(goal_handle: ServerGoalHandle) -> Fibonacci.Result:
+        feedback = Fibonacci.Feedback()
+
+        for number in fibonacci_sequence(goal_handle.request.order):
+            if goal_handle.is_cancel_requested:
+                goal_handle.canceled()
+                break
+            feedback.sequence.append(number)
+            goal_handle.publish_feedback(feedback)
+            time.sleep(0.1)
+        else:
+            goal_handle.succeed()
+
+        result = Fibonacci.Result()
+        result.sequence = feedback.sequence
+        return result
+
+    ActionServer(
+        ros.node,
+        Fibonacci,
+        "fibonacci/compute",
+        execute_callback,
+        cancel_callback=lambda _: CancelResponse.ACCEPT,
+    )
+    compute_fibonacci: FibonacciActionable = Actionable(Fibonacci, "fibonacci/compute", ros.node)
+    assert compute_fibonacci.wait_for_server(timeout_sec=2.0)
+    action = compute_fibonacci.asynchronously(Fibonacci.Goal(order=1000), track_feedback=1)
+
+    def callback(action: ActionFuture[Fibonacci.Result, Fibonacci.Feedback], feedback: Fibonacci.Feedback) -> None:
+        if feedback.sequence[-1] == 2:
+            action.cancel()
+
+    action.add_feedback_callback(callback)
+    assert wait_for_future(action.finalization, timeout_sec=10.0)
+    assert action.cancelled

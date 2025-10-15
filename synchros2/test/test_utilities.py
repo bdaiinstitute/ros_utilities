@@ -107,6 +107,20 @@ def test_tape_latest_writes() -> None:
     assert future.result() == tape.head
 
 
+def test_tape_write_callback() -> None:
+    tape: Tape[int] = Tape()
+    callback_results = []
+
+    def callback(data: int) -> None:
+        callback_results.append(data - (tape.head or 0))
+
+    tape.add_write_callback(callback)
+    expected_sequence = [1, 2, 3]
+    for i in expected_sequence:
+        tape.write(i)
+    assert callback_results == [1, 1, 1]
+
+
 def test_either_or() -> None:
     assert either_or(None, "value", True)
     data = argparse.Namespace(value=True)

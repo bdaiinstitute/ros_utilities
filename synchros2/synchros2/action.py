@@ -94,9 +94,10 @@ class ActionFuture(FutureConvertible[ActionResultT], Generic[ActionResultT, Acti
         """Callback on action goal handle future resolution."""
         exception = goal_handle_future.exception()
         if exception is not None:
+            if self._feedback_tape is not None:
+                self._feedback_tape.close()
             self._acknowledgement_future.set_exception(exception)
-            # An exception during acknowledgement is a rejection
-            self._finalization_future.set_result(None)
+            self._finalization_future.set_exception(exception)
             return
         goal_handle = goal_handle_future.result()
         self._acknowledgement_future.set_result(goal_handle.accepted)
@@ -104,17 +105,19 @@ class ActionFuture(FutureConvertible[ActionResultT], Generic[ActionResultT, Acti
             self._result_future = goal_handle.get_result_async()
             self._result_future.add_done_callback(self._result_callback)
         else:
-            self._finalization_future.set_result(None)
+            if self._feedback_tape is not None:
+                self._feedback_tape.close()
+            self._finalization_future.set_result(False)
 
     def _result_callback(self, result_future: Future) -> None:
         """Callback on action result future resolution."""
-        exception = result_future.exception()
-        if exception is None:
-            self._finalization_future.set_result(result_future.result().status)
-        else:
-            self._finalization_future.set_exception(exception)
         if self._feedback_tape is not None:
             self._feedback_tape.close()
+        exception = result_future.exception()
+        if exception is None:
+            self._finalization_future.set_result(True)
+        else:
+            self._finalization_future.set_exception(exception)
 
     @property
     def acknowledgement(self) -> FutureLike[bool]:
@@ -164,6 +167,17 @@ class ActionFuture(FutureConvertible[ActionResultT], Generic[ActionResultT, Acti
         if self._result_future is None or not self._result_future.done():
             raise RuntimeError("Action still executing")
         return self._result_future.result().result
+
+    def add_done_callback(
+        self,
+        done_callback: Callable[["ActionFuture[ActionResultT, ActionFeedbackT]"], None],
+    ) -> None:
+        """Add a callback to be called on action finalization.
+
+        Args:
+            done_callback: callback to be called on action finalization.
+        """
+        self._finalization_future.add_done_callback(lambda _: done_callback(self))
 
     def __await__(self) -> Generator[None, None, ActionResultT]:
         """Await for action result."""
@@ -244,6 +258,24 @@ class ActionFuture(FutureConvertible[ActionResultT], Generic[ActionResultT, Acti
             buffer_size=buffer_size,
             timeout_sec=timeout_sec,
             label=f"{outerframe.filename}:{outerframe.lineno}",
+        )
+
+    def add_feedback_callback(
+        self,
+        feedback_callback: Callable[["ActionFuture[ActionResultT, ActionFeedbackT]", ActionFeedbackT], None],
+        forward_only: bool = False,
+    ) -> None:
+        """Add a callback to be called on each action feedback.
+
+        Args:
+            feedback_callback: callback to be called on each action feedback.
+            forward_only: whether to ignore buffered action feedback or not.
+        """
+        if self._feedback_tape is None:
+            raise RuntimeError("Action feedback tracking is disabled")
+        self._feedback_tape.add_write_callback(
+            lambda feedback: feedback_callback(self, feedback),
+            forward_only=forward_only,
         )
 
     @property

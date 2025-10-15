@@ -160,13 +160,14 @@ class Tape(Generic[T]):
         Args:
             max_length: optional maximum tape length.
         """
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
         self._streams: MutableSet[Tape.Stream[T]] = weakref.WeakSet()
         self._content: Optional[collections.deque] = None
         if max_length is None or max_length > 0:
             self._content = collections.deque(maxlen=max_length)
         self._future_write: Optional[Future] = None
         self._future_matching_writes: List[Tuple[Callable[[T], bool], Future]] = []
+        self._write_callbacks: List[Callable[[T], None]] = []
         self._closed = False
 
     @property
@@ -218,11 +219,26 @@ class Tape(Generic[T]):
                 future_write.cancel()
             return future_write
 
+    def add_write_callback(self, callback: Callable[[T], None], forward_only: bool = False) -> None:
+        """Adds a callback to be invoked on each write.
+
+        Args:
+            callback: a callable taking the written data as its only argument.
+            forward_only: if true, ignore existing content and call back on future writes.
+        """
+        with self._lock:
+            if not forward_only and self._content is not None:
+                for data in self._content:
+                    callback(data)
+            self._write_callbacks.append(callback)
+
     def write(self, data: T) -> bool:
         """Write the data tape."""
         with self._lock:
             if self._closed:
                 return False
+            for callback in self._write_callbacks:
+                callback(data)
             for stream in self._streams:
                 if not stream.write(data):
                     message = "Stream is filled up, dropping message"
