@@ -11,7 +11,7 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "synchros2"
-copyright = "2025, Robotics and AI Institute"  # noqa
+copyright = "2025, Boston Dynamics AI Institute LLC"  # noqa
 author = "Robotics and AI Institute"
 
 # -- General configuration ---------------------------------------------------

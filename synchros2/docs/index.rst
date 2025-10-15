@@ -1,7 +1,7 @@
 synchros2
 =========
 
-The AI Institute wrappers for ROS2.
+RAI Institute wrappers for ROS2.
 
 .. toctree::
    :maxdepth: 1
