@@ -451,15 +451,24 @@ class ActionableProtocol(Protocol[ActionGoalT, ActionResultT, ActionFeedbackT]):
         self,
         goal: Optional[ActionGoalT] = ...,
         *,
+        done_callback: Optional[Callable[["ActionFuture[ActionResultT, ActionFeedbackT]"], None]] = ...,
+        feedback_callback: Optional[
+            Callable[["ActionFuture[ActionResultT, ActionFeedbackT]", ActionFeedbackT], None]
+        ] = ...,
         track_feedback: Union[int, bool] = ...,
     ) -> ActionFuture[ActionResultT, ActionFeedbackT]:
         """Invoke action asynchronously.
 
         Args:
             goal: target action goal, or a default initialized one if none is provided.
+            done_callback: optional action finalization callback, early registered through
+            ActionFuture.add_done_callback().
+            feedback_callback: optional action feedback callback, early registered through
+            ActionFuture.add_feedback_callback(). Implies minimal feedback tracking if not
+            already enabled.
             track_feedback: whether and how to track action feedback. Other than a boolean to
-            enable or disable tracking, a positive integer may be provided to cap feedback buffer
-            size.
+            enable or disable tracking, a non negative integer may be provided to cap feedback
+            buffer size.
 
         Returns:
             the future action outcome.
@@ -619,12 +628,21 @@ class Actionable(Generic[ActionGoalT, ActionResultT, ActionFeedbackT], Composabl
         self,
         goal: Optional[ActionGoalT] = None,
         *,
+        done_callback: Optional[Callable[["ActionFuture[ActionResultT, ActionFeedbackT]"], None]] = None,
+        feedback_callback: Optional[
+            Callable[["ActionFuture[ActionResultT, ActionFeedbackT]", ActionFeedbackT], None]
+        ] = None,
         track_feedback: Union[int, bool] = False,
     ) -> ActionFuture[ActionResultT, ActionFeedbackT]:
         """Invoke action asynchronously.
 
         Args:
             goal: goal to invoke action with.
+            done_callback: optional action finalization callback, early registered through
+            ActionFuture.add_done_callback().
+            feedback_callback: optional action feedback callback, early registered through
+            ActionFuture.add_feedback_callback(). Implies minimal feedback tracking if not
+            already enabled.
             track_feedback: whether and how to track action feedback. Other
             than a boolean to enable or disable tracking, a positive integer
             may be provided to cap feedback buffer size.
@@ -635,6 +653,8 @@ class Actionable(Generic[ActionGoalT, ActionResultT, ActionFeedbackT], Composabl
         feedback_tape: Optional[Tape[ActionFeedbackT]] = None
         if goal is None:
             goal = self.action_type.Goal()
+        if feedback_callback is not None and track_feedback is False:
+            track_feedback = 0
         if track_feedback is not False:
             feedback_tape_length = None
             if track_feedback is not True:
@@ -646,4 +666,9 @@ class Actionable(Generic[ActionGoalT, ActionResultT, ActionFeedbackT], Composabl
             )
         else:
             goal_handle_future = self._action_client.send_goal_async(goal)
-        return ActionFuture(goal_handle_future, feedback_tape)
+        future = ActionFuture[ActionResultT, ActionFeedbackT](goal_handle_future, feedback_tape)
+        if done_callback is not None:
+            future.add_done_callback(done_callback)
+        if feedback_callback is not None:
+            future.add_feedback_callback(feedback_callback, forward_only=True)
+        return future

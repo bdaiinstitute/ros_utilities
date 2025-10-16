@@ -280,6 +280,31 @@ def test_successful_asynchronous_action_invocation_with_callback(ros: ROSAwareSc
     assert action.succeeded
 
 
+def test_successful_asynchronous_action_invocation_with_multiple_callbacks(ros: ROSAwareScope) -> None:
+    ActionServer(ros.node, Fibonacci, "fibonacci/compute", default_execute_callback)
+    compute_fibonacci: FibonacciActionable = Actionable(Fibonacci, "fibonacci/compute", ros.node)
+    assert compute_fibonacci.wait_for_server(timeout_sec=2.0)
+
+    semaphore = threading.Semaphore(0)
+    mock_done_callback = Mock(side_effect=lambda _: semaphore.release())
+    mock_feedback_callback = Mock()
+    action = compute_fibonacci.asynchronously(
+        Fibonacci.Goal(order=5),
+        done_callback=mock_done_callback,
+        feedback_callback=mock_feedback_callback,
+    )
+    semaphore.acquire(timeout=10.0)
+    assert mock_done_callback.called
+    assert mock_feedback_callback.call_count > 0
+
+    assert action.acknowledged
+    assert action.accepted
+    assert action.finalized
+    assert not action.aborted
+    assert not action.cancelled
+    assert action.succeeded
+
+
 def test_successful_asynchronous_action_invocation_with_ephemeral_feedback(ros: ROSAwareScope) -> None:
     semaphore = threading.Semaphore(0)
 
