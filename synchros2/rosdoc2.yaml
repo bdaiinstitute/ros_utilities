@@ -1,0 +1,14 @@
+type: 'rosdoc2 config'
+version: 1
+
+---
+
+settings:
+  python_source: 'synchros2'
+
+builders:
+  - sphinx:
+      name: 'synchros2'
+      sphinx_sourcedir: 'docs'
+      output_dir: ''
+  

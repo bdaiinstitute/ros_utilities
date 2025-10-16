@@ -19,6 +19,8 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update -q && \
     python3-vcstool && \
     rm -rf /var/lib/apt/lists/*
 
+RUN pip install --upgrade "git+https://github.com/ros-infrastructure/rosdoc2@main"
+
 RUN source "/opt/ros/${ROS_DISTRO}/setup.bash"
 
 RUN --mount=type=bind,source=.,target=/tmp/context \

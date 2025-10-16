@@ -120,6 +120,25 @@ Feature requests are tracked as [GitHub issues](https://github.com/bdaiinstitute
 - Make the intended changes with appropriate tests that validate it.
 - Push these changes and open a pull request against this repository.
 
+Standard ROS development practices apply: [`rosdep` to manage depedencies](https://docs.ros.org/en/humble/Tutorials/Intermediate/Rosdep.html),
+[`colcon` to build and test](https://docs.ros.org/en/humble/How-To-Guides/Developing-a-ROS-2-Package.html).
+
+> [!TIP] <!-- omit in toc -->
+> Use [devcontainers](.devcontainer)!
+
+### Improving The Documentation
+
+Standard [ROS documentation practices](https://docs.ros.org/en/humble/How-To-Guides/Documenting-a-ROS-2-Package.html) apply e.g.:
+
+```sh
+cd path/to/workspace/src/ros_utilities/synchros2
+rosdoc2 build -p .
+rosdoc2 open docs_output/synchros2
+```
+
+> [!TIP] <!-- omit in toc -->
+> Always install `rosdoc2` from sources. Releases often lag substantially and the ROS buildfarm also installs it from sources.
+
 <!-- omit in toc -->
 ## Attribution
 This guide is based on the **contributing-gen**. [Make your own](https://github.com/bttger/contributing-gen)!

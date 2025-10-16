@@ -140,6 +140,11 @@ build/
 bin/
 lib/
 
+# rosdoc2
+docs_output/
+docs_build/
+cross_reference/
+
 # Editors
 .idea/
 .vscode/
