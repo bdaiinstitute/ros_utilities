@@ -158,7 +158,8 @@ class ActionFuture(FutureConvertible[ActionResultT], Generic[ActionResultT, Acti
         """Get action result.
 
         Raises:
-            RuntimeError: if action is still executing.
+            RuntimeError: if action has not yet been acknowledged,
+                          if it was rejected, or if it is still executing.
         """
         if not self.acknowledged:
             raise RuntimeError("Action not acknowledged")
@@ -174,8 +175,12 @@ class ActionFuture(FutureConvertible[ActionResultT], Generic[ActionResultT, Acti
     ) -> None:
         """Add a callback to be called on action finalization.
 
+        Finalization includes action rejection, abortion, cancellation, and successful completion.
+        Exceptions raised during action execution will also propagate through during action future
+        introspection.
+
         Args:
-            done_callback: callback to be called on action finalization.
+            done_callback: callback to be called.
         """
         self._finalization_future.add_done_callback(lambda _: done_callback(self))
 
@@ -280,12 +285,18 @@ class ActionFuture(FutureConvertible[ActionResultT], Generic[ActionResultT, Acti
 
     @property
     def accepted(self) -> bool:
-        """Check if action was accepted."""
+        """Check if action was accepted.
+
+        May raise if the action goal submission triggered an exception.
+        """
         return not self._goal_handle_future.done() or self._goal_handle_future.result().accepted
 
     @property
     def cancelled(self) -> bool:
-        """Check if action was cancelled."""
+        """Check if action was cancelled.
+
+        May raise if the action result request triggered an exception.
+        """
         return (
             self._result_future is not None
             and self._result_future.done()
@@ -294,7 +305,10 @@ class ActionFuture(FutureConvertible[ActionResultT], Generic[ActionResultT, Acti
 
     @property
     def aborted(self) -> bool:
-        """Check if action was aborted."""
+        """Check if action was aborted.
+
+        May raise if the action result request triggered an exception.
+        """
         return (
             self._result_future is not None
             and self._result_future.done()
@@ -303,7 +317,10 @@ class ActionFuture(FutureConvertible[ActionResultT], Generic[ActionResultT, Acti
 
     @property
     def succeeded(self) -> bool:
-        """Check if action was succeeded."""
+        """Check if action was succeeded.
+
+        May raise if the action result request triggered an exception.
+        """
         return (
             self._result_future is not None
             and self._result_future.done()
@@ -462,9 +479,9 @@ class ActionableProtocol(Protocol[ActionGoalT, ActionResultT, ActionFeedbackT]):
         Args:
             goal: target action goal, or a default initialized one if none is provided.
             done_callback: optional action finalization callback, early registered through
-            ActionFuture.add_done_callback().
+            `ActionFuture.add_done_callback()`.
             feedback_callback: optional action feedback callback, early registered through
-            ActionFuture.add_feedback_callback(). Implies minimal feedback tracking if not
+            `ActionFuture.add_feedback_callback()`. Implies minimal feedback tracking if not
             already enabled.
             track_feedback: whether and how to track action feedback. Other than a boolean to
             enable or disable tracking, a non negative integer may be provided to cap feedback
