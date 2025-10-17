@@ -94,9 +94,10 @@ class ActionFuture(FutureConvertible[ActionResultT], Generic[ActionResultT, Acti
         """Callback on action goal handle future resolution."""
         exception = goal_handle_future.exception()
         if exception is not None:
+            if self._feedback_tape is not None:
+                self._feedback_tape.close()
             self._acknowledgement_future.set_exception(exception)
-            # An exception during acknowledgement is a rejection
-            self._finalization_future.set_result(None)
+            self._finalization_future.set_exception(exception)
             return
         goal_handle = goal_handle_future.result()
         self._acknowledgement_future.set_result(goal_handle.accepted)
@@ -104,17 +105,19 @@ class ActionFuture(FutureConvertible[ActionResultT], Generic[ActionResultT, Acti
             self._result_future = goal_handle.get_result_async()
             self._result_future.add_done_callback(self._result_callback)
         else:
-            self._finalization_future.set_result(None)
+            if self._feedback_tape is not None:
+                self._feedback_tape.close()
+            self._finalization_future.set_result(False)
 
     def _result_callback(self, result_future: Future) -> None:
         """Callback on action result future resolution."""
-        exception = result_future.exception()
-        if exception is None:
-            self._finalization_future.set_result(result_future.result().status)
-        else:
-            self._finalization_future.set_exception(exception)
         if self._feedback_tape is not None:
             self._feedback_tape.close()
+        exception = result_future.exception()
+        if exception is None:
+            self._finalization_future.set_result(True)
+        else:
+            self._finalization_future.set_exception(exception)
 
     @property
     def acknowledgement(self) -> FutureLike[bool]:
@@ -155,7 +158,8 @@ class ActionFuture(FutureConvertible[ActionResultT], Generic[ActionResultT, Acti
         """Get action result.
 
         Raises:
-            RuntimeError: if action is still executing.
+            RuntimeError: if action has not yet been acknowledged,
+                          if it was rejected, or if it is still executing.
         """
         if not self.acknowledged:
             raise RuntimeError("Action not acknowledged")
@@ -164,6 +168,21 @@ class ActionFuture(FutureConvertible[ActionResultT], Generic[ActionResultT, Acti
         if self._result_future is None or not self._result_future.done():
             raise RuntimeError("Action still executing")
         return self._result_future.result().result
+
+    def add_done_callback(
+        self,
+        done_callback: Callable[["ActionFuture[ActionResultT, ActionFeedbackT]"], None],
+    ) -> None:
+        """Add a callback to be called on action finalization.
+
+        Finalization includes action rejection, abortion, cancellation, and successful completion.
+        Exceptions raised during action execution will also propagate through during action future
+        introspection.
+
+        Args:
+            done_callback: callback to be called.
+        """
+        self._finalization_future.add_done_callback(lambda _: done_callback(self))
 
     def __await__(self) -> Generator[None, None, ActionResultT]:
         """Await for action result."""
@@ -246,14 +265,38 @@ class ActionFuture(FutureConvertible[ActionResultT], Generic[ActionResultT, Acti
             label=f"{outerframe.filename}:{outerframe.lineno}",
         )
 
+    def add_feedback_callback(
+        self,
+        feedback_callback: Callable[["ActionFuture[ActionResultT, ActionFeedbackT]", ActionFeedbackT], None],
+        forward_only: bool = False,
+    ) -> None:
+        """Add a callback to be called on each action feedback.
+
+        Args:
+            feedback_callback: callback to be called on each action feedback.
+            forward_only: whether to ignore buffered action feedback or not.
+        """
+        if self._feedback_tape is None:
+            raise RuntimeError("Action feedback tracking is disabled")
+        self._feedback_tape.add_write_callback(
+            lambda feedback: feedback_callback(self, feedback),
+            forward_only=forward_only,
+        )
+
     @property
     def accepted(self) -> bool:
-        """Check if action was accepted."""
+        """Check if action was accepted.
+
+        May raise if the action goal submission triggered an exception.
+        """
         return not self._goal_handle_future.done() or self._goal_handle_future.result().accepted
 
     @property
     def cancelled(self) -> bool:
-        """Check if action was cancelled."""
+        """Check if action was cancelled.
+
+        May raise if the action result request triggered an exception.
+        """
         return (
             self._result_future is not None
             and self._result_future.done()
@@ -262,7 +305,10 @@ class ActionFuture(FutureConvertible[ActionResultT], Generic[ActionResultT, Acti
 
     @property
     def aborted(self) -> bool:
-        """Check if action was aborted."""
+        """Check if action was aborted.
+
+        May raise if the action result request triggered an exception.
+        """
         return (
             self._result_future is not None
             and self._result_future.done()
@@ -271,7 +317,10 @@ class ActionFuture(FutureConvertible[ActionResultT], Generic[ActionResultT, Acti
 
     @property
     def succeeded(self) -> bool:
-        """Check if action was succeeded."""
+        """Check if action was succeeded.
+
+        May raise if the action result request triggered an exception.
+        """
         return (
             self._result_future is not None
             and self._result_future.done()
@@ -419,15 +468,24 @@ class ActionableProtocol(Protocol[ActionGoalT, ActionResultT, ActionFeedbackT]):
         self,
         goal: Optional[ActionGoalT] = ...,
         *,
+        done_callback: Optional[Callable[["ActionFuture[ActionResultT, ActionFeedbackT]"], None]] = ...,
+        feedback_callback: Optional[
+            Callable[["ActionFuture[ActionResultT, ActionFeedbackT]", ActionFeedbackT], None]
+        ] = ...,
         track_feedback: Union[int, bool] = ...,
     ) -> ActionFuture[ActionResultT, ActionFeedbackT]:
         """Invoke action asynchronously.
 
         Args:
             goal: target action goal, or a default initialized one if none is provided.
+            done_callback: optional action finalization callback, early registered through
+            `ActionFuture.add_done_callback()`.
+            feedback_callback: optional action feedback callback, early registered through
+            `ActionFuture.add_feedback_callback()`. Implies minimal feedback tracking if not
+            already enabled.
             track_feedback: whether and how to track action feedback. Other than a boolean to
-            enable or disable tracking, a positive integer may be provided to cap feedback buffer
-            size.
+            enable or disable tracking, a non negative integer may be provided to cap feedback
+            buffer size.
 
         Returns:
             the future action outcome.
@@ -587,12 +645,21 @@ class Actionable(Generic[ActionGoalT, ActionResultT, ActionFeedbackT], Composabl
         self,
         goal: Optional[ActionGoalT] = None,
         *,
+        done_callback: Optional[Callable[["ActionFuture[ActionResultT, ActionFeedbackT]"], None]] = None,
+        feedback_callback: Optional[
+            Callable[["ActionFuture[ActionResultT, ActionFeedbackT]", ActionFeedbackT], None]
+        ] = None,
         track_feedback: Union[int, bool] = False,
     ) -> ActionFuture[ActionResultT, ActionFeedbackT]:
         """Invoke action asynchronously.
 
         Args:
             goal: goal to invoke action with.
+            done_callback: optional action finalization callback, early registered through
+            ActionFuture.add_done_callback().
+            feedback_callback: optional action feedback callback, early registered through
+            ActionFuture.add_feedback_callback(). Implies minimal feedback tracking if not
+            already enabled.
             track_feedback: whether and how to track action feedback. Other
             than a boolean to enable or disable tracking, a positive integer
             may be provided to cap feedback buffer size.
@@ -603,6 +670,8 @@ class Actionable(Generic[ActionGoalT, ActionResultT, ActionFeedbackT], Composabl
         feedback_tape: Optional[Tape[ActionFeedbackT]] = None
         if goal is None:
             goal = self.action_type.Goal()
+        if feedback_callback is not None and track_feedback is False:
+            track_feedback = 0
         if track_feedback is not False:
             feedback_tape_length = None
             if track_feedback is not True:
@@ -614,4 +683,9 @@ class Actionable(Generic[ActionGoalT, ActionResultT, ActionFeedbackT], Composabl
             )
         else:
             goal_handle_future = self._action_client.send_goal_async(goal)
-        return ActionFuture(goal_handle_future, feedback_tape)
+        future = ActionFuture[ActionResultT, ActionFeedbackT](goal_handle_future, feedback_tape)
+        if done_callback is not None:
+            future.add_done_callback(done_callback)
+        if feedback_callback is not None:
+            future.add_feedback_callback(feedback_callback, forward_only=True)
+        return future
