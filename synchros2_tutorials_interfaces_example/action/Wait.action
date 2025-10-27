@@ -1,0 +1,8 @@
+# How long to wait
+float32 n_seconds_to_wait
+---
+# How long we actually waited
+float32 n_seconds_waited
+---
+# How long is left
+float32 n_seconds_remaining

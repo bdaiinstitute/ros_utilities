@@ -482,3 +482,7 @@ Unlike in the case where we did the work in the callback, this time the callback
 8. 10 seconds after 6: The timer callback finishes processing the third message and we see the new prints.
 
 So we once again fail to process the second message.  This could be addressed by using a queue for `_raw_msg`.
+
+## Next Steps
+
+Now try the [actions tutorial](./ActionsWithSynchros2.md).
