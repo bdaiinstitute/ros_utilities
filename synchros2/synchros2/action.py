@@ -279,7 +279,7 @@ class ActionFuture(FutureConvertible[ActionResultT], Generic[ActionResultT, Acti
         if self._feedback_tape is None:
             raise RuntimeError("Action feedback tracking is disabled")
         self._feedback_tape.add_write_callback(
-            lambda feedback: feedback_callback(self, feedback),
+            lambda feedback: feedback_callback(self, feedback),  # type: ignore[misc]
             forward_only=forward_only,
         )
 

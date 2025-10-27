@@ -68,7 +68,7 @@ class MessageFeed(Generic[MessageT]):
         self._logger.debug(f"{self.__class__.__qualname__} received {len(msgs)} messages")
 
     def _callback(self, *msgs: Any) -> None:
-        self._tape.write(msgs if len(msgs) > 1 else msgs[0])
+        self._tape.write(msgs if len(msgs) > 1 else msgs[0])  # type: ignore[arg-type]
 
     @property
     def link(self) -> Filter:
