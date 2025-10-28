@@ -39,7 +39,7 @@ repos:
   -   id: cpplint
       args: ['--quiet', '--filter=-whitespace/comments', '--linelength=120']
 - repo: https://github.com/pre-commit/mirrors-mypy
-  rev: v1.2.0
+  rev: v1.16.0
   hooks:
   -   id: mypy
       args: ['--config-file', '.configs/mypy.ini']

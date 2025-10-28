@@ -295,7 +295,7 @@ class ROSAwareScope(typing.ContextManager["ROSAwareScope"]):
             a context manager for the loaded nodes.
         """
 
-    @contextlib.contextmanager
+    @contextlib.contextmanager  # type: ignore
     def managed(
         self,
         factory: typing.Union[NodeFactoryCallable[NodeT], GraphFactoryCallable[NodeT]],
