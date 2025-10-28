@@ -314,7 +314,8 @@ class TransformFilter(Filter):
             return
         with self.__lock:
             try:
-                if future.result() is True:
+                transform = future.result()
+                if transform is True:
                     source_frame_id = messages[0].header.frame_id
                     time = Time.from_msg(messages[0].header.stamp)
                     transform = self.tf_buffer.lookup_transform(
@@ -322,7 +323,7 @@ class TransformFilter(Filter):
                         source_frame_id,
                         time,
                     )
-                    self.signalMessage(*messages, transform)
+                self.signalMessage(*messages, transform)
             except tf2_ros.TransformException as e:
                 if self._logger is not None:
                     self._logger.error(

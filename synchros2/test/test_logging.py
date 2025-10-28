@@ -8,7 +8,7 @@ from rclpy.clock import ROSClock
 from rclpy.time import Time
 
 from synchros2.futures import unwrap_future
-from synchros2.logging import LoggingSeverity, as_memoizing_logger, logs_to_ros
+from synchros2.logging import LoggingSeverity, logs_to_ros
 from synchros2.scope import ROSAwareScope
 from synchros2.subscription import Subscription
 
@@ -26,7 +26,7 @@ def test_memoizing_logger(verbose_ros: ROSAwareScope) -> None:
     assert verbose_ros.node is not None
     verbose_ros.node.create_subscription(Log, "/rosout", callback, 10)
 
-    logger = as_memoizing_logger(verbose_ros.node.get_logger())
+    logger = verbose_ros.node.get_logger()
     logger.set_level(LoggingSeverity.INFO)
 
     assert not logger.debug("Debug message should not be logged")
@@ -87,7 +87,10 @@ def test_log_forwarding(verbose_ros: ROSAwareScope) -> None:
         logger.info("test")
 
     log = unwrap_future(rosout.update, timeout_sec=5.0)
-    # NOTE(hidmic) why are log levels of bytestring type !?
-    assert log.level == int.from_bytes(Log.INFO, byteorder="little")
+    expected_level = Log.INFO
+    if isinstance(expected_level, bytes):
+        # NOTE(hidmic): log levels are of bytestring type in earlier distros
+        expected_level = int.from_bytes(expected_level, byteorder="little")
+    assert log.level == expected_level
     assert log.name == verbose_ros.node.get_logger().name
     assert log.msg == "(logging.my_logger) test"
