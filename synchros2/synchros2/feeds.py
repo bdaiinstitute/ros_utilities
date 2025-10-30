@@ -11,6 +11,7 @@ from typing import (
     Optional,
     TypeVar,
     Union,
+    cast,
     overload,
 )
 
@@ -68,7 +69,8 @@ class MessageFeed(Generic[MessageT]):
         self._logger.debug(f"{self.__class__.__qualname__} received {len(msgs)} messages")
 
     def _callback(self, *msgs: Any) -> None:
-        self._tape.write(msgs if len(msgs) > 1 else msgs[0])
+        # NOTE: use variadic generics when they become available
+        self._tape.write(cast(MessageT, msgs if len(msgs) > 1 else msgs[0]))
 
     @property
     def link(self) -> Filter:

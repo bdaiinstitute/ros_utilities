@@ -13,6 +13,7 @@ from synchros2.process import ROSAwareScope
 
 @pytest.fixture
 def ros_clock(ros: ROSAwareScope) -> Clock:
+    assert ros.node is not None
     clock = ros.node.get_clock()
     clock._set_ros_time_is_active(True)
     stop_event = threading.Event()
@@ -47,6 +48,7 @@ def test_wait_for_past_event_wrt_system_clock() -> None:
 
 def test_wait_for_late_event_wrt_system_clock(ros: ROSAwareScope) -> None:
     late_event = threading.Event()
+    assert ros.executor is not None
     ros.executor.create_task(late_event.set)
     assert wait_for(late_event, timeout_sec=0.5)
     assert late_event.is_set()
@@ -67,6 +69,7 @@ def test_wait_for_past_event_wrt_ros_clock(ros_clock: Clock) -> None:
 
 def test_wait_for_late_event_wrt_ros_clock(ros: ROSAwareScope, ros_clock: Clock) -> None:
     late_event = threading.Event()
+    assert ros.executor is not None
     ros.executor.create_task(late_event.set)
     assert wait_for(late_event, clock=ros_clock, timeout_sec=0.5)
     assert late_event.is_set()
