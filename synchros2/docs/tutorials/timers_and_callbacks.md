@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-Make sure you’ve done the [Getting Started Guide](./GettingStartedGuide.md).
+Make sure you’ve gone through the [getting started steps](../getting_started/index.md).
 
 ## Introduction
 
@@ -111,7 +111,7 @@ We’ll start by writing and running the code and then we’ll analyze it.
 
 ### Understanding the Code
 
-This code is similar to the code from the [Getting Started Guide](./GettingStartedGuide.md) so we will not go through it in as much detail.
+This code is similar to the code from the [Getting Started section](../getting_started/index.md) so we will not go through it in as much detail.
 
 We start with the imports all `synchros2` code needs (non-main code doesn’t need the `ros_process` one):
 
