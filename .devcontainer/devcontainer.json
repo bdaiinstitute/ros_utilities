@@ -2,6 +2,9 @@
   "name": "ros_utilities dev container",
   "build": {
     "dockerfile": "Dockerfile",
-    "context": ".."
+    "context": "..",
+    "args": {
+      "ROS_DISTRO": "humble",
+    }
   }
 }

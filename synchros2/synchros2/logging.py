@@ -31,20 +31,6 @@ SEVERITY_MAP = {
 REVERSE_SEVERITY_MAP = {v: k for k, v in SEVERITY_MAP.items()}
 
 
-if not typing.TYPE_CHECKING:
-    import os.path
-    import xml.etree.ElementTree as ET
-
-    import ament_index_python
-    import packaging.version
-
-    share_directory = ament_index_python.get_package_share_directory("rclpy")
-    tree = ET.parse(os.path.join(share_directory, "package.xml"))
-    version = tree.getroot().find("version")
-    if packaging.version.parse(version.text) >= packaging.version.parse("3.9.0"):
-        warnings.warn("TODO: use subloggers in RcutilsLogHandler implementation", stacklevel=1)
-
-
 @functools.lru_cache(maxsize=1024)
 def make_logging_function(
     name: str,
@@ -114,21 +100,22 @@ class MemoizingRcutilsLogger:
     subsequent invocations.
     """
 
-    def __init__(self, name: str = "") -> None:
+    def __init__(self, raw_logger: RcutilsLogger) -> None:
         """Initializes the logger with the given `name`, or the root logger if none is provided."""
-        self.name = name
+        self.__raw_logger = raw_logger
+
+    @property
+    def name(self) -> str:
+        """Gets the logger name."""
+        return self.__raw_logger.name
 
     def get_child(self, name: str) -> "MemoizingRcutilsLogger":
         """Gets a child logger with the given `name`."""
-        if not name:
-            raise ValueError("Need name for child logger.")
-        if self.name:
-            name = self.name + "." + name
-        return MemoizingRcutilsLogger(name)
+        return MemoizingRcutilsLogger(self.__raw_logger.get_child(name))
 
     def set_level(self, level: typing.Union[int, LoggingSeverity]) -> None:
         """Sets logger severity `level`."""
-        impl.rclpy_logging_set_logger_level(self.name, LoggingSeverity(level))
+        self.__raw_logger.set_level(level)
 
     def get_effective_level(self) -> LoggingSeverity:
         """Gets the effective logger severity level.
@@ -137,11 +124,11 @@ class MemoizingRcutilsLogger:
         genealogy (ie. its own or that of its parent or that of its grandparent and so on), or
         the default severity level when no severity level is.
         """
-        return LoggingSeverity(impl.rclpy_logging_get_logger_effective_level(self.name))
+        return self.__raw_logger.get_effective_level()
 
     def is_enabled_for(self, level: typing.Union[int, LoggingSeverity]) -> bool:
         """Checks whether the logger is enabled for logs at the given severity `level`."""
-        return impl.rclpy_logging_logger_is_enabled_for(self.name, LoggingSeverity(level))
+        return self.__raw_logger.is_enabled_for(level)
 
     def log(
         self,
@@ -184,7 +171,7 @@ class MemoizingRcutilsLogger:
             assert outer_frame is not None
             origin = inspect.getframeinfo(outer_frame, context=0)
         do_log = make_logging_function(
-            self.name,
+            self.__raw_logger.name,
             LoggingSeverity(level),
             origin,
             throttle_duration_sec,
@@ -265,7 +252,12 @@ class MemoizingRcutilsLogger:
 
 def as_memoizing_logger(logger: RcutilsLogger) -> MemoizingRcutilsLogger:
     """Turns a regular `rclpy` logger into a memoizing one."""
-    return MemoizingRcutilsLogger(logger.name)
+    warnings.warn(
+        "as_memoizing_logger is deprecated. Please use MemoizingRcutilsLogger directly.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return MemoizingRcutilsLogger(logger)
 
 
 class RcutilsLogHandler(logging.Handler):

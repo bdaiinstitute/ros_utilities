@@ -3,7 +3,6 @@ FROM ros:${ROS_DISTRO}-ros-base
 
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
-ENV ROS_DISTRO=${ROS_DISTRO}
 SHELL ["/bin/bash", "-c"]
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get update -q && \
@@ -19,9 +18,10 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update -q && \
     python3-vcstool && \
     rm -rf /var/lib/apt/lists/*
 
+ENV PIP_BREAK_SYSTEM_PACKAGES=1 
 RUN pip install --upgrade "git+https://github.com/ros-infrastructure/rosdoc2@main"
 
-RUN source "/opt/ros/${ROS_DISTRO}/setup.bash"
+RUN source /opt/ros/${ROS_DISTRO}/setup.bash
 
 RUN --mount=type=bind,source=.,target=/tmp/context \
     apt-get update -q && rosdep update && \

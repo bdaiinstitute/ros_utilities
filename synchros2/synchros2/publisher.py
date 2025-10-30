@@ -1,10 +1,10 @@
 #  Copyright (c) 2025 Boston Dynamics AI Institute Inc.  All rights reserved.
 
-from asyncio import Future
 from typing import Any, Generic, Optional, Type, TypeVar
 
 import rclpy.publisher
 from rclpy.node import Node
+from rclpy.task import Future
 
 import synchros2.scope as scope
 

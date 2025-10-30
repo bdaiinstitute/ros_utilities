@@ -9,7 +9,7 @@ from rclpy.node import Node as BaseNode
 from rclpy.waitable import Waitable
 
 from synchros2.callback_groups import NonReentrantCallbackGroup
-from synchros2.logging import MemoizingRcutilsLogger, as_memoizing_logger
+from synchros2.logging import MemoizingRcutilsLogger
 
 
 def suppressed(exception: Type[BaseException], func: Callable) -> Callable:
@@ -47,7 +47,7 @@ class Node(BaseNode):
         self._default_callback_group_override = default_callback_group
         self._destruction_requested = False
         super().__init__(*args, **kwargs)
-        self._logger: MemoizingRcutilsLogger = as_memoizing_logger(self._logger)
+        self._logger: MemoizingRcutilsLogger = MemoizingRcutilsLogger(self._logger)
 
     @property
     def default_callback_group(self) -> CallbackGroup:
