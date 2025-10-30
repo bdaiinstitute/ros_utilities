@@ -139,6 +139,9 @@ rosdoc2 open docs_output/synchros2
 > [!TIP] <!-- omit in toc -->
 > Always install `rosdoc2` from sources. Releases often lag substantially and the ROS buildfarm also installs it from sources.
 
+> [!TIP] <!-- omit in toc -->
+> Packages in this repository have a `docs/build.sh` to simplify iterative documentation development. Use them!
+
 <!-- omit in toc -->
 ## Attribution
 This guide is based on the **contributing-gen**. [Make your own](https://github.com/bttger/contributing-gen)!

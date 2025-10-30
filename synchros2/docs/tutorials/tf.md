@@ -1,10 +1,10 @@
-# Using TF with synchros2
+# Using TF with `synchros2`
 
 This tutorial will guide you through the basics of using the Transform (TF) system with the `synchros2` utilities package.
 
 ## Prerequisites
 
-Make sure you’ve done the [Getting Started Guide](./GettingStartedGuide.md).
+Make sure you’ve gone through the [getting started steps](../getting_started/index.md).
 
 ## What is TF?
 

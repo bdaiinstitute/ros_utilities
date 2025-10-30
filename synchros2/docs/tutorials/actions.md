@@ -1,8 +1,8 @@
-# Actions with synchros2
+# Actions with `synchros2`
 
 ## Prerequisites
 
-Make sure you’ve done the [Getting Started Guide](./GettingStartedGuide.md).
+Make sure you’ve gone through the [getting started steps](../getting_started/index.md).
 
 ## Introduction
 
@@ -659,4 +659,4 @@ from synchros2.action import (
 
 ## Next Steps
 
-Now try the [TF tutorial](./TFTutorial.md).
+Now try the [TF tutorial](tf.md).

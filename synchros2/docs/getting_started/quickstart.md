@@ -1,31 +1,5 @@
-# Getting Started Guide
 
-## Installation
-
-### Prerequisites
-
-These links are to Humble tutorials but `synchros2` should be compatible with any current ROS2 distro.
-
-1. [Configure a ROS2 environment](https://docs.ros.org/en/humble/Tutorials/Beginner-CLI-Tools/Configuring-ROS2-Environment.html)
-2. [Create a ROS2 workspace](https://docs.ros.org/en/humble/Tutorials/Beginner-Client-Libraries/Colcon-Tutorial.html)
-
-### Install and Build `synchros2`
-
-1. Download the git repository into your existing ROS workspace:
-    
-    ```bash
-    cd <workspace>/src
-    git clone https://github.com/bdaiinstitute/ros_utilities.git
-    ```
-    
-2. Build and source the colcon workspace
-    
-    ```bash
-    cd <workspace>
-    colcon build --symlink-install
-    source install/setup.bash
-    ```
-    
+# Quickstart
 
 ## Overview
 
@@ -50,7 +24,6 @@ These links are to Humble tutorials but `synchros2` should be compatible with an
     	def __init__(self):
     		self._node = ros_scope.ensure_node()
     ```
-    
 
 ## Your First `synchros2` Code
 
@@ -220,9 +193,7 @@ We will write our code in a different package from the "interface", i.e. message
     [INFO] [1759264529.885723251] [listener]: Callback 1 received message synchros2_tutorials_interfaces.msg.String(data='This is the second message') and will now sleep for 10 seconds
     [INFO] [1759264530.003322694] [listener]: Callback 2 is done sleeping after receiving synchros2_tutorials_interfaces.msg.String(data='This is the second message')
     [INFO] [1759264539.896067303] [listener]: Callback 1 is done sleeping after receiving synchros2_tutorials_interfaces.msg.String(data='This is the second message')
-    
     ```
-    
 
 ## Analyzing the Code
 
@@ -306,6 +277,27 @@ Your output should have looked something like:
 
 Here’s what happened:
 
+```{mermaid}
+    sequenceDiagram
+      participant User
+      participant Callback1
+      participant Callback2
+
+      User->>Callback1: Publish "This is the first message"
+      User->>Callback2: Publish "This is the first message"
+      Callback1->>Callback1: Print received, sleep 10s
+      Callback2->>Callback2: Print received, sleep 5s (runs concurrently)
+      User->>Callback1: Publish "This is the second message"
+      User->>Callback2: Publish "This is the second message"
+      Note over Callback1,Callback2: Both callbacks busy, second message queued
+      Callback2->>Callback2: Finish sleep, print done (after 5s)
+      Callback2->>Callback2: Print received second message, sleep 5s
+      Callback1->>Callback1: Finish sleep, print done (after 10s)
+      Callback1->>Callback1: Print received second message, sleep 10s
+      Callback2->>Callback2: Finish sleep, print done (after 5s)
+      Callback1->>Callback1: Finish sleep, print done (after 10s)
+```
+
 1. We published the message “This is the first message” on `/chat`
 2. Immediately after 1: That message went into the queues for both callbacks
 3. Immediately after 2: Callback 1 received the first message, printed out the info and started to sleep
@@ -330,4 +322,4 @@ Side note: This is essentially the behavior of ROS2 with a multi-threaded execut
 
 ## Next Steps
 
-Now try the [TimersAndCallbacksTutorial](./TimersAndCallbacksTutorial.md).
+You can now try the [tutorials](../tutorials/index.md) or read up our [guides](../guides/index.md).

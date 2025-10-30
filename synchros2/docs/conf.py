@@ -37,6 +37,7 @@ extensions = [
     "sphinx.ext.todo",
     "sphinx.ext.viewcode",
     "sphinx_rtd_theme",
+    "sphinxcontrib.mermaid",
 ]
 
 autodoc_default_options = {
@@ -44,7 +45,14 @@ autodoc_default_options = {
     "class-doc-from": "class",
 }
 autodoc_class_signature = "separated"
-
+autodoc_mock_imports = [
+    "geometry_msgs",
+    "launch",
+    "message_filters",
+    "rclpy",
+    "tf2_ros",
+    "tf2_msgs",
+]
 intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
 
 myst_heading_anchors = 6
@@ -62,4 +70,8 @@ html_theme_options = {
     "navigation_depth": 4,
     "includehidden": True,
     "titles_only": False,
+}
+
+rosdoc2_settings = {
+    "allow_other_extensions": True,
 }
