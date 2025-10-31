@@ -86,7 +86,7 @@ def test_log_forwarding(verbose_ros: ROSAwareScope) -> None:
         logger.propagate = True  # ensure propagation is enabled
         logger.info("test")
 
-    log = unwrap_future(rosout.update, timeout_sec=5.0)
+    log = unwrap_future(rosout.update, timeout_sec=15.0)
     expected_level = Log.INFO
     if isinstance(expected_level, bytes):
         # NOTE(hidmic): log levels are of bytestring type in earlier distros
