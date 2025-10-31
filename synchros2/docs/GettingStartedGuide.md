@@ -138,7 +138,7 @@ We'll start by creating a custom message for us to publish and listen to.
     ```
     If `ros2 interface` cannot find the package make sure you:
     * Sourced `install/setup.bash` in your current terminal *after* building.
-    * Built from `<workspace>` and not any other directory
+    * Built from `<workspace>` and not any other directory.
 
 ### Writing and Running the Code
 
