@@ -23,7 +23,7 @@ We’ll start by writing and running the code and then we’ll analyze it.
     import time
 
     import rclpy
-    import std_msgs.msg
+    import synchros2_tutorials_interfaces.msg
 
     import synchros2.process as ros_process
     import synchros2.scope as ros_scope
@@ -33,10 +33,10 @@ We’ll start by writing and running the code and then we’ll analyze it.
         def __init__(self):
             self._node = ros_scope.ensure_node()
             self.processed_msg = None
-            self._sub = self._node.create_subscription(std_msgs.msg.String, "chat", self._callback, 1)
+            self._sub = self._node.create_subscription(synchros2_tutorials_interfaces.msg.String, "chat", self._callback, 1)
             self._node.get_logger().info("Listening!")
 
-        def _callback(self, msg: std_msgs.msg.String) -> None:
+        def _callback(self, msg: synchros2_tutorials_interfaces.msg.String) -> None:
             self._node.get_logger().info(f"Callback received message {msg} and will now process it")
             start = self._node.get_clock().now()
             time.sleep(5)
@@ -57,7 +57,7 @@ We’ll start by writing and running the code and then we’ll analyze it.
         main()
     ```
     
-2. Run the code:
+2. Run the code (make sure you've sourced `<workspace>/install/setup.bash` in this terminal):
     
     ```bash
     cd <workspace>/src/synchros2_tutorials/synchros2_tutorials
@@ -66,45 +66,45 @@ We’ll start by writing and running the code and then we’ll analyze it.
     
     You should see the print out `Listening!` and then start to print `Processed message is None`.
     
-3. Now we’ll publish some messages to the `/chat` topic on which the subscriber is listening.  For the best example, create a new terminal to do this and make sure you can see the terminal in which the listener is running.  Run the publish command:
+3. Now we’ll publish some messages to the `/chat` topic on which the subscriber is listening.  For the best example, create a new terminal to do this (make sure to source `<workspace>/install/setup.bash) and make sure you can see the terminal in which the listener is running.  Run the publish command:
     
     ```bash
-    ros2 topic pub /chat std_msgs/msg/String "data: 'This is a message to process'" -1
+    ros2 topic pub /chat synchros2_tutorials_interfaces/msg/String "data: 'This is a message to process'" -1
     ```
     
 4. You should see the processor receive the message and take some time to process it. Once it has the class variable changes: 
     
     ```bash
     [INFO] [1759859896.546288649] [msg_processor_cb]: Processed message is None
-    [INFO] [1759859897.043449521] [msg_processor_cb]: Callback received message std_msgs.msg.String(data='This is a message to process') and will now process it
+    [INFO] [1759859897.043449521] [msg_processor_cb]: Callback received message synchros2_tutorials_interfaces.msg.String(data='This is a message to process') and will now process it
     [INFO] [1759859897.547909617] [msg_processor_cb]: Processed message is None
     [INFO] [1759859898.549327163] [msg_processor_cb]: Processed message is None
     [INFO] [1759859899.550741444] [msg_processor_cb]: Processed message is None
     [INFO] [1759859900.552368980] [msg_processor_cb]: Processed message is None
     [INFO] [1759859901.553779861] [msg_processor_cb]: Processed message is None
-    [INFO] [1759859902.049583632] [msg_processor_cb]: Set processed message to std_msgs.msg.String(data='This is a message to process'): Time(nanoseconds=1759859897043782082, clock_type=ROS_TIME) -> Time(nanoseconds=1759859902049301209, clock_type=ROS_TIME)
-    [INFO] [1759859902.555178622] [msg_processor_cb]: Processed message is std_msgs.msg.String(data='This is a message to process'): Time(nanoseconds=1759859897043782082, clock_type=ROS_TIME) -> Time(nanoseconds=1759859902049301209, clock_type=ROS_TIME)
+    [INFO] [1759859902.049583632] [msg_processor_cb]: Set processed message to synchros2_tutorials_interfaces.msg.String(data='This is a message to process'): Time(nanoseconds=1759859897043782082, clock_type=ROS_TIME) -> Time(nanoseconds=1759859902049301209, clock_type=ROS_TIME)
+    [INFO] [1759859902.555178622] [msg_processor_cb]: Processed message is synchros2_tutorials_interfaces.msg.String(data='This is a message to process'): Time(nanoseconds=1759859897043782082, clock_type=ROS_TIME) -> Time(nanoseconds=1759859902049301209, clock_type=ROS_TIME)
     ```
     
 5. We can publish another message: 
     
     ```bash
-    ros2 topic pub /chat std_msgs/msg/String "data: 'This is another message to process'" -1
+    ros2 topic pub /chat synchros2_tutorials_interfaces/msg/String "data: 'This is another message to process'" -1
     ```
     
 6. And we once again see the message processed and changed: 
     
     ```bash
-    [INFO] [1759859908.563639805] [msg_processor_cb]: Processed message is std_msgs.msg.String(data='This is a message to process'): Time(nanoseconds=1759859897043782082, clock_type=ROS_TIME) -> Time(nanoseconds=1759859902049301209, clock_type=ROS_TIME)
-    [INFO] [1759859908.676727569] [msg_processor_cb]: Callback received message std_msgs.msg.String(data='This is another message to process') and will now process it
-    [INFO] [1759859909.565078282] [msg_processor_cb]: Processed message is std_msgs.msg.String(data='This is a message to process'): Time(nanoseconds=1759859897043782082, clock_type=ROS_TIME) -> Time(nanoseconds=1759859902049301209, clock_type=ROS_TIME)
-    [INFO] [1759859910.566355131] [msg_processor_cb]: Processed message is std_msgs.msg.String(data='This is a message to process'): Time(nanoseconds=1759859897043782082, clock_type=ROS_TIME) -> Time(nanoseconds=1759859902049301209, clock_type=ROS_TIME)
-    [INFO] [1759859911.567687561] [msg_processor_cb]: Processed message is std_msgs.msg.String(data='This is a message to process'): Time(nanoseconds=1759859897043782082, clock_type=ROS_TIME) -> Time(nanoseconds=1759859902049301209, clock_type=ROS_TIME)
-    [INFO] [1759859912.569292011] [msg_processor_cb]: Processed message is std_msgs.msg.String(data='This is a message to process'): Time(nanoseconds=1759859897043782082, clock_type=ROS_TIME) -> Time(nanoseconds=1759859902049301209, clock_type=ROS_TIME)
-    [INFO] [1759859913.571042294] [msg_processor_cb]: Processed message is std_msgs.msg.String(data='This is a message to process'): Time(nanoseconds=1759859897043782082, clock_type=ROS_TIME) -> Time(nanoseconds=1759859902049301209, clock_type=ROS_TIME)
-    [INFO] [1759859913.682406886] [msg_processor_cb]: Set processed message to std_msgs.msg.String(data='This is another message to process'): Time(nanoseconds=1759859908676838909, clock_type=ROS_TIME) -> Time(nanoseconds=1759859913682187744, clock_type=ROS_TIME)
-    [INFO] [1759859914.572430338] [msg_processor_cb]: Processed message is std_msgs.msg.String(data='This is another message to process'): Time(nanoseconds=1759859908676838909, clock_type=ROS_TIME) -> Time(nanoseconds=1759859913682187744, clock_type=ROS_TIME)
-    [INFO] [1759859915.573779147] [msg_processor_cb]: Processed message is std_msgs.msg.String(data='This is another message to process'): Time(nanoseconds=1759859908676838909, clock_type=ROS_TIME) -> Time(nanoseconds=1759859913682187744, clock_type=ROS_TIME)
+    [INFO] [1759859908.563639805] [msg_processor_cb]: Processed message is synchros2_tutorials_interfaces.msg.String(data='This is a message to process'): Time(nanoseconds=1759859897043782082, clock_type=ROS_TIME) -> Time(nanoseconds=1759859902049301209, clock_type=ROS_TIME)
+    [INFO] [1759859908.676727569] [msg_processor_cb]: Callback received message synchros2_tutorials_interfaces.msg.String(data='This is another message to process') and will now process it
+    [INFO] [1759859909.565078282] [msg_processor_cb]: Processed message is synchros2_tutorials_interfaces.msg.String(data='This is a message to process'): Time(nanoseconds=1759859897043782082, clock_type=ROS_TIME) -> Time(nanoseconds=1759859902049301209, clock_type=ROS_TIME)
+    [INFO] [1759859910.566355131] [msg_processor_cb]: Processed message is synchros2_tutorials_interfaces.msg.String(data='This is a message to process'): Time(nanoseconds=1759859897043782082, clock_type=ROS_TIME) -> Time(nanoseconds=1759859902049301209, clock_type=ROS_TIME)
+    [INFO] [1759859911.567687561] [msg_processor_cb]: Processed message is synchros2_tutorials_interfaces.msg.String(data='This is a message to process'): Time(nanoseconds=1759859897043782082, clock_type=ROS_TIME) -> Time(nanoseconds=1759859902049301209, clock_type=ROS_TIME)
+    [INFO] [1759859912.569292011] [msg_processor_cb]: Processed message is synchros2_tutorials_interfaces.msg.String(data='This is a message to process'): Time(nanoseconds=1759859897043782082, clock_type=ROS_TIME) -> Time(nanoseconds=1759859902049301209, clock_type=ROS_TIME)
+    [INFO] [1759859913.571042294] [msg_processor_cb]: Processed message is synchros2_tutorials_interfaces.msg.String(data='This is a message to process'): Time(nanoseconds=1759859897043782082, clock_type=ROS_TIME) -> Time(nanoseconds=1759859902049301209, clock_type=ROS_TIME)
+    [INFO] [1759859913.682406886] [msg_processor_cb]: Set processed message to synchros2_tutorials_interfaces.msg.String(data='This is another message to process'): Time(nanoseconds=1759859908676838909, clock_type=ROS_TIME) -> Time(nanoseconds=1759859913682187744, clock_type=ROS_TIME)
+    [INFO] [1759859914.572430338] [msg_processor_cb]: Processed message is synchros2_tutorials_interfaces.msg.String(data='This is another message to process'): Time(nanoseconds=1759859908676838909, clock_type=ROS_TIME) -> Time(nanoseconds=1759859913682187744, clock_type=ROS_TIME)
+    [INFO] [1759859915.573779147] [msg_processor_cb]: Processed message is synchros2_tutorials_interfaces.msg.String(data='This is another message to process'): Time(nanoseconds=1759859908676838909, clock_type=ROS_TIME) -> Time(nanoseconds=1759859913682187744, clock_type=ROS_TIME)
     
     ```
     
@@ -126,7 +126,7 @@ We then create a class that stores the ros scope node, sets up a callback on the
 class MsgProcessor:
     def __init__(self):
         self._node = ros_scope.ensure_node()
-        self._sub = self._node.create_subscription(std_msgs.msg.String, "chat", self._callback, 1)
+        self._sub = self._node.create_subscription(synchros2_tutorials_interfaces.msg.String, "chat", self._callback, 1)
         self.processed_msg = None
         self._node.get_logger().info("Listening!")
 
@@ -135,7 +135,7 @@ class MsgProcessor:
 The callback receives the message, does some “work” (the sleep here is just a demonstration to show we can block in the callback) and then updates the class variable:
 
 ```python
-    def _callback(self, msg: std_msgs.msg.String) -> None:
+    def _callback(self, msg: synchros2_tutorials_interfaces.msg.String) -> None:
         self._node.get_logger().info(f"Callback received message {msg} and will now process it")
         start = self._node.get_clock().now()
         time.sleep(5)
@@ -181,7 +181,7 @@ Sometimes, especially when there are multiple subscriptions involved, it’s bet
     import time
 
     import rclpy
-    import std_msgs.msg
+    import synchros2_tutorials_interfaces.msg
 
     import synchros2.process as ros_process
     import synchros2.scope as ros_scope
@@ -193,11 +193,11 @@ Sometimes, especially when there are multiple subscriptions involved, it’s bet
             self._lock = threading.Lock()
             self._raw_msg = None
             self.processed_msg = None
-            self._sub = self._node.create_subscription(std_msgs.msg.String, "chat", self._sub_callback, 1)
+            self._sub = self._node.create_subscription(synchros2_tutorials_interfaces.msg.String, "chat", self._sub_callback, 1)
             self._timer = self._node.create_timer(timer_period_sec=0.1, callback=self._timer_callback)
             self._node.get_logger().info("Listening!")
 
-        def _sub_callback(self, msg: std_msgs.msg.String) -> None:
+        def _sub_callback(self, msg: synchros2_tutorials_interfaces.msg.String) -> None:
             self._node.get_logger().info(f"Callback received message {msg}")
             # Store the message
             with self._lock:
@@ -211,7 +211,7 @@ Sometimes, especially when there are multiple subscriptions involved, it’s bet
                 new_msg = self._raw_msg
                 self._raw_msg = None
             start = self._node.get_clock().now()
-            time.sleep(10)
+            time.sleep(5)
             self.processed_msg = f"{new_msg}: {start} -> {self._node.get_clock().now()}"
             self._node.get_logger().info(f"Set processed message to {self.processed_msg}")
 
@@ -242,44 +242,44 @@ Sometimes, especially when there are multiple subscriptions involved, it’s bet
 3. Now we’ll publish some messages to the `/chat` topic on which the subscriber is listening.  For the best example, create a new terminal to do this and make sure you can see the terminal in which the listener is running.  Run the publish command:
     
     ```bash
-    ros2 topic pub /chat std_msgs/msg/String "data: 'This is a message to process'" -1
+    ros2 topic pub /chat synchros2_tutorials_interfaces/msg/String "data: 'This is a message to process'" -1
     ```
     
 4. You should see the processor receive the message and take some time to process it. Once it has the class variable changes and we see the same output as before: 
     
     ```bash
     [INFO] [1759861374.357112381] [msg_processor_timer]: Processed message is None
-    [INFO] [1759861374.483683352] [msg_processor_timer]: Callback received message std_msgs.msg.String(data='This is a message to process')
+    [INFO] [1759861374.483683352] [msg_processor_timer]: Callback received message synchros2_tutorials_interfaces.msg.String(data='This is a message to process')
     [INFO] [1759861375.358591888] [msg_processor_timer]: Processed message is None
     [INFO] [1759861376.360284475] [msg_processor_timer]: Processed message is None
     [INFO] [1759861377.361184952] [msg_processor_timer]: Processed message is None
     [INFO] [1759861378.362432461] [msg_processor_timer]: Processed message is None
     [INFO] [1759861379.363776974] [msg_processor_timer]: Processed message is None
-    [INFO] [1759861379.591944934] [msg_processor_timer]: Set processed message to std_msgs.msg.String(data='This is a message to process'): Time(nanoseconds=1759861374586522303, clock_type=ROS_TIME) -> Time(nanoseconds=1759861379591744376, clock_type=ROS_TIME)
-    [INFO] [1759861380.365174121] [msg_processor_timer]: Processed message is std_msgs.msg.String(data='This is a message to process'): Time(nanoseconds=1759861374586522303, clock_type=ROS_TIME) -> Time(nanoseconds=1759861379591744376, clock_type=ROS_TIME)
+    [INFO] [1759861379.591944934] [msg_processor_timer]: Set processed message to synchros2_tutorials_interfaces.msg.String(data='This is a message to process'): Time(nanoseconds=1759861374586522303, clock_type=ROS_TIME) -> Time(nanoseconds=1759861379591744376, clock_type=ROS_TIME)
+    [INFO] [1759861380.365174121] [msg_processor_timer]: Processed message is synchros2_tutorials_interfaces.msg.String(data='This is a message to process'): Time(nanoseconds=1759861374586522303, clock_type=ROS_TIME) -> Time(nanoseconds=1759861379591744376, clock_type=ROS_TIME)
     
     ```
     
 5. We can publish another message: 
     
     ```bash
-    ros2 topic pub /chat std_msgs/msg/String "data: 'This is anothe message to process'" -1
+    ros2 topic pub /chat synchros2_tutorials_interfaces/msg/String "data: 'This is anothe message to process'" -1
     ```
     
 6. And we once again see the same output we did above: 
     
     ```bash
-    [INFO] [1759861385.371393780] [msg_processor_timer]: Processed message is std_msgs.msg.String(data='This is a message to process'): Time(nanoseconds=1759861374586522303, clock_type=ROS_TIME) -> Time(nanoseconds=1759861379591744376, clock_type=ROS_TIME)
-    [INFO] [1759861386.355815066] [msg_processor_timer]: Callback received message std_msgs.msg.String(data='This is another message to process')
-    [INFO] [1759861386.372675156] [msg_processor_timer]: Processed message is std_msgs.msg.String(data='This is a message to process'): Time(nanoseconds=1759861374586522303, clock_type=ROS_TIME) -> Time(nanoseconds=1759861379591744376, clock_type=ROS_TIME)
-    [INFO] [1759861387.374007289] [msg_processor_timer]: Processed message is std_msgs.msg.String(data='This is a message to process'): Time(nanoseconds=1759861374586522303, clock_type=ROS_TIME) -> Time(nanoseconds=1759861379591744376, clock_type=ROS_TIME)
-    [INFO] [1759861388.375589460] [msg_processor_timer]: Processed message is std_msgs.msg.String(data='This is a message to process'): Time(nanoseconds=1759861374586522303, clock_type=ROS_TIME) -> Time(nanoseconds=1759861379591744376, clock_type=ROS_TIME)
-    [INFO] [1759861389.376926446] [msg_processor_timer]: Processed message is std_msgs.msg.String(data='This is a message to process'): Time(nanoseconds=1759861374586522303, clock_type=ROS_TIME) -> Time(nanoseconds=1759861379591744376, clock_type=ROS_TIME)
-    [INFO] [1759861390.378436138] [msg_processor_timer]: Processed message is std_msgs.msg.String(data='This is a message to process'): Time(nanoseconds=1759861374586522303, clock_type=ROS_TIME) -> Time(nanoseconds=1759861379591744376, clock_type=ROS_TIME)
-    [INFO] [1759861391.379935569] [msg_processor_timer]: Processed message is std_msgs.msg.String(data='This is a message to process'): Time(nanoseconds=1759861374586522303, clock_type=ROS_TIME) -> Time(nanoseconds=1759861379591744376, clock_type=ROS_TIME)
-    [INFO] [1759861391.458151208] [msg_processor_timer]: Set processed message to std_msgs.msg.String(data='This is another message to process'): Time(nanoseconds=1759861386452594019, clock_type=ROS_TIME) -> Time(nanoseconds=1759861391457807342, clock_type=ROS_TIME)
-    [INFO] [1759861392.380847157] [msg_processor_timer]: Processed message is std_msgs.msg.String(data='This is another message to process'): Time(nanoseconds=1759861386452594019, clock_type=ROS_TIME) -> Time(nanoseconds=1759861391457807342, clock_type=ROS_TIME)
-    [INFO] [1759861393.381200862] [msg_processor_timer]: Processed message is std_msgs.msg.String(data='This is another message to process'): Time(nanoseconds=1759861386452594019, clock_type=ROS_TIME) -> Time(nanoseconds=1759861391457807342, clock_type=ROS_TIME)
+    [INFO] [1759861385.371393780] [msg_processor_timer]: Processed message is synchros2_tutorials_interfaces.msg.String(data='This is a message to process'): Time(nanoseconds=1759861374586522303, clock_type=ROS_TIME) -> Time(nanoseconds=1759861379591744376, clock_type=ROS_TIME)
+    [INFO] [1759861386.355815066] [msg_processor_timer]: Callback received message synchros2_tutorials_interfaces.msg.String(data='This is another message to process')
+    [INFO] [1759861386.372675156] [msg_processor_timer]: Processed message is synchros2_tutorials_interfaces.msg.String(data='This is a message to process'): Time(nanoseconds=1759861374586522303, clock_type=ROS_TIME) -> Time(nanoseconds=1759861379591744376, clock_type=ROS_TIME)
+    [INFO] [1759861387.374007289] [msg_processor_timer]: Processed message is synchros2_tutorials_interfaces.msg.String(data='This is a message to process'): Time(nanoseconds=1759861374586522303, clock_type=ROS_TIME) -> Time(nanoseconds=1759861379591744376, clock_type=ROS_TIME)
+    [INFO] [1759861388.375589460] [msg_processor_timer]: Processed message is synchros2_tutorials_interfaces.msg.String(data='This is a message to process'): Time(nanoseconds=1759861374586522303, clock_type=ROS_TIME) -> Time(nanoseconds=1759861379591744376, clock_type=ROS_TIME)
+    [INFO] [1759861389.376926446] [msg_processor_timer]: Processed message is synchros2_tutorials_interfaces.msg.String(data='This is a message to process'): Time(nanoseconds=1759861374586522303, clock_type=ROS_TIME) -> Time(nanoseconds=1759861379591744376, clock_type=ROS_TIME)
+    [INFO] [1759861390.378436138] [msg_processor_timer]: Processed message is synchros2_tutorials_interfaces.msg.String(data='This is a message to process'): Time(nanoseconds=1759861374586522303, clock_type=ROS_TIME) -> Time(nanoseconds=1759861379591744376, clock_type=ROS_TIME)
+    [INFO] [1759861391.379935569] [msg_processor_timer]: Processed message is synchros2_tutorials_interfaces.msg.String(data='This is a message to process'): Time(nanoseconds=1759861374586522303, clock_type=ROS_TIME) -> Time(nanoseconds=1759861379591744376, clock_type=ROS_TIME)
+    [INFO] [1759861391.458151208] [msg_processor_timer]: Set processed message to synchros2_tutorials_interfaces.msg.String(data='This is another message to process'): Time(nanoseconds=1759861386452594019, clock_type=ROS_TIME) -> Time(nanoseconds=1759861391457807342, clock_type=ROS_TIME)
+    [INFO] [1759861392.380847157] [msg_processor_timer]: Processed message is synchros2_tutorials_interfaces.msg.String(data='This is another message to process'): Time(nanoseconds=1759861386452594019, clock_type=ROS_TIME) -> Time(nanoseconds=1759861391457807342, clock_type=ROS_TIME)
+    [INFO] [1759861393.381200862] [msg_processor_timer]: Processed message is synchros2_tutorials_interfaces.msg.String(data='This is another message to process'): Time(nanoseconds=1759861386452594019, clock_type=ROS_TIME) -> Time(nanoseconds=1759861391457807342, clock_type=ROS_TIME)
     ```
     
 
@@ -313,7 +313,7 @@ Because we have two callbacks in play, we need a little more data here.  Specifi
 We create the subscription to `/chat` like normal using our ros scope node:
 
 ```python
-        self._sub = self._node.create_subscription(std_msgs.msg.String, "chat", self._sub_callback, 1)
+        self._sub = self._node.create_subscription(synchros2_tutorials_interfaces.msg.String, "chat", self._sub_callback, 1)
 ```
 
 But this time this callback will just store the message and return quickly. 
@@ -330,7 +330,7 @@ This creates a timer callback that will be called every 0.1s or as soon as the p
 The subscription callback stores the raw message:
 
 ```python
-    def _sub_callback(self, msg: std_msgs.msg.String) -> None:
+    def _sub_callback(self, msg: synchros2_tutorials_interfaces.msg.String) -> None:
         self._node.get_logger().info(f"Callback received message {msg}")
         # Store the message
         with self._lock:
@@ -387,16 +387,16 @@ If you read the timer callback analysis carefully, you might have noticed it’s
 Let’s start by showing the simple callback approach will miss messages.  To make this easier, change the `time.sleep` in `_callback` in `msg_processor_cb.py` from 5 to 10 seconds to give yourself enough time to publish messages.  Now in quick succession publish 3 messages (it’s important that the third message publish before the first message has finished processing):
 
 ```bash
-ros2 topic pub /chat std_msgs/msg/String "data: 'This is a message to process'" -1
-ros2 topic pub /chat std_msgs/msg/String "data: 'This is another message to process'" -1
-ros2 topic pub /chat std_msgs/msg/String "data: 'This is a third message to process'" -1
+ros2 topic pub /chat synchros2_tutorials_interfaces/msg/String "data: 'This is a message to process'" -1
+ros2 topic pub /chat synchros2_tutorials_interfaces/msg/String "data: 'This is another message to process'" -1
+ros2 topic pub /chat synchros2_tutorials_interfaces/msg/String "data: 'This is a third message to process'" -1
 ```
 
 Here’s is approximately the output you’ll get:
 
 ```bash
 [INFO] [1759872431.388333426] [msg_processor_cb]: Processed message is None
-[INFO] [1759872431.885969597] [msg_processor_cb]: Callback received message std_msgs.msg.String(data='This is a message to process') and will now process it
+[INFO] [1759872431.885969597] [msg_processor_cb]: Callback received message synchros2_tutorials_interfaces.msg.String(data='This is a message to process') and will now process it
 [INFO] [1759872432.388881060] [msg_processor_cb]: Processed message is None
 [INFO] [1759872433.389978026] [msg_processor_cb]: Processed message is None
 [INFO] [1759872434.391377285] [msg_processor_cb]: Processed message is None
@@ -407,23 +407,23 @@ Here’s is approximately the output you’ll get:
 [INFO] [1759872439.405090330] [msg_processor_cb]: Processed message is None
 [INFO] [1759872440.422442177] [msg_processor_cb]: Processed message is None
 [INFO] [1759872441.424259889] [msg_processor_cb]: Processed message is None
-[INFO] [1759872441.896979709] [msg_processor_cb]: Set processed message to std_msgs.msg.String(data='This is a message to process'): Time(nanoseconds=1759872431886114566, clock_type=ROS_TIME) -> Time(nanoseconds=1759872441896735176, clock_type=ROS_TIME)
-[INFO] [1759872441.898016455] [msg_processor_cb]: Callback received message std_msgs.msg.String(data='This is a third message to process') and will now process it
-[INFO] [1759872442.425762397] [msg_processor_cb]: Processed message is std_msgs.msg.String(data='This is a message to process'): Time(nanoseconds=1759872431886114566, clock_type=ROS_TIME) -> Time(nanoseconds=1759872441896735176, clock_type=ROS_TIME)
+[INFO] [1759872441.896979709] [msg_processor_cb]: Set processed message to synchros2_tutorials_interfaces.msg.String(data='This is a message to process'): Time(nanoseconds=1759872431886114566, clock_type=ROS_TIME) -> Time(nanoseconds=1759872441896735176, clock_type=ROS_TIME)
+[INFO] [1759872441.898016455] [msg_processor_cb]: Callback received message synchros2_tutorials_interfaces.msg.String(data='This is a third message to process') and will now process it
+[INFO] [1759872442.425762397] [msg_processor_cb]: Processed message is synchros2_tutorials_interfaces.msg.String(data='This is a message to process'): Time(nanoseconds=1759872431886114566, clock_type=ROS_TIME) -> Time(nanoseconds=1759872441896735176, clock_type=ROS_TIME)
 
 ```
 
 We never see the callback receive `This is another message to process`!  This is because we’ve set our subscription queue size to 1 when we created our callback (the last argument passed):
 
 ```python
-        self._sub = self._node.create_subscription(std_msgs.msg.String, "chat", self._callback, 1)
+        self._sub = self._node.create_subscription(synchros2_tutorials_interfaces.msg.String, "chat", self._callback, 1)
 
 ```
 
 So the subscription will only hold on to one message for us.  When the third message is published, the subscription drops the second.  If you increase the queue size to 2 (or more) and run the same experiment, you’ll see all 3 messages get processed:
 
 ```python
-        self._sub = self._node.create_subscription(std_msgs.msg.String, "chat", self._callback, 2)
+        self._sub = self._node.create_subscription(synchros2_tutorials_interfaces.msg.String, "chat", self._callback, 2)
 
 ```
 
@@ -432,41 +432,41 @@ So it’s important to pay attention to queue size for subscribers if you want t
 The timer approach will also miss the second message in this same circumstance.  To see this increase the sleep time in `_timer_callback` in `msg_processor_timer.py` from 5 seconds to 10 seconds and once again publish 3 messages in as quick succession as you can:
 
 ```bash
-ros2 topic pub /chat std_msgs/msg/String "data: 'This is a message to process'" -1
-ros2 topic pub /chat std_msgs/msg/String "data: 'This is another message to process'" -1
-ros2 topic pub /chat std_msgs/msg/String "data: 'This is a third message to process'" -1
+ros2 topic pub /chat synchros2_tutorials_interfaces/msg/String "data: 'This is a message to process'" -1
+ros2 topic pub /chat synchros2_tutorials_interfaces/msg/String "data: 'This is another message to process'" -1
+ros2 topic pub /chat synchros2_tutorials_interfaces/msg/String "data: 'This is a third message to process'" -1
 ```
 
 Here is the approximate output:
 
 ```bash
 [INFO] [1759871770.309911305] [msg_processor_timer]: Processed message is None
-[INFO] [1759871770.738401897] [msg_processor_timer]: Callback received message std_msgs.msg.String(data='This is a message to process')
+[INFO] [1759871770.738401897] [msg_processor_timer]: Callback received message synchros2_tutorials_interfaces.msg.String(data='This is a message to process')
 [INFO] [1759871771.311272017] [msg_processor_timer]: Processed message is None
 [INFO] [1759871772.311959109] [msg_processor_timer]: Processed message is None
 [INFO] [1759871773.312986436] [msg_processor_timer]: Processed message is None
 [INFO] [1759871774.313934173] [msg_processor_timer]: Processed message is None
 [INFO] [1759871775.315538334] [msg_processor_timer]: Processed message is None
-[INFO] [1759871775.476007255] [msg_processor_timer]: Callback received message std_msgs.msg.String(data='This is another message to process')
+[INFO] [1759871775.476007255] [msg_processor_timer]: Callback received message synchros2_tutorials_interfaces.msg.String(data='This is another message to process')
 [INFO] [1759871776.317027063] [msg_processor_timer]: Processed message is None
 [INFO] [1759871777.318399276] [msg_processor_timer]: Processed message is None
 [INFO] [1759871778.318939816] [msg_processor_timer]: Processed message is None
-[INFO] [1759871778.469196545] [msg_processor_timer]: Callback received message std_msgs.msg.String(data='This is a third message to process')
+[INFO] [1759871778.469196545] [msg_processor_timer]: Callback received message synchros2_tutorials_interfaces.msg.String(data='This is a third message to process')
 [INFO] [1759871779.319936086] [msg_processor_timer]: Processed message is None
 [INFO] [1759871780.320987484] [msg_processor_timer]: Processed message is None
-[INFO] [1759871780.852170291] [msg_processor_timer]: Set processed message to std_msgs.msg.String(data='This is a message to process'): Time(nanoseconds=1759871770841755415, clock_type=ROS_TIME) -> Time(nanoseconds=1759871780851964183, clock_type=ROS_TIME)
-[INFO] [1759871781.321943060] [msg_processor_timer]: Processed message is std_msgs.msg.String(data='This is a message to process'): Time(nanoseconds=1759871770841755415, clock_type=ROS_TIME) -> Time(nanoseconds=1759871780851964183, clock_type=ROS_TIME)
-[INFO] [1759871782.323060836] [msg_processor_timer]: Processed message is std_msgs.msg.String(data='This is a message to process'): Time(nanoseconds=1759871770841755415, clock_type=ROS_TIME) -> Time(nanoseconds=1759871780851964183, clock_type=ROS_TIME)
-[INFO] [1759871783.324490200] [msg_processor_timer]: Processed message is std_msgs.msg.String(data='This is a message to process'): Time(nanoseconds=1759871770841755415, clock_type=ROS_TIME) -> Time(nanoseconds=1759871780851964183, clock_type=ROS_TIME)
-[INFO] [1759871784.324976434] [msg_processor_timer]: Processed message is std_msgs.msg.String(data='This is a message to process'): Time(nanoseconds=1759871770841755415, clock_type=ROS_TIME) -> Time(nanoseconds=1759871780851964183, clock_type=ROS_TIME)
-[INFO] [1759871785.326381424] [msg_processor_timer]: Processed message is std_msgs.msg.String(data='This is a message to process'): Time(nanoseconds=1759871770841755415, clock_type=ROS_TIME) -> Time(nanoseconds=1759871780851964183, clock_type=ROS_TIME)
-[INFO] [1759871786.327914388] [msg_processor_timer]: Processed message is std_msgs.msg.String(data='This is a message to process'): Time(nanoseconds=1759871770841755415, clock_type=ROS_TIME) -> Time(nanoseconds=1759871780851964183, clock_type=ROS_TIME)
-[INFO] [1759871787.329321320] [msg_processor_timer]: Processed message is std_msgs.msg.String(data='This is a message to process'): Time(nanoseconds=1759871770841755415, clock_type=ROS_TIME) -> Time(nanoseconds=1759871780851964183, clock_type=ROS_TIME)
-[INFO] [1759871788.330750073] [msg_processor_timer]: Processed message is std_msgs.msg.String(data='This is a message to process'): Time(nanoseconds=1759871770841755415, clock_type=ROS_TIME) -> Time(nanoseconds=1759871780851964183, clock_type=ROS_TIME)
-[INFO] [1759871789.331937502] [msg_processor_timer]: Processed message is std_msgs.msg.String(data='This is a message to process'): Time(nanoseconds=1759871770841755415, clock_type=ROS_TIME) -> Time(nanoseconds=1759871780851964183, clock_type=ROS_TIME)
-[INFO] [1759871790.332994130] [msg_processor_timer]: Processed message is std_msgs.msg.String(data='This is a message to process'): Time(nanoseconds=1759871770841755415, clock_type=ROS_TIME) -> Time(nanoseconds=1759871780851964183, clock_type=ROS_TIME)
-[INFO] [1759871790.864175154] [msg_processor_timer]: Set processed message to std_msgs.msg.String(data='This is a third message to process'): Time(nanoseconds=1759871780853744808, clock_type=ROS_TIME) -> Time(nanoseconds=1759871790863957273, clock_type=ROS_TIME)
-[INFO] [1759871791.334280919] [msg_processor_timer]: Processed message is std_msgs.msg.String(data='This is a third message to process'): Time(nanoseconds=1759871780853744808, clock_type=ROS_TIME) -> Time(nanoseconds=1759871790863957273, clock_type=ROS_TIME)
+[INFO] [1759871780.852170291] [msg_processor_timer]: Set processed message to synchros2_tutorials_interfaces.msg.String(data='This is a message to process'): Time(nanoseconds=1759871770841755415, clock_type=ROS_TIME) -> Time(nanoseconds=1759871780851964183, clock_type=ROS_TIME)
+[INFO] [1759871781.321943060] [msg_processor_timer]: Processed message is synchros2_tutorials_interfaces.msg.String(data='This is a message to process'): Time(nanoseconds=1759871770841755415, clock_type=ROS_TIME) -> Time(nanoseconds=1759871780851964183, clock_type=ROS_TIME)
+[INFO] [1759871782.323060836] [msg_processor_timer]: Processed message is synchros2_tutorials_interfaces.msg.String(data='This is a message to process'): Time(nanoseconds=1759871770841755415, clock_type=ROS_TIME) -> Time(nanoseconds=1759871780851964183, clock_type=ROS_TIME)
+[INFO] [1759871783.324490200] [msg_processor_timer]: Processed message is synchros2_tutorials_interfaces.msg.String(data='This is a message to process'): Time(nanoseconds=1759871770841755415, clock_type=ROS_TIME) -> Time(nanoseconds=1759871780851964183, clock_type=ROS_TIME)
+[INFO] [1759871784.324976434] [msg_processor_timer]: Processed message is synchros2_tutorials_interfaces.msg.String(data='This is a message to process'): Time(nanoseconds=1759871770841755415, clock_type=ROS_TIME) -> Time(nanoseconds=1759871780851964183, clock_type=ROS_TIME)
+[INFO] [1759871785.326381424] [msg_processor_timer]: Processed message is synchros2_tutorials_interfaces.msg.String(data='This is a message to process'): Time(nanoseconds=1759871770841755415, clock_type=ROS_TIME) -> Time(nanoseconds=1759871780851964183, clock_type=ROS_TIME)
+[INFO] [1759871786.327914388] [msg_processor_timer]: Processed message is synchros2_tutorials_interfaces.msg.String(data='This is a message to process'): Time(nanoseconds=1759871770841755415, clock_type=ROS_TIME) -> Time(nanoseconds=1759871780851964183, clock_type=ROS_TIME)
+[INFO] [1759871787.329321320] [msg_processor_timer]: Processed message is synchros2_tutorials_interfaces.msg.String(data='This is a message to process'): Time(nanoseconds=1759871770841755415, clock_type=ROS_TIME) -> Time(nanoseconds=1759871780851964183, clock_type=ROS_TIME)
+[INFO] [1759871788.330750073] [msg_processor_timer]: Processed message is synchros2_tutorials_interfaces.msg.String(data='This is a message to process'): Time(nanoseconds=1759871770841755415, clock_type=ROS_TIME) -> Time(nanoseconds=1759871780851964183, clock_type=ROS_TIME)
+[INFO] [1759871789.331937502] [msg_processor_timer]: Processed message is synchros2_tutorials_interfaces.msg.String(data='This is a message to process'): Time(nanoseconds=1759871770841755415, clock_type=ROS_TIME) -> Time(nanoseconds=1759871780851964183, clock_type=ROS_TIME)
+[INFO] [1759871790.332994130] [msg_processor_timer]: Processed message is synchros2_tutorials_interfaces.msg.String(data='This is a message to process'): Time(nanoseconds=1759871770841755415, clock_type=ROS_TIME) -> Time(nanoseconds=1759871780851964183, clock_type=ROS_TIME)
+[INFO] [1759871790.864175154] [msg_processor_timer]: Set processed message to synchros2_tutorials_interfaces.msg.String(data='This is a third message to process'): Time(nanoseconds=1759871780853744808, clock_type=ROS_TIME) -> Time(nanoseconds=1759871790863957273, clock_type=ROS_TIME)
+[INFO] [1759871791.334280919] [msg_processor_timer]: Processed message is synchros2_tutorials_interfaces.msg.String(data='This is a third message to process'): Time(nanoseconds=1759871780853744808, clock_type=ROS_TIME) -> Time(nanoseconds=1759871790863957273, clock_type=ROS_TIME)
 
 ```
 
