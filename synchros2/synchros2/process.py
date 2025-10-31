@@ -64,26 +64,26 @@ class ROSAwareProcess:
         """Initializes the ROS 2 aware process.
 
         Args:
-            func: a ``main``-like function to wrap ie. a callable taking a sequence of strings,
-            an `argparse.Namespace` (if a CLI is specified), or nothing, and returning a integer
-            exit code or nothing.
+            func: a `main`-like function to wrap ie. a callable taking a sequence of strings,
+              an `argparse.Namespace` (if a CLI is specified), or nothing, and returning a integer
+              exit code or nothing.
             prebaked: whether to instantiate a prebaked or a bare process. A prebaked process bears
-            an implicit node and spins an executor in the background. A bare process does neither,
-            which brings them the closest to standard ROS 2 idioms.
+              an implicit node and spins an executor in the background. A bare process does neither,
+              which brings them the closest to standard ROS 2 idioms.
             autospin: whether to automatically equip the underlying scope with a background executor
-            or not. Defaults to True for prebaked processes and to False for bare processes.
+              or not. Defaults to True for prebaked processes and to False for bare processes.
             uses_tf: whether to instantiate a tf listener bound to the process main node. Defaults to False.
             interruptible: whether the process allows graceful interruptions i.e. SIGINT (Ctrl+C) or SIGTERM
-            signaling. An interruptible process will not shutdown any context or trigger any guard condition
-            on either but simply raise KeyboardInterrupt and SystemExit exceptions instead.
+              signaling. An interruptible process will not shutdown any context or trigger any guard condition
+              on either but simply raise KeyboardInterrupt and SystemExit exceptions instead.
             forward_logging: whether to forward `logging` logs to the ROS 2 logging system or not.
-            Defaults to True for prebaked processes and to False for bare processes (though it requires
-            a process node to be set to function).
+              Defaults to True for prebaked processes and to False for bare processes (though it requires
+              a process node to be set to function).
             name: optional name for the implicit main node, if any. Defaults to the current executable
-            basename without its extension or the CLI program name if one is specified, unless it is
-            already used as a namespace, in which case name defaults to "node".
+              basename without its extension or the CLI program name if one is specified, unless it is
+              already used as a namespace, in which case name defaults to "node".
             namespace: an optional namespace for this process. If True, the current executable basename
-            without its extension (or CLI program name if one is specified) will be used.
+              without its extension (or CLI program name if one is specified) will be used.
             cli: optional command-line interface argument parser.
             init_arguments: Keyword arguments for the scope.
 
