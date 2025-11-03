@@ -55,7 +55,7 @@ We'll start by creating a custom message for us to publish and listen to.
 
 4. Add the following lines to `<workspace>/src/synchros2_tutorials_interfaces/CMakeLists.txt` under the existing `find_package`:
 
-   ```make
+   ```cmake
    find_package(rosidl_default_generators REQUIRED)
 
    rosidl_generate_interfaces(${PROJECT_NAME}

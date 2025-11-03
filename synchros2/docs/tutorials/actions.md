@@ -37,7 +37,7 @@ As with any ROS action, we need to start by defining the action message:
     
 3. Add the action to `CMakeLists.txt` just above `msg/String.msg`.  When you've done this the full `rosidl_generate_interfaces` block should look as follows (don't create a new block!):
     
-    ```python
+    ```cmake
     rosidl_generate_interfaces(${PROJECT_NAME}
       "action/Wait.action"
       "msg/String.msg"
@@ -498,7 +498,7 @@ The action client offers a function to request a wait from the action server and
 This uses the `synchronously` call to the `Actionable` which will block until the call completes.  We pass two further arguments besides the action goal:
 
 1. `feedback_callback`: This is a function that will receive the feedback and can process it.  Note that `synchros2` means that the feedback callback will *still* be called even though the call to the action server is blocking.
-2. `nothrow`: By default `Actionable` will throw exceptions if the action does not complete successfully *even if it returns a result*.  If you don't care to handle the various ways the action can fail without returning a result (e.g. action server doesn't exist, etc) then `nothrow` is a simple way of getting a result even when the result indicates a failure.  We use it here for simplicity but it is better practice to catch and handle all of the possible exceptions - see the [Action Exceptions section](#Action-Exceptions) for more details.
+2. `nothrow`: By default `Actionable` will throw exceptions if the action does not complete successfully *even if it returns a result*.  If you don't care to handle the various ways the action can fail without returning a result (e.g. action server doesn't exist, etc) then `nothrow` is a simple way of getting a result even when the result indicates a failure.  We use it here for simplicity but it is better practice to catch and handle all of the possible exceptions - see the [Action Exceptions section](#action-exceptions) for more details.
 
 The client also offers a function that will request the wait from the action server and return immediately but also print the result when the action does return:
 
@@ -511,7 +511,7 @@ The client also offers a function that will request the wait from the action ser
 
 We call the client’s `asynchronously` function which will send the goal and return immediately.  We also set `track_feedback` to `True` which means we’ll be able to access feedback from the future the call returns.  If your action doesn’t return feedback or you don’t care about the feedback, you can leave this as `False`.  We pass the `_print_future_result` as the `done_callback`so that we'll print the result when finished.  We could also pass `_print_feedback` as the `feedback_callback` but for illustration purposes, we do the printing in `main` instead.
 
-The `asynchronously` call returns an [`ActionFuture`](../synchros2/action.py#L64) which gives us a lot of access to do things with the running action, which we take advantage of in `main`.
+The `asynchronously` call returns an {py:obj}`synchros2.action.ActionFuture` which gives us a lot of access to do things with the running action, which we take advantage of in `main`.
 
 We then have a couple utility functions we use for printing:
 
