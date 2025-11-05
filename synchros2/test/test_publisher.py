@@ -1,4 +1,4 @@
-#  Copyright (c) 2025 Boston Dynamics AI Institute Inc.  All rights reserved.
+#  Copyright (c) 2025 Robotics and AI Institute LLC dba RAI Institute.  All rights reserved.
 
 import std_msgs.msg
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile
