@@ -1,4 +1,4 @@
-# Copyright (c) 2023 Boston Dynamics AI Institute LLC.  All rights reserved.
+# Copyright (c) 2023 Robotics and AI Institute LLC dba RAI Institute.  All rights reserved.
 
 """An example of a ROS 2 multi-node process using process-wide machinery.
 

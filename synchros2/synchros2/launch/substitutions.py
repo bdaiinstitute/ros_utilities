@@ -1,4 +1,4 @@
-# Copyright (c) 2024 Boston Dynamics AI Institute LLC. All rights reserved.
+# Copyright (c) 2024 Robotics and AI Institute LLC dba RAI Institute. All rights reserved.
 from typing import List, Optional
 
 from launch import Condition, SomeSubstitutionsType

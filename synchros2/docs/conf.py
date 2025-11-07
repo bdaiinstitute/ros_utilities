@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Boston Dynamics AI Institute LLC.  All rights reserved.
+# Copyright (c) 2025 Robotics and AI Institute LLC dba RAI Institute.  All rights reserved.
 
 # -- Path setup --------------------------------------------------------------
 
@@ -11,7 +11,7 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "synchros2"
-copyright = "2025, Boston Dynamics AI Institute LLC"  # noqa
+copyright = "2025, Robotics and AI Institute LLC dba RAI Institute"  # noqa
 author = "Robotics and AI Institute"
 
 # -- General configuration ---------------------------------------------------
