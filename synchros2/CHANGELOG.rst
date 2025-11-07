@@ -2,8 +2,8 @@
 Changelog for package synchros2
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.0.0 (2025-11-07)
+------------------
 * Polish synchros2 documentation (`#172 <https://github.com/bdaiinstitute/ros_utilities/issues/172>`_)
 * Tutorial on using TF with synchros2 (`#173 <https://github.com/bdaiinstitute/ros_utilities/issues/173>`_)
 * Tutorial on writing actions with synchros2 (`#165 <https://github.com/bdaiinstitute/ros_utilities/issues/165>`_)

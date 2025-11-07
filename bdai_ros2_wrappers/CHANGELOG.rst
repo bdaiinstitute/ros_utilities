@@ -2,8 +2,8 @@
 Changelog for package bdai_ros2_wrappers
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.0.0 (2025-11-07)
+------------------
 * Standardizes the copyright text to align with the proper corporate identity. (`#142 <https://github.com/bdaiinstitute/ros_utilities/issues/142>`_)
 * Deprecate old wrapper name (`#136 <https://github.com/bdaiinstitute/ros_utilities/issues/136>`_)
 * Fix `synchros2` aliasing as `bdai_ros2_wrappers` (`#135 <https://github.com/bdaiinstitute/ros_utilities/issues/135>`_)
