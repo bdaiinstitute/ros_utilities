@@ -1,15 +1,18 @@
 synchros2
 =========
 
-RAI Institute wrappers for ROS2.
+RAI Institute wrappers for synchronous ROS 2.
 
 .. toctree::
    :maxdepth: 1
-   :hidden:
 
-   Getting Started <GettingStartedGuide>
+   getting_started/index
+   concepts/index
+   guides/index
+   tutorials/index
+   faq/index
    Python API <modules>
-   Package Files <__standards>
-   Links <__links>
+   Files <__standards>
+   __links
 
 .. include:: __readme_include.rst
