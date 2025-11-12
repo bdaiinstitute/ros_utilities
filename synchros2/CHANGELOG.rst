@@ -2,8 +2,8 @@
 Changelog for package synchros2
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.0.2 (2025-11-12)
+------------------
 * [SW-2822] Rename repository to synchros2 (`#180 <https://github.com/bdaiinstitute/ros_utilities/issues/180>`_)
 * Contributors: Michel Hidalgo
 
