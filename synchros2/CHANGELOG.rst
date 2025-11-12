@@ -2,6 +2,12 @@
 Changelog for package synchros2
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Mark `test_log_forwarding` as flaky (`#177 <https://github.com/bdaiinstitute/ros_utilities/issues/177>`_)
+* Change to new RAI Institute copyright (`#175 <https://github.com/bdaiinstitute/ros_utilities/issues/175>`_)
+* Contributors: Ben Axelrod, Michel Hidalgo
+
 1.0.0 (2025-11-07)
 ------------------
 * Polish synchros2 documentation (`#172 <https://github.com/bdaiinstitute/ros_utilities/issues/172>`_)

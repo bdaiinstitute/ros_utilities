@@ -2,6 +2,9 @@
 Changelog for package synchros2_tutorials_interfaces_example
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 1.0.0 (2025-11-07)
 ------------------
 * Tutorial on writing actions with synchros2 (`#165 <https://github.com/bdaiinstitute/ros_utilities/issues/165>`_)
