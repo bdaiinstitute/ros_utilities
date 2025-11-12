@@ -13,7 +13,7 @@ These links are to Humble tutorials but `synchros2` should be compatible with an
     
     ```bash
     cd <workspace>/src
-    git clone https://github.com/bdaiinstitute/ros_utilities.git
+    git clone https://github.com/bdaiinstitute/synchros2.git
     ```
     
 2. Build and source the colcon workspace

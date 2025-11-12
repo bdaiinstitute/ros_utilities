@@ -1,5 +1,5 @@
 {
-  "name": "ros_utilities dev container",
+  "name": "synchros2 dev container",
   "build": {
     "dockerfile": "Dockerfile",
     "context": "..",
