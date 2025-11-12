@@ -2,6 +2,9 @@
 Changelog for package synchros2_tutorials_example
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+
 1.0.1 (2025-11-12)
 ------------------
 

@@ -2,6 +2,11 @@
 Changelog for package synchros2
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* [SW-2822] Rename repository to synchros2 (`#180 <https://github.com/bdaiinstitute/ros_utilities/issues/180>`_)
+* Contributors: Michel Hidalgo
+
 1.0.1 (2025-11-12)
 ------------------
 * Mark `test_log_forwarding` as flaky (`#177 <https://github.com/bdaiinstitute/ros_utilities/issues/177>`_)
