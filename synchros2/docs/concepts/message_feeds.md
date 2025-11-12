@@ -12,7 +12,7 @@ Any message filter can become a feed, allowing:
 
 Like message filters, most message feeds can be chained. This is true for all but those that externally source messages, ROS 2 topic subscriptions being the prime example. These are sources only. Other message feeds built into `synchros2` offer a vehicle for generic map-filter-reduce patterns, time synchronization across multiple message feeds, and synchronized `tf` lookups.
 
-**Note:** While any message filter can become a feed, standard ROS 2 message filters are usually not thread-safe. See [`synchros2.filters`](https://github.com/bdaiinstitute/ros_utilities/tree/main/synchros2/synchros2/filters.py) for thread-safe (re)implementations.
+**Note:** While any message filter can become a feed, standard ROS 2 message filters are usually not thread-safe. See [`synchros2.filters`](https://github.com/bdaiinstitute/synchros2/tree/main/synchros2/synchros2/filters.py) for thread-safe (re)implementations.
 
 ## Looping over topic messages
 

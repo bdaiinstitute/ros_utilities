@@ -1,4 +1,4 @@
-name: ros_utilities CI
+name: synchros2 CI
 
 on:
   pull_request:
@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   lint:
-    name: Lint ros_utilities packages
+    name: Lint synchros2 packages
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
@@ -25,7 +25,7 @@ jobs:
       - name: Lint sources
         uses: pre-commit/action@v3.0.0
   prepare_container:
-    name: Prepare ros_utilities containers
+    name: Prepare synchros2 containers
     runs-on: ubuntu-22.04
     needs: lint
     strategy:
@@ -71,7 +71,7 @@ jobs:
           path: /tmp/${{ matrix.rosdistro }}_docker_image.tar
           retention-days: 7
   build_and_test:
-    name: Build and test ros_utilities packages
+    name: Build and test synchros2 packages
     runs-on: ubuntu-22.04
     needs: prepare_container
     strategy:
