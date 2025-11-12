@@ -2,6 +2,11 @@
 Changelog for package bdai_ros2_wrappers
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.0.1 (2025-11-12)
+------------------
+* Change to new RAI Institute copyright (`#175 <https://github.com/bdaiinstitute/ros_utilities/issues/175>`_)
+* Contributors: Ben Axelrod
+
 1.0.0 (2025-11-07)
 ------------------
 * Standardizes the copyright text to align with the proper corporate identity. (`#142 <https://github.com/bdaiinstitute/ros_utilities/issues/142>`_)
