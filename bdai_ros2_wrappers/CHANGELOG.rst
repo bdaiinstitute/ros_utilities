@@ -2,8 +2,8 @@
 Changelog for package bdai_ros2_wrappers
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.0.1 (2025-11-12)
+------------------
 * Change to new RAI Institute copyright (`#175 <https://github.com/bdaiinstitute/ros_utilities/issues/175>`_)
 * Contributors: Ben Axelrod
 

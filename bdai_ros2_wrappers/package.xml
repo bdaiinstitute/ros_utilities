@@ -2,7 +2,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>bdai_ros2_wrappers</name>
-  <version>1.0.0</version>
+  <version>1.0.1</version>
   <description>Former AI Institute's wrappers for ROS 2, an alias for synchros2</description>
   <maintainer email="opensource@theaiinstitute.com">The AI Institute</maintainer>
   <license>MIT</license>

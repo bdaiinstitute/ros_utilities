@@ -2,7 +2,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>synchros2_tutorials_example</name>
-  <version>1.0.0</version>
+  <version>1.0.1</version>
   <description>Code from the synchros2 tutorials</description>
   <maintainer email="opensource@rai-inst.com">RAI Institute</maintainer>
   <license>MIT</license>
