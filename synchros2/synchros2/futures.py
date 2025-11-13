@@ -113,3 +113,9 @@ def unwrap_future(
     if not wait_for_future(proper_future, timeout_sec, clock=clock, context=context):
         raise ValueError("cannot unwrap future that is not done")
     return proper_future.result()
+
+
+wait_and_return_result = unwrap_future
+"""Fetch future result when it is done.
+
+Alias for unwrap_future()."""

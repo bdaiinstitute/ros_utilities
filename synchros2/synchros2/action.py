@@ -811,7 +811,7 @@ def unwrap_outcome(
     action: ActionFuture[ActionResultT, ActionFeedbackT],
     timeout_sec: Optional[float] = None,
 ) -> ActionOutcome[ActionResultT, ActionFeedbackT]:
-    """Wait for action outcome.
+    """Fetch action outcome when finalized.
 
     Args:
         action: action future to wait for.
@@ -821,8 +821,14 @@ def unwrap_outcome(
         the action outcome.
 
     Raises:
-        ActionTimeout: if the action timed out.
+        ValueError: on timeout.
     """
     if not wait_for_outcome(action, timeout_sec=timeout_sec):
-        raise ActionTimeout(action)
+        raise ValueError("cannot unwrap outcome of action that is not finalized")
     return action.outcome
+
+
+wait_and_return_outcome = unwrap_outcome
+"""Fetch action outcome when finalized.
+
+Alias for unwrap_outcome()."""
