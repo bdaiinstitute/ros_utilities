@@ -1,7 +1,20 @@
 # Copyright (c) 2024 Robotics and AI Institute LLC dba RAI Institute.  All rights reserved.
 
 import inspect
-from typing import Any, Callable, Generator, Generic, Iterator, List, Optional, Protocol, Type, TypeVar, Union, overload
+from typing import (
+    Any,
+    Callable,
+    Generator,
+    Generic,
+    Iterator,
+    List,
+    Optional,
+    Protocol,
+    Type,
+    TypeVar,
+    Union,
+    overload,
+)
 
 import action_msgs.msg
 from rclpy.action.client import ActionClient, ClientGoalHandle
@@ -59,6 +72,77 @@ class ActionCancelled(ActionException):
 ActionGoalT = TypeVar("ActionGoalT", contravariant=True)
 ActionResultT = TypeVar("ActionResultT", covariant=True)
 ActionFeedbackT = TypeVar("ActionFeedbackT", covariant=True)
+
+
+class ActionOutcome(Generic[ActionResultT, ActionFeedbackT]):
+    """A simple container for action outcome."""
+
+    def __init__(
+        self,
+        goal_handle: ClientGoalHandle,
+        result: Optional[Any],  # opaque action result service response
+        feedback: Optional[List[ActionFeedbackT]],
+    ) -> None:
+        """Initializes the action outcome.
+
+        Args:
+            goal_handle: action client goal handle.
+            result: action result response, may be `None` if action was rejected.
+            feedback: buffered action feedback, may be `None` if feedback
+            tracking was not enabled.
+        """
+        self._goal_handle = goal_handle
+        self._result = result
+        self._feedback = feedback
+
+    @property
+    def feedback(self) -> Optional[List[ActionFeedbackT]]:
+        """Get all buffered action feedback.
+
+        May be `None` if feedback tracking was not enabled.
+        """
+        return self._feedback
+
+    @property
+    def accepted(self) -> bool:
+        """Check if action was accepted."""
+        return self._goal_handle.accepted
+
+    @property
+    def status(self) -> Optional[int]:
+        """Get action status code.
+
+        See `action_msgs.msg.GoalStatus` documentation for status codes.
+        Rejected actions will be assigned `None` for status.
+        """
+        if self._result is None:
+            return None
+        return self._result.status
+
+    @property
+    def aborted(self) -> bool:
+        """Check if action was aborted."""
+        return self._result is not None and self._result.status == action_msgs.msg.GoalStatus.STATUS_ABORTED
+
+    @property
+    def cancelled(self) -> bool:
+        """Check if action was cancelled."""
+        return self._result is not None and self._result.status == action_msgs.msg.GoalStatus.STATUS_CANCELED
+
+    @property
+    def succeeded(self) -> bool:
+        """Check if action was succeeded."""
+        return self._result is not None and self._result.status == action_msgs.msg.GoalStatus.STATUS_SUCCEEDED
+
+    @property
+    def result(self) -> Optional[ActionResultT]:
+        """Get action result.
+
+        May be `None` if the action was rejected.
+        """
+        if self._result is None:
+            return None
+        return self._result.result
 
 
 class ActionFuture(FutureConvertible[ActionResultT], Generic[ActionResultT, ActionFeedbackT]):
@@ -168,6 +252,23 @@ class ActionFuture(FutureConvertible[ActionResultT], Generic[ActionResultT, Acti
         if self._result_future is None or not self._result_future.done():
             raise RuntimeError("Action still executing")
         return self._result_future.result().result
+
+    @property
+    def outcome(self) -> ActionOutcome[ActionResultT, ActionFeedbackT]:
+        """Get action outcome.
+
+        Raises:
+            RuntimeError: if internal errors occurred during action execution.
+        """
+        if not self.finalized:
+            raise RuntimeError("Action not finalized yet")
+        goal_handle = self._goal_handle_future.result()
+        if self._result_future is not None and self._result_future.done():
+            result = self._result_future.result()
+        else:
+            result = None
+        feedback = list(self._feedback_tape.content()) if self._feedback_tape is not None else None
+        return ActionOutcome(goal_handle, result, feedback)
 
     def add_done_callback(
         self,
@@ -689,3 +790,45 @@ class Actionable(Generic[ActionGoalT, ActionResultT, ActionFeedbackT], Composabl
         if feedback_callback is not None:
             future.add_feedback_callback(feedback_callback, forward_only=True)
         return future
+
+
+def wait_for_outcome(
+    action: ActionFuture[ActionResultT, ActionFeedbackT],
+    timeout_sec: Optional[float] = None,
+) -> bool:
+    """Wait for action outcome.
+
+    Args:
+        action: action future to wait for.
+        timeout_sec: optional timeout, in seconds.
+    Returns:
+        whether the action finalized before the timeout expired.
+    """
+    return wait_for_future(action.finalization, timeout_sec=timeout_sec)
+
+
+def unwrap_outcome(
+    action: ActionFuture[ActionResultT, ActionFeedbackT],
+    timeout_sec: Optional[float] = None,
+) -> ActionOutcome[ActionResultT, ActionFeedbackT]:
+    """Fetch action outcome when finalized.
+
+    Args:
+        action: action future to wait for.
+        timeout_sec: optional timeout, in seconds.
+
+    Returns:
+        the action outcome.
+
+    Raises:
+        ValueError: on timeout.
+    """
+    if not wait_for_outcome(action, timeout_sec=timeout_sec):
+        raise ValueError("cannot unwrap outcome of action that is not finalized")
+    return action.outcome
+
+
+wait_and_return_outcome = unwrap_outcome
+"""Fetch action outcome when finalized.
+
+Alias for unwrap_outcome()."""

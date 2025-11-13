@@ -15,7 +15,7 @@ from rclpy.executors import SingleThreadedExecutor
 from typing_extensions import TypeAlias
 
 import synchros2.scope as ros_scope
-from synchros2.action import Actionable, ActionAborted, ActionCancelled, ActionFuture, ActionRejected
+from synchros2.action import Actionable, ActionAborted, ActionCancelled, ActionFuture, ActionRejected, unwrap_outcome
 from synchros2.executors import foreground
 from synchros2.futures import wait_for_future
 from synchros2.node import Node
@@ -513,3 +513,99 @@ def test_cancelled_asynchronous_action_invocation_on_feedback(ros: ROSAwareScope
     action.add_feedback_callback(callback)
     assert wait_for_future(action.finalization, timeout_sec=10.0)
     assert action.cancelled
+
+
+def test_unwrap_successful_action_outcome(ros: ROSAwareScope) -> None:
+    ActionServer(ros.node, Fibonacci, "fibonacci/compute", default_execute_callback)
+    compute_fibonacci: FibonacciActionable = Actionable(Fibonacci, "fibonacci/compute", ros.node)
+    assert compute_fibonacci.wait_for_server(timeout_sec=2.0)
+    action = compute_fibonacci.asynchronously(Fibonacci.Goal(order=5))
+    outcome = unwrap_outcome(action, timeout_sec=10.0)
+    assert outcome.accepted
+    assert outcome.succeeded
+    assert not outcome.aborted
+    assert not outcome.cancelled
+    assert outcome.status == GoalStatus.STATUS_SUCCEEDED
+    expected_result = array.array("i", [0, 1, 1, 2, 3, 5])
+    assert outcome.result is not None
+    assert outcome.result.sequence == expected_result
+    assert outcome.feedback is None
+
+
+def test_unwrap_successful_action_outcome_with_feedback(ros: ROSAwareScope) -> None:
+    ActionServer(ros.node, Fibonacci, "fibonacci/compute", default_execute_callback)
+    compute_fibonacci: FibonacciActionable = Actionable(Fibonacci, "fibonacci/compute", ros.node)
+    assert compute_fibonacci.wait_for_server(timeout_sec=2.0)
+    action = compute_fibonacci.asynchronously(Fibonacci.Goal(order=5), track_feedback=True)
+    outcome = unwrap_outcome(action, timeout_sec=10.0)
+    expected_result = array.array("i", [0, 1, 1, 2, 3, 5])
+    assert outcome.result is not None
+    assert outcome.result.sequence == expected_result
+    assert outcome.feedback is not None
+    last_feedback = outcome.feedback[-1]
+    assert last_feedback.sequence == expected_result[: len(last_feedback.sequence)]
+
+
+def test_unwrap_rejected_action_outcome(ros: ROSAwareScope) -> None:
+    ActionServer(
+        ros.node,
+        Fibonacci,
+        "fibonacci/compute",
+        default_execute_callback,
+        goal_callback=lambda _: GoalResponse.REJECT,
+    )
+    compute_fibonacci: FibonacciActionable = Actionable(Fibonacci, "fibonacci/compute", ros.node)
+    assert compute_fibonacci.wait_for_server(timeout_sec=2.0)
+    action = compute_fibonacci.asynchronously(Fibonacci.Goal(order=5))
+    outcome = unwrap_outcome(action, timeout_sec=10.0)
+    assert not outcome.accepted
+    assert not outcome.succeeded
+    assert not outcome.aborted
+    assert not outcome.cancelled
+    assert outcome.status is None
+    assert outcome.result is None
+
+
+def test_unwrap_aborted_action_outcome(ros: ROSAwareScope) -> None:
+    def execute_callback(goal_handle: ServerGoalHandle) -> Fibonacci.Result:
+        goal_handle.abort()
+        return Fibonacci.Result()
+
+    ActionServer(ros.node, Fibonacci, "fibonacci/compute", execute_callback)
+    compute_fibonacci: FibonacciActionable = Actionable(Fibonacci, "fibonacci/compute", ros.node)
+    assert compute_fibonacci.wait_for_server(timeout_sec=2.0)
+    action = compute_fibonacci.asynchronously(Fibonacci.Goal(order=5))
+    outcome = unwrap_outcome(action, timeout_sec=10.0)
+    assert outcome.accepted
+    assert not outcome.succeeded
+    assert outcome.aborted
+    assert not outcome.cancelled
+    assert outcome.status == GoalStatus.STATUS_ABORTED
+
+
+def test_unwrap_cancelled_action_outcome(ros: ROSAwareScope) -> None:
+    def execute_callback(goal_handle: ServerGoalHandle) -> Fibonacci.Result:
+        while True:
+            if goal_handle.is_cancel_requested:
+                goal_handle.canceled()
+                return Fibonacci.Result()
+            time.sleep(0.01)
+
+    ActionServer(
+        ros.node,
+        Fibonacci,
+        "fibonacci/compute",
+        execute_callback,
+        cancel_callback=lambda _: CancelResponse.ACCEPT,
+    )
+    compute_fibonacci: FibonacciActionable = Actionable(Fibonacci, "fibonacci/compute", ros.node)
+    assert compute_fibonacci.wait_for_server(timeout_sec=2.0)
+    action = compute_fibonacci.asynchronously(Fibonacci.Goal(order=5))
+    assert wait_for_future(action.acknowledgement, timeout_sec=10.0)
+    action.cancel()
+    outcome = unwrap_outcome(action, timeout_sec=10.0)
+    assert outcome.accepted
+    assert not outcome.succeeded
+    assert not outcome.aborted
+    assert outcome.cancelled
+    assert outcome.status == GoalStatus.STATUS_CANCELED
