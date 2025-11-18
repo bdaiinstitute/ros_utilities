@@ -8,7 +8,12 @@
   <license>MIT</license>
 
   <exec_depend>action_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>message_filters</exec_depend>
   <exec_depend>rclpy</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
+  <exec_depend>tf2_msgs</exec_depend>
 
   <test_depend>example_interfaces</test_depend>
   <test_depend>python3-typing-extensions</test_depend>
