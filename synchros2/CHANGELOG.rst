@@ -2,6 +2,12 @@
 Changelog for package synchros2
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* [N/A] Add missing synchros2 deps (`#183 <https://github.com/bdaiinstitute/ros_utilities/issues/183>`_)
+* [SW-3983] Define outcome for actionables (`#179 <https://github.com/bdaiinstitute/ros_utilities/issues/179>`_)
+* Contributors: Michel Hidalgo
+
 1.0.2 (2025-11-12)
 ------------------
 * [SW-2822] Rename repository to synchros2 (`#180 <https://github.com/bdaiinstitute/ros_utilities/issues/180>`_)
