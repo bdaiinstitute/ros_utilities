@@ -12,7 +12,7 @@
   <exec_depend>launch</exec_depend>
   <exec_depend>message_filters</exec_depend>
   <exec_depend>rclpy</exec_depend>
-  <exec_depend>tf2_ros</exec_depend>
+  <exec_depend>tf2_ros_py</exec_depend>
   <exec_depend>tf2_msgs</exec_depend>
 
   <test_depend>example_interfaces</test_depend>
