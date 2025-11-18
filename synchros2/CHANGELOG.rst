@@ -2,8 +2,8 @@
 Changelog for package synchros2
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.0.4 (2025-11-18)
+------------------
 * [N/A] Add missing synchros2 test deps (`#186 <https://github.com/bdaiinstitute/ros_utilities/issues/186>`_)
 * [N/A] tf2_ros is tf2_ros_py for Python (`#185 <https://github.com/bdaiinstitute/ros_utilities/issues/185>`_)
 * Contributors: Michel Hidalgo
