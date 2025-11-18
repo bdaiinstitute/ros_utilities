@@ -2,8 +2,8 @@
 Changelog for package synchros2
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.0.3 (2025-11-18)
+------------------
 * [N/A] Add missing synchros2 deps (`#183 <https://github.com/bdaiinstitute/ros_utilities/issues/183>`_)
 * [SW-3983] Define outcome for actionables (`#179 <https://github.com/bdaiinstitute/ros_utilities/issues/179>`_)
 * Contributors: Michel Hidalgo
