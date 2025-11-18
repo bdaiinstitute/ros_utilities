@@ -6,7 +6,7 @@ package_name = "synchros2"
 
 setup(
     name=package_name,
-    version="1.0.2",
+    version="1.0.3",
     packages=find_packages(exclude=["test"]),
     package_data={package_name: ["py.typed"]},
     data_files=[
