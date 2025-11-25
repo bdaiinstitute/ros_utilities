@@ -492,6 +492,7 @@ def top(  # noqa: D417
     context: typing.Optional[rclpy.context.Context] = None,
     global_: bool = False,
     interruptible: bool = False,
+    disable_stdout_logs: bool = False,
     domain_id: typing.Optional[int] = None,
     **kwargs: typing.Any,
 ) -> typing.Iterator[ROSAwareScope]:
@@ -505,6 +506,7 @@ def top(  # noqa: D417
         interruptible: global interruptible scopes will skip installing ROS 2
         signal handlers and let the user deal with SIGINT and SIGTERM
         interruptions instead.
+        disable_stdout_logs: whether to disable ROS 2 console logging.
         domain_id: a domain id used for initializing rclpy.
         kwargs: keyword arguments to pass to `ROSAwareScope`.
 
@@ -514,6 +516,10 @@ def top(  # noqa: D417
     Returns:
         a context manager.
     """
+    if disable_stdout_logs:
+        if args is None:
+            args = []
+        args = [*args, "--ros-args", "--disable-stdout-logs"]
     if global_:
         if context is not None:
             raise ValueError("Cannot use a local context as global context")
