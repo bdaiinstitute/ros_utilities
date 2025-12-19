@@ -526,7 +526,7 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
         def __init__(
             self,
             task: rclpy.task.Task,
-            entity: typing.Optional[rclpy.executors.WaitableEntityType],
+            entity: typing.Optional[rclpy.waitable.Waitable],
             node: typing.Optional[rclpy.node.Node],
         ) -> None:
             self.task = task
@@ -740,7 +740,20 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
             future: The ros future instance
             timeout_sec: The timeout for working
         """
-        future.add_done_callback(lambda f: self.wake())
+        future.add_done_callback(lambda x: self.wake())
+        self._spin_once_until_future_complete(future, timeout_sec)
+
+    def _spin_once_until_future_complete(
+        self,
+        future: rclpy.task.Future,
+        timeout_sec: typing.Optional[float] = None,
+    ) -> None:
+        """Complete all work until the provided future is done.
+
+        Args:
+            future: The ros future instance
+            timeout_sec: The timeout for working
+        """
         self._do_spin_once(timeout_sec, condition=future.done)
 
     def shutdown(self, timeout_sec: typing.Optional[float] = None) -> bool:
@@ -804,8 +817,8 @@ def background(executor: rclpy.executors.Executor) -> typing.Iterator[rclpy.exec
     executor.spin = bind_to_thread(executor.spin, background_thread)
     executor.spin_once = bind_to_thread(executor.spin_once, background_thread)
     executor.spin_until_future_complete = bind_to_thread(executor.spin_until_future_complete, background_thread)
-    executor.spin_once_until_future_complete = bind_to_thread(
-        executor.spin_once_until_future_complete,
+    executor._spin_once_until_future_complete = bind_to_thread(
+        executor._spin_once_until_future_complete,
         background_thread,
     )
     background_thread.start()
