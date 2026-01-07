@@ -817,10 +817,6 @@ def background(executor: rclpy.executors.Executor) -> typing.Iterator[rclpy.exec
     executor.spin = bind_to_thread(executor.spin, background_thread)
     executor.spin_once = bind_to_thread(executor.spin_once, background_thread)
     executor.spin_until_future_complete = bind_to_thread(executor.spin_until_future_complete, background_thread)
-    executor._spin_once_until_future_complete = bind_to_thread(
-        executor._spin_once_until_future_complete,
-        background_thread,
-    )
     background_thread.start()
     try:
         yield executor
