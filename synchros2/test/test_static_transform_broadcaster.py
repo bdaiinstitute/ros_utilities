@@ -2,19 +2,19 @@
 
 import math
 
-from geometry_msgs.msg import TransformStamped, Quaternion
+from geometry_msgs.msg import Quaternion, TransformStamped
 
 from synchros2.scope import ROSAwareScope
 from synchros2.static_transform_broadcaster import StaticTransformBroadcaster
 from synchros2.tf_listener_wrapper import TFListenerWrapper
 
-def norm_quat(q: Quaternion):
+
+def norm_quat(q: Quaternion) -> Quaternion:
     norm = math.sqrt(q.x**2 + q.y**2 + q.z**2 + q.w**2)
     q.x /= norm
     q.y /= norm
     q.z /= norm
     q.w /= norm
-
 
 
 def test_static_tf_burst(ros: ROSAwareScope) -> None:
