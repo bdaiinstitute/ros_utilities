@@ -66,7 +66,6 @@ def test_static_tf_burst(ros: ROSAwareScope) -> None:
 
     tf_listener = TFListenerWrapper(ros.node)
     transform = tf_listener.lookup_a_tform_b("footprint", "camera", timeout_sec=2.0, wait_for_frames=True)
-    EPS = 0.0001
-    assert math.fabs(transform.transform.rotation.w - 1.0) < EPS
+    assert math.isclose(transform.transform.rotation.w, 1.0)
     transform = tf_listener.lookup_a_tform_b("world", "fiducial_a", timeout_sec=2.0, wait_for_frames=True)
-    assert math.fabs(transform.transform.translation.x - 1.0) < EPS
+    assert math.isclose(transform.transform.translation.x, 1.0)
