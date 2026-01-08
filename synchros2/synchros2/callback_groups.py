@@ -5,7 +5,20 @@ import weakref
 
 import rclpy.callback_groups
 import rclpy.executors
-import rclpy.waitable
+from typing_extensions import TypeAlias
+
+if typing.TYPE_CHECKING:
+    try:
+        from rclpy.waitable import Waitable as _Waitable
+    except ImportError:
+        _Waitable = typing.Any  # type: ignore[assignment]
+    try:
+        from rclpy.executors import WaitableEntityType as _WaitableEntityType
+    except ImportError:
+        _WaitableEntityType = typing.Any  # type: ignore[assignment]
+    WaitableType: TypeAlias = "_Waitable | _WaitableEntityType"
+else:
+    WaitableType = object
 
 
 class NonReentrantCallbackGroup(rclpy.callback_groups.CallbackGroup):
@@ -24,10 +37,10 @@ class NonReentrantCallbackGroup(rclpy.callback_groups.CallbackGroup):
     def __init__(self) -> None:
         """Constructor"""
         super().__init__()
-        self._active_entities: typing.Set[rclpy.waitable.Waitable] = set()
+        self._active_entities: typing.Set[WaitableType] = set()
         self._lock = threading.Lock()
 
-    def can_execute(self, entity: rclpy.waitable.Waitable) -> bool:
+    def can_execute(self, entity: WaitableType) -> bool:
         """Determine if a callback for an entity can be executed.
 
         Args:
@@ -40,7 +53,7 @@ class NonReentrantCallbackGroup(rclpy.callback_groups.CallbackGroup):
             assert weakref.ref(entity) in self.entities
             return entity not in self._active_entities
 
-    def beginning_execution(self, entity: rclpy.waitable.Waitable) -> bool:
+    def beginning_execution(self, entity: WaitableType) -> bool:
         """Get permission for the callback from the group to begin executing an entity.
 
         If this returns `True` then `CallbackGroup.ending_execution` must be called after
@@ -59,7 +72,7 @@ class NonReentrantCallbackGroup(rclpy.callback_groups.CallbackGroup):
                 return True
         return False
 
-    def ending_execution(self, entity: rclpy.waitable.Waitable) -> None:
+    def ending_execution(self, entity: WaitableType) -> None:
         """Notify group that a callback has finished executing.
 
         Args:
