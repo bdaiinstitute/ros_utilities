@@ -17,9 +17,23 @@ import weakref
 import rclpy.callback_groups
 import rclpy.executors
 import rclpy.node
+from typing_extensions import TypeAlias
 
 from synchros2.futures import FutureLike
 from synchros2.utilities import bind_to_thread, fqn
+
+if typing.TYPE_CHECKING:
+    try:
+        from rclpy.waitable import Waitable as _Waitable
+    except ImportError:
+        _Waitable = typing.Any  # type: ignore[assignment]
+    try:
+        from rclpy.executors import WaitableEntityType as _WaitableEntityType
+    except ImportError:
+        _WaitableEntityType = typing.Any  # type: ignore[assignment]
+    WaitableType: TypeAlias = "_Waitable | _WaitableEntityType"
+else:
+    WaitableType = object
 
 
 class AutoScalingThreadPool(concurrent.futures.Executor):
@@ -526,7 +540,7 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
         def __init__(
             self,
             task: rclpy.task.Task,
-            entity: typing.Optional[rclpy.executors.WaitableEntityType],
+            entity: typing.Optional[WaitableType],
             node: typing.Optional[rclpy.node.Node],
         ) -> None:
             self.task = task
@@ -740,7 +754,20 @@ class AutoScalingMultiThreadedExecutor(rclpy.executors.Executor):
             future: The ros future instance
             timeout_sec: The timeout for working
         """
-        future.add_done_callback(lambda f: self.wake())
+        future.add_done_callback(lambda x: self.wake())
+        self._spin_once_until_future_complete(future, timeout_sec)
+
+    def _spin_once_until_future_complete(
+        self,
+        future: rclpy.task.Future,
+        timeout_sec: typing.Optional[float] = None,
+    ) -> None:
+        """Complete all work until the provided future is done.
+
+        Args:
+            future: The ros future instance
+            timeout_sec: The timeout for working
+        """
         self._do_spin_once(timeout_sec, condition=future.done)
 
     def shutdown(self, timeout_sec: typing.Optional[float] = None) -> bool:
