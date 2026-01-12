@@ -4,19 +4,14 @@ import typing
 import weakref
 
 import rclpy.callback_groups
-import rclpy.executors
-from typing_extensions import TypeAlias
 
 if typing.TYPE_CHECKING:
     try:
-        from rclpy.waitable import Waitable as _Waitable
+        # humble and below
+        from rclpy.executors import WaitableEntityType as WaitableType
     except ImportError:
-        _Waitable = typing.Any  # type: ignore[assignment]
-    try:
-        from rclpy.executors import WaitableEntityType as _WaitableEntityType
-    except ImportError:
-        _WaitableEntityType = typing.Any  # type: ignore[assignment]
-    WaitableType: TypeAlias = "_Waitable | _WaitableEntityType"
+        # kilted and above
+        from rclpy.waitable import Waitable as WaitableType
 else:
     WaitableType = object
 
