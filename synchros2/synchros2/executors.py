@@ -23,7 +23,7 @@ from synchros2.utilities import bind_to_thread, fqn
 
 if typing.TYPE_CHECKING:
     try:
-        # humble and below
+        # jazzy and below
         from rclpy.executors import WaitableEntityType as WaitableType
     except ImportError:
         # kilted and above
