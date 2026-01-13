@@ -53,7 +53,7 @@ class ActionClientWrapper(rclpy.action.ActionClient):
             Optional[Any]:
         """
         if goal is None:
-            self._node.get_logger.warn("Cannot send NULL ActionGoal")
+            self._node.get_logger().warning("Cannot send NULL ActionGoal")
             return None
         self._node.get_logger().info(f"Sending Action [{action_name}]")
 

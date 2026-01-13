@@ -1,5 +1,7 @@
 # Copyright (c) 2023 Robotics and AI Institute LLC dba RAI Institute.  All rights reserved.
 
+import math
+
 from geometry_msgs.msg import TransformStamped
 
 from synchros2.scope import ROSAwareScope
@@ -26,13 +28,15 @@ def test_static_tf_burst(ros: ROSAwareScope) -> None:
     body_to_head_transform.header.stamp = stamp
     body_to_head_transform.header.frame_id = "body"
     body_to_head_transform.child_frame_id = "head"
-    body_to_head_transform.transform.rotation.z = -1.0
+    body_to_head_transform.transform.rotation.z = -math.sqrt(0.5)
+    body_to_head_transform.transform.rotation.w = math.sqrt(0.5)
 
     head_to_camera_transform = TransformStamped()
     head_to_camera_transform.header.stamp = stamp
     head_to_camera_transform.header.frame_id = "head"
     head_to_camera_transform.child_frame_id = "camera"
-    head_to_camera_transform.transform.rotation.z = 1.0
+    head_to_camera_transform.transform.rotation.z = math.sqrt(0.5)
+    head_to_camera_transform.transform.rotation.w = math.sqrt(0.5)
     tf_broadcaster.sendTransform([body_to_head_transform, head_to_camera_transform])
 
     world_to_fiducial_a_transform = TransformStamped()
@@ -51,6 +55,6 @@ def test_static_tf_burst(ros: ROSAwareScope) -> None:
 
     tf_listener = TFListenerWrapper(ros.node)
     transform = tf_listener.lookup_a_tform_b("footprint", "camera", timeout_sec=2.0, wait_for_frames=True)
-    assert transform.transform.rotation.w == 1.0
+    assert math.isclose(transform.transform.rotation.w, 1.0)
     transform = tf_listener.lookup_a_tform_b("world", "fiducial_a", timeout_sec=2.0, wait_for_frames=True)
-    assert transform.transform.translation.x == 1.0
+    assert math.isclose(transform.transform.translation.x, 1.0)
